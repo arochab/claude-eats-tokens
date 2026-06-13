@@ -74,8 +74,16 @@ def pretty_model(m):
 
 
 def pretty_project(p):
-    parts = [x for x in (p or "").replace("\\", "-").split("-") if x]
-    return " / ".join(parts[-2:]) if parts else (p or "—")
+    # Les noms de dossiers Claude Code = chemin slugifie (C--Users-adam-...-mon-projet).
+    # On garde le dernier segment significatif comme nom lisible.
+    raw = (p or "").replace("\\", "-")
+    parts = [x for x in raw.split("-") if x and x not in ("C", "Users", "Desktop", "Documents")]
+    # ignore l'utilisateur et les prefixes generiques, garde le dernier morceau parlant
+    name = parts[-1] if parts else (p or "projet")
+    # si le dernier morceau est tres court (ex 'app'), accole le precedent
+    if len(parts) >= 2 and len(name) <= 3:
+        name = parts[-2] + "-" + name
+    return name.replace("_", " ").strip() or "projet"
 
 
 def iso_week(d):

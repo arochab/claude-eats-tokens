@@ -155,3 +155,33 @@ body{font-family:var(--sans);background:var(--cream);color:var(--slate);line-hei
 .dot.live{background:#7E9E6D;position:relative}
 .dot.live::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid #7E9E6D;animation:pulse 1.8s infinite}
 @keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+
+/* ===== Verdict global ===== */
+.verdict{border-radius:var(--r-xl);padding:20px 22px;margin-bottom:14px;transition:.3s}
+.verdict.ok{background:rgba(126,158,109,.16)}
+.verdict.warn{background:rgba(200,146,61,.18)}
+.verdict.bad{background:rgba(181,86,58,.18)}
+.vmain{display:flex;align-items:center;gap:18px}
+.vscore{width:74px;height:74px;border-radius:50%;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+.verdict.ok .vscore{background:var(--sage)}
+.verdict.warn .vscore{background:var(--amber)}
+.verdict.bad .vscore{background:var(--danger)}
+.vscore b{font-family:var(--serif);font-size:27px;line-height:1}
+.vscore small{font-size:10px;opacity:.85;margin-top:1px}
+.vstate{font-family:var(--serif);font-size:23px;margin:0;line-height:1.1}
+.verdict.ok .vstate{color:#3f5733}.verdict.warn .vstate{color:#7a5410}.verdict.bad .vstate{color:var(--terracotta-d)}
+.vsub{font-size:13px;margin:5px 0 0;color:var(--slate-soft);line-height:1.4}
+
+/* crédits API — section à part */
+.apicard{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:14px;display:flex;align-items:center;gap:15px}
+.apicard .mring{position:relative;width:60px;height:60px;flex:0 0 auto}
+.apicard .mring svg{transform:rotate(-90deg)}
+.apicard .mring .mp{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:600}
+.apicard .at{min-width:0}
+.apicard .at .k{font-size:12px;color:var(--muted);margin:0 0 3px;display:flex;align-items:center;gap:6px}
+.apicard .at .v{font-family:var(--serif);font-size:19px;margin:0}
+.apicard .at .s{font-size:11.5px;color:var(--muted);margin:3px 0 0}
+@media (prefers-color-scheme:dark){
+  .verdict.ok .vstate{color:#aacc96}.verdict.warn .vstate{color:#e8b86a}.verdict.bad .vstate{color:#e8a48c}
+  .vsub{color:var(--slate-soft)}
+}

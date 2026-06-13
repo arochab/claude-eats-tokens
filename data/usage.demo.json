@@ -381,27 +381,27 @@
   ],
   "projects": [
     {
-      "project": "site / vitrine",
+      "project": "claude-eats-tokens",
       "total": 4886643,
       "cost": 21.3
     },
     {
-      "project": "api / backend",
+      "project": "brandpulse-app",
       "total": 3875614,
       "cost": 18.9
     },
     {
-      "project": "scripts / data",
+      "project": "kapman-news",
       "total": 3033089,
       "cost": 12.4
     },
     {
-      "project": "adam / pro",
+      "project": "serp-scraper",
       "total": 2696079,
       "cost": 9.8
     },
     {
-      "project": "perso / tests",
+      "project": "mixhub",
       "total": 2359069,
       "cost": 5.1
     }

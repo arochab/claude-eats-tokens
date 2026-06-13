@@ -11,3 +11,6 @@ data/usage.json
 
 # Render ephemeral / local temp
 *.log
+
+# Secrets locaux (NE JAMAIS committer) — un par machine
+secret.local.bat

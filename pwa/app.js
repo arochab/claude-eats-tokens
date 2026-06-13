@@ -35,7 +35,8 @@
   function until(iso) { if (!iso) return ""; var m = (new Date(iso).getTime() - Date.now()) / 60000; if (m <= 0) return "réinitialisée"; if (m < 60) return "reset dans " + Math.round(m) + " min"; return "reset dans " + Math.round(m / 60) + " h " + Math.round(m % 60) + " min"; }
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
-  function ringColor(p) { return p >= 100 ? "#B5563A" : p >= settings.warnPct ? "#C8923D" : "#CC785C"; }
+  function ringColor(p) { return p >= 100 ? "#B5563A" : p >= settings.warnPct ? "#C8923D" : (p >= 50 ? "#C8923D" : "#7E9E6D"); }
+  function toneOf(p) { return p >= 100 ? "bad" : p >= settings.warnPct ? "bad" : (p >= 50 ? "warn" : "ok"); }
 
   /* anneau SVG */
   function ringSVG(p, size, stroke, track, fg, centerHTML) {
@@ -91,9 +92,9 @@
     if (d.source && d.source.apiConnected && d.api) {
       // si dispo : coût API réel — sinon on estime via crédits & coût total
     }
-    var apiUsed = d.totals ? d.totals.cost : 0;
-    rings.push(miniRingMoney("Crédits API", apiUsed, settings.apiCredits));
     $("minirings").innerHTML = rings.join("");
+    renderApiCard(d);
+    renderVerdict(d, dayU, weekU);
 
     /* alertes de seuil */
     renderAlerts(d, pMonth, dayU, weekU);
@@ -134,6 +135,41 @@
     var p = pct(usedUsd, budgetUsd);
     return '<div class="mr"><div class="mring">' + ringSVG(p, 58, 7, "var(--cream-2)", ringColor(p), '<div class="mp" style="color:' + ringColor(p) + '">' + p + '%</div>') + '</div>' +
       '<div class="mt"><p class="k">' + esc(label) + '</p><p class="v">' + eur(usedUsd) + '</p><p class="s">/ ' + eur(budgetUsd) + '</p></div></div>';
+  }
+
+  function renderVerdict(d, dayU, weekU) {
+    // pire pourcentage parmi les budgets Max (hors crédits API)
+    var checks = [
+      pct(d.month ? d.month.currentMonth : 0, settings.month),
+      pct(dayU, settings.day),
+      pct(weekU, settings.week)
+    ];
+    if (d.windows) { checks.push(pct(d.windows.w5h.total, settings.w5h)); checks.push(pct(d.windows.w7d.total, settings.w7d)); }
+    var worst = Math.max.apply(null, checks.concat([0]));
+    // score santé = 100 - worst (borné), pénalise surtout au-delà du seuil
+    var score = Math.max(0, Math.min(100, Math.round(100 - worst)));
+    var tone = worst >= 100 ? "bad" : worst >= settings.warnPct ? "bad" : (worst >= 50 ? "warn" : "ok");
+    var state = worst >= 100 ? "Stop — plafond atteint" : worst >= settings.warnPct ? "Attention" : (worst >= 50 ? "Ça monte" : "Tout va bien");
+    var sub = worst >= 100 ? "Au moins un budget est dépassé. Lève le pied."
+            : worst >= settings.warnPct ? "Tu approches d'un plafond (" + worst + "%). Garde un œil."
+            : (worst >= 50 ? "Consommation modérée (pic à " + worst + "%). RAS." : "Tu es large sur tous tes budgets. 🍃");
+    var v = $("verdict");
+    v.className = "verdict " + tone;
+    $("vscore-n").textContent = score;
+    $("vstate").textContent = state;
+    $("vsub").textContent = sub;
+  }
+
+  function renderApiCard(d) {
+    var box = $("apicard"); if (!box) return;
+    var used = d.totals ? d.totals.cost : 0;
+    var p = pct(used, settings.apiCredits);
+    var col = ringColor(p);
+    box.innerHTML =
+      '<div class="mring">' + ringSVG(p, 60, 7, "var(--cream-2)", col, '<div class="mp" style="color:' + col + '">' + p + '%</div>') + '</div>' +
+      '<div class="at"><p class="k"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Crédits API (facturés)</p>' +
+      '<p class="v">' + eur(used) + ' / ' + eur(settings.apiCredits) + '</p>' +
+      '<p class="s">' + (p >= 100 ? "Crédits épuisés — recharge nécessaire" : "Distinct de ton forfait Max") + '</p></div>';
   }
 
   function renderAlerts(d, pMonth, dayU, weekU) {

@@ -3,18 +3,22 @@ chcp 65001 >nul
 title Claude Eats Tokens — envoi des tokens
 cd /d "%~dp0"
 
-REM ===== Configure ces 2 lignes (une seule fois) =====
-set PUSH_URL=https://claude-eats-tokens.onrender.com
-set PUSH_SECRET=change-moi-en-un-secret-long
-REM (optionnel) usage facture a l'API :
-REM set ANTHROPIC_ADMIN_KEY=sk-ant-admin-xxxx
+REM ===== Charge ton secret local (non versionne) =====
+if not exist "secret.local.bat" (
+  echo.
+  echo   Fichier "secret.local.bat" introuvable.
+  echo   Copie "secret.local.example.bat" en "secret.local.bat" et mets-y ton secret.
+  echo.
+  pause & exit /b
+)
+call "secret.local.bat"
 set INTERVAL=60
 
 where python >nul 2>nul
 if errorlevel 1 (
   echo.
-  echo   Python n'est pas installe. Telecharge-le : https://www.python.org/downloads/
-  echo   (coche "Add Python to PATH" a l'installation, puis relance ce fichier)
+  echo   Python n'est pas installe. https://www.python.org/downloads/
+  echo   (coche "Add Python to PATH", puis relance ce fichier)
   echo.
   pause & exit /b
 )
