@@ -5,7 +5,7 @@
 
 ### → [**Open the live app**](https://arochab.github.io/claude-eats-tokens/) · [Source](https://github.com/arochab/claude-eats-tokens)
 
-![Claude Eats Tokens](pwa/icon-512.png)
+![Claude Eats Tokens](demo.gif)
 
 The joke writes itself — Claude Code is a hungry beast, and you can't see, from your phone, how much it's eaten today. That's not laziness on Anthropic's part: the Max plan genuinely ships **no usage API**, so there's no number to fetch. But Claude Code already writes every token count to local JSONL logs. So this app does the only honest thing: a small script on your PC reads those logs, totals the damage, and pushes it to a free server; an installable web app then shows where you stand — budgets, rolling windows, projections — and pings you before Claude licks the plate clean. Built in the Anthropic design language, free end to end.
 
