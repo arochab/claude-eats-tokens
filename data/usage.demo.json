@@ -1,0 +1,410 @@
+{
+  "generatedAt": "2026-06-13T08:00:00.000Z",
+  "demo": true,
+  "source": {
+    "claudeCodeDir": null,
+    "fileCount": 51,
+    "messages": 2640,
+    "firstActivity": "2026-05-10T09:00:00Z",
+    "lastActivity": "2026-06-13T07:51:00Z",
+    "apiConnected": false
+  },
+  "totals": {
+    "input": 214656,
+    "output": 1073280,
+    "cacheCreate": 1609920,
+    "cacheRead": 13952640,
+    "total": 16850496,
+    "cost": 26.97
+  },
+  "today": {
+    "total": 0,
+    "cost": 0.0
+  },
+  "last7Days": {
+    "input": 48504,
+    "output": 242520,
+    "cacheCreate": 363780,
+    "cacheRead": 3152760,
+    "total": 3807564
+  },
+  "last30Days": {
+    "input": 184680,
+    "output": 923400,
+    "cacheCreate": 1385100,
+    "cacheRead": 12004200,
+    "total": 14497380
+  },
+  "timeline": [
+    {
+      "date": "2026-05-10",
+      "input": 0,
+      "output": 0,
+      "cacheCreate": 0,
+      "cacheRead": 0,
+      "total": 0
+    },
+    {
+      "date": "2026-05-11",
+      "input": 4864,
+      "output": 24320,
+      "cacheCreate": 36480,
+      "cacheRead": 316160,
+      "total": 381824
+    },
+    {
+      "date": "2026-05-12",
+      "input": 8864,
+      "output": 44320,
+      "cacheCreate": 66480,
+      "cacheRead": 576160,
+      "total": 695824
+    },
+    {
+      "date": "2026-05-13",
+      "input": 13064,
+      "output": 65320,
+      "cacheCreate": 97980,
+      "cacheRead": 849160,
+      "total": 1025524
+    },
+    {
+      "date": "2026-05-14",
+      "input": 3184,
+      "output": 15920,
+      "cacheCreate": 23880,
+      "cacheRead": 206960,
+      "total": 249944
+    },
+    {
+      "date": "2026-05-15",
+      "input": 3584,
+      "output": 17920,
+      "cacheCreate": 26880,
+      "cacheRead": 232960,
+      "total": 281344
+    },
+    {
+      "date": "2026-05-16",
+      "input": 3936,
+      "output": 19680,
+      "cacheCreate": 29520,
+      "cacheRead": 255840,
+      "total": 308976
+    },
+    {
+      "date": "2026-05-17",
+      "input": 0,
+      "output": 0,
+      "cacheCreate": 0,
+      "cacheRead": 0,
+      "total": 0
+    },
+    {
+      "date": "2026-05-18",
+      "input": 3344,
+      "output": 16720,
+      "cacheCreate": 25080,
+      "cacheRead": 217360,
+      "total": 262504
+    },
+    {
+      "date": "2026-05-19",
+      "input": 10712,
+      "output": 53560,
+      "cacheCreate": 80340,
+      "cacheRead": 696280,
+      "total": 840892
+    },
+    {
+      "date": "2026-05-20",
+      "input": 5912,
+      "output": 29560,
+      "cacheCreate": 44340,
+      "cacheRead": 384280,
+      "total": 464092
+    },
+    {
+      "date": "2026-05-21",
+      "input": 3008,
+      "output": 15040,
+      "cacheCreate": 22560,
+      "cacheRead": 195520,
+      "total": 236128
+    },
+    {
+      "date": "2026-05-22",
+      "input": 3808,
+      "output": 19040,
+      "cacheCreate": 28560,
+      "cacheRead": 247520,
+      "total": 298928
+    },
+    {
+      "date": "2026-05-23",
+      "input": 3544,
+      "output": 17720,
+      "cacheCreate": 26580,
+      "cacheRead": 230360,
+      "total": 278204
+    },
+    {
+      "date": "2026-05-24",
+      "input": 0,
+      "output": 0,
+      "cacheCreate": 0,
+      "cacheRead": 0,
+      "total": 0
+    },
+    {
+      "date": "2026-05-25",
+      "input": 11424,
+      "output": 57120,
+      "cacheCreate": 85680,
+      "cacheRead": 742560,
+      "total": 896784
+    },
+    {
+      "date": "2026-05-26",
+      "input": 9352,
+      "output": 46760,
+      "cacheCreate": 70140,
+      "cacheRead": 607880,
+      "total": 734132
+    },
+    {
+      "date": "2026-05-27",
+      "input": 3368,
+      "output": 16840,
+      "cacheCreate": 25260,
+      "cacheRead": 218920,
+      "total": 264388
+    },
+    {
+      "date": "2026-05-28",
+      "input": 11664,
+      "output": 58320,
+      "cacheCreate": 87480,
+      "cacheRead": 758160,
+      "total": 915624
+    },
+    {
+      "date": "2026-05-29",
+      "input": 4424,
+      "output": 22120,
+      "cacheCreate": 33180,
+      "cacheRead": 287560,
+      "total": 347284
+    },
+    {
+      "date": "2026-05-30",
+      "input": 12728,
+      "output": 63640,
+      "cacheCreate": 95460,
+      "cacheRead": 827320,
+      "total": 999148
+    },
+    {
+      "date": "2026-05-31",
+      "input": 3408,
+      "output": 17040,
+      "cacheCreate": 25560,
+      "cacheRead": 221520,
+      "total": 267528
+    },
+    {
+      "date": "2026-06-01",
+      "input": 11848,
+      "output": 59240,
+      "cacheCreate": 88860,
+      "cacheRead": 770120,
+      "total": 930068
+    },
+    {
+      "date": "2026-06-02",
+      "input": 11992,
+      "output": 59960,
+      "cacheCreate": 89940,
+      "cacheRead": 779480,
+      "total": 941372
+    },
+    {
+      "date": "2026-06-03",
+      "input": 8896,
+      "output": 44480,
+      "cacheCreate": 66720,
+      "cacheRead": 578240,
+      "total": 698336
+    },
+    {
+      "date": "2026-06-04",
+      "input": 3208,
+      "output": 16040,
+      "cacheCreate": 24060,
+      "cacheRead": 208520,
+      "total": 251828
+    },
+    {
+      "date": "2026-06-05",
+      "input": 6016,
+      "output": 30080,
+      "cacheCreate": 45120,
+      "cacheRead": 391040,
+      "total": 472256
+    },
+    {
+      "date": "2026-06-06",
+      "input": 0,
+      "output": 0,
+      "cacheCreate": 0,
+      "cacheRead": 0,
+      "total": 0
+    },
+    {
+      "date": "2026-06-07",
+      "input": 7144,
+      "output": 35720,
+      "cacheCreate": 53580,
+      "cacheRead": 464360,
+      "total": 560804
+    },
+    {
+      "date": "2026-06-08",
+      "input": 9264,
+      "output": 46320,
+      "cacheCreate": 69480,
+      "cacheRead": 602160,
+      "total": 727224
+    },
+    {
+      "date": "2026-06-09",
+      "input": 4760,
+      "output": 23800,
+      "cacheCreate": 35700,
+      "cacheRead": 309400,
+      "total": 373660
+    },
+    {
+      "date": "2026-06-10",
+      "input": 11256,
+      "output": 56280,
+      "cacheCreate": 84420,
+      "cacheRead": 731640,
+      "total": 883596
+    },
+    {
+      "date": "2026-06-11",
+      "input": 4328,
+      "output": 21640,
+      "cacheCreate": 32460,
+      "cacheRead": 281320,
+      "total": 339748
+    },
+    {
+      "date": "2026-06-12",
+      "input": 11752,
+      "output": 58760,
+      "cacheCreate": 88140,
+      "cacheRead": 763880,
+      "total": 922532
+    },
+    {
+      "date": "2026-06-13",
+      "input": 0,
+      "output": 0,
+      "cacheCreate": 0,
+      "cacheRead": 0,
+      "total": 0
+    }
+  ],
+  "windows": {
+    "w5h": {
+      "input": 18000,
+      "output": 92000,
+      "cacheCreate": 140000,
+      "cacheRead": 1180000,
+      "total": 1430000
+    },
+    "w5hResetAt": "2026-06-13T12:30:00.000Z",
+    "w7d": {
+      "input": 48504,
+      "output": 242520,
+      "cacheCreate": 363780,
+      "cacheRead": 3152760,
+      "total": 3807564
+    }
+  },
+  "weekly": {
+    "weeks": [],
+    "currentWeek": 3807564
+  },
+  "month": {
+    "currentMonth": 7101424,
+    "projection": 16387902,
+    "dayOfMonth": 13,
+    "daysInMonth": 30
+  },
+  "pace": {
+    "avgPerDay": 483246
+  },
+  "models": [
+    {
+      "model": "claude-opus-4",
+      "label": "Claude Opus",
+      "input": 85862,
+      "output": 482976,
+      "cacheCreate": 643968,
+      "cacheRead": 5860108,
+      "total": 7077208,
+      "cost": 52.1
+    },
+    {
+      "model": "claude-sonnet-4",
+      "label": "Claude Sonnet",
+      "input": 107328,
+      "output": 515174,
+      "cacheCreate": 837158,
+      "cacheRead": 6976320,
+      "total": 8425248,
+      "cost": 17.8
+    },
+    {
+      "model": "claude-haiku-4",
+      "label": "Claude Haiku",
+      "input": 21465,
+      "output": 75129,
+      "cacheCreate": 128793,
+      "cacheRead": 1116211,
+      "total": 1348039,
+      "cost": 1.5
+    }
+  ],
+  "projects": [
+    {
+      "project": "site / vitrine",
+      "total": 4886643,
+      "cost": 21.3
+    },
+    {
+      "project": "api / backend",
+      "total": 3875614,
+      "cost": 18.9
+    },
+    {
+      "project": "scripts / data",
+      "total": 3033089,
+      "cost": 12.4
+    },
+    {
+      "project": "adam / pro",
+      "total": 2696079,
+      "cost": 9.8
+    },
+    {
+      "project": "perso / tests",
+      "total": 2359069,
+      "cost": 5.1
+    }
+  ],
+  "api": null
+}

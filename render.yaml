@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: claude-eats-tokens
+    runtime: python
+    plan: free
+    rootDir: server
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PUSH_SECRET
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GIST_ID
+        sync: false

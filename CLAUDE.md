@@ -1,0 +1,48 @@
+# Claude Eats Tokens — Agent Instructions
+
+Claude Eats Tokens est un **suivi visuel de la consommation de tokens Claude**
+(Claude Code + API), distribué comme **Progressive Web App** installable sur
+téléphone. Front statique sur **GitHub Pages**, petit serveur de push sur
+**Render**. 100% gratuit à faire tourner.
+
+Audience : usage perso d'Adam + pièce de portfolio. Mobile-first.
+
+## Architecture (réglée — ne pas re-dériver)
+
+```
+PC d'Adam (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  ─►  Gist (store durable)
+                                                              │
+   PWA (GitHub Pages)  ◄── GET /usage.json ─────────────────┘
+   data/usage.json (repli si serveur endormi)
+```
+
+- **`service-worker.js` vit à la RACINE** — jamais dans `pwa/`, sinon le scope
+  ne couvre pas toute l'app et le cache/les notifs cassent silencieusement.
+- **Le front lit dans cet ordre** : `window.CLAUDE_EATS_TOKENS_SERVER` (Render) →
+  `data/usage.json` (Pages) → `data/usage.demo.json` (démo). Réglé dans
+  `pwa/config.js`.
+- **Serveur** `server/app.py` sur Render (`gunicorn app:app`, rootDir `server/`).
+  Données persistées dans une **Gist privée** (env `GITHUB_TOKEN` scope `gist`,
+  `GIST_ID`) + `PUSH_SECRET`.
+- **Le PC pousse** via `tools/push_usage.py` (boucle, env `PUSH_URL` +
+  `PUSH_SECRET`). C'est la seule source des chiffres : Anthropic n'expose pas
+  d'API d'usage pour l'abonnement Max.
+
+## Réglages & budgets (côté client)
+
+Les plafonds (jour / semaine / mois / fenêtre 5h / fenêtre 7j / crédits API),
+le taux $→€, le seuil d'alerte et les projets en cours sont **dans le
+localStorage du téléphone** (écran ⚙️). Rien de tout ça ne vit côté serveur.
+
+## Gotchas
+
+- Sur **Max**, pas de compteur officiel « il reste X » : la logique réelle =
+  fenêtres glissantes de 5h. Les budgets sont ceux qu'Adam fixe lui-même.
+- Le **coût $/€ est une estimation** au tarif API (Max = forfait fixe).
+- Render free s'endort : la première requête peut prendre ~50s.
+
+## Design system (DA Anthropic)
+
+Crème `#F0EEE6` · Slate `#1A1915` · Terracotta `#CC785C` · Clay `#D4A27F`.
+Serif éditoriale pour les chiffres clés, sans-serif pour l'UI. Tout vit dans
+`pwa/styles.css`.

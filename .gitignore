@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+
+# Claude Code local session settings (per-machine)
+.claude/settings.local.json
+
+# Données poussées localement (régénérées par le PC)
+data/usage.json
+
+# Render ephemeral / local temp
+*.log
