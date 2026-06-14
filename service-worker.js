@@ -1,4 +1,4 @@
-const CACHE = "claude-eats-tokens-v2";
+const CACHE = "claude-eats-tokens-v3";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/manifest.json",
   "./pwa/icon-192.png", "./pwa/icon-512.png", "./data/usage.demo.json"

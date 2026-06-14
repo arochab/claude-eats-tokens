@@ -65,24 +65,42 @@ def cost_of(t, model):
             + t["cacheRead"]*p["cr"] + t["output"]*p["out"]) / 1_000_000
 
 
-def pretty_model(m):
+def model_family(m):
+    """Cle de regroupement : toutes les versions d'Opus -> 'opus', etc."""
     s = (m or "").lower()
-    if "opus" in s: return "Claude Opus"
-    if "sonnet" in s: return "Claude Sonnet"
-    if "haiku" in s: return "Claude Haiku"
-    return m or "Inconnu"
+    if "opus" in s: return "opus"
+    if "sonnet" in s: return "sonnet"
+    if "haiku" in s: return "haiku"
+    if "fable" in s: return "fable"
+    if "synthetic" in s: return None  # ignore les entrees techniques
+    return "autre"
 
+def pretty_model(family):
+    return {"opus":"Claude Opus","sonnet":"Claude Sonnet","haiku":"Claude Haiku",
+            "fable":"Claude Fable","autre":"Autre"}.get(family, family or "Inconnu")
+
+
+import re as _re
+def _is_hash(seg):
+    # un fragment d'id de session : hexa pur (ex 37ca98, 0925cb) ou tres court alphanum
+    return bool(_re.fullmatch(r"[0-9a-f]{4,12}", seg or "", _re.IGNORECASE))
 
 def pretty_project(p):
-    # Les noms de dossiers Claude Code = chemin slugifie (C--Users-adam-...-mon-projet).
-    # On garde le dernier segment significatif comme nom lisible.
-    raw = (p or "").replace("\\", "-")
-    parts = [x for x in raw.split("-") if x and x not in ("C", "Users", "Desktop", "Documents")]
-    # ignore l'utilisateur et les prefixes generiques, garde le dernier morceau parlant
-    name = parts[-1] if parts else (p or "projet")
-    # si le dernier morceau est tres court (ex 'app'), accole le precedent
-    if len(parts) >= 2 and len(name) <= 3:
-        name = parts[-2] + "-" + name
+    # Les noms de dossiers Claude Code = chemin slugifie (C--Users-adam-...-mon-projet)
+    # ou parfois un id de session. On cherche le dernier segment PARLANT (pas un hash).
+    raw = (p or "").replace("\\", "-").replace("/", "-")
+    skip = {"C", "Users", "Desktop", "Documents", "adamc", "adamc_ixt0882", "adam", "AppData", "Roaming"}
+    parts = [x for x in raw.split("-") if x and x not in skip]
+    # garde les segments non-hash
+    real = [x for x in parts if not _is_hash(x)]
+    if real:
+        name = real[-1]
+        if len(name) <= 3 and len(real) >= 2:
+            name = real[-2] + "-" + name
+    elif parts:
+        name = parts[-1]  # tout est hash -> on garde le dernier
+    else:
+        name = p or "projet"
     return name.replace("_", " ").strip() or "projet"
 
 
@@ -136,7 +154,12 @@ def build():
             if ts:
                 first_ts = ts if not first_ts or ts < first_ts else first_ts
                 last_ts = ts if not last_ts or ts > last_ts else last_ts
-            for store, key in ((by_day, day), (by_model, model), (by_project, project)):
+            fam = model_family(model)
+            pname = pretty_project(project)
+            stores = [(by_day, day), (by_project, pname)]
+            if fam is not None:  # ignore <synthetic>
+                stores.append((by_model, fam))
+            for store, key in stores:
                 store.setdefault(key, empty())
                 add(store[key], usage)
             if hour:
@@ -180,16 +203,16 @@ def build():
         return t
 
     models = []
-    for m, t in by_model.items():
+    for fam, t in by_model.items():
         tot = t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]
-        models.append({"model": m, "label": pretty_model(m), **t, "total": tot,
-                       "cost": round(cost_of(t, m), 2)})
+        models.append({"model": fam, "label": pretty_model(fam), **t, "total": tot,
+                       "cost": round(cost_of(t, fam), 2)})
     models.sort(key=lambda x: -x["total"])
 
     projects = []
-    for p, t in by_project.items():
+    for pname, t in by_project.items():
         tot = t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]
-        projects.append({"project": pretty_project(p), "total": tot,
+        projects.append({"project": pname, "total": tot,
                          "cost": round(cost_of(t, ""), 2)})
     projects.sort(key=lambda x: -x["total"])
     projects = projects[:12]

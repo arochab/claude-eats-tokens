@@ -10,16 +10,43 @@
   var DEFAULTS = {
     day: 2000000, week: 12000000, month: 45000000,
     w5h: 3000000, w7d: 15000000,
-    apiCredits: 5, eurRate: 0.92, warnPct: 80,
+    apiCredits: 5, eurRate: 0.92, warnPct: 80, auto: true,
     projects: [{ name: "Projet en cours", weight: 3000000 }]
   };
-  var KEY = "tokenTracker.settings.v2";
+  var KEY = "tokenTracker.settings.v3";
   function loadSettings() {
-    try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
-    catch (e) { return Object.assign({}, DEFAULTS); }
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (saved) return Object.assign({}, DEFAULTS, saved);
+    } catch (e) {}
+    // pas de réglages sauvés -> mode auto-calibrage
+    return Object.assign({}, DEFAULTS, { auto: true });
   }
   function saveSettings(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
   var settings = loadSettings();
+
+
+  /* ---------- auto-calibrage des budgets ---------- */
+  function autoCalibrate(d) {
+    if (!settings.auto) return; // l'utilisateur a fixé ses propres budgets
+    var avg = (d.pace && d.pace.avgPerDay) ? d.pace.avgPerDay : 0;
+    var month = d.month ? d.month.currentMonth : (d.last30Days ? d.last30Days.total : 0);
+    var week = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
+    var day = d.today ? d.today.total : avg;
+    var w5h = d.windows ? d.windows.w5h.total : 0;
+    var w7d = d.windows ? d.windows.w7d.total : week;
+    function head(n){ // arrondi "joli" au-dessus
+      if (n<=0) return 1000000;
+      var p=Math.pow(10, Math.floor(Math.log10(n)));
+      return Math.ceil(n/p)*p;
+    }
+    // budget = ~1,4x le max(historique, rythme) -> on reste dans le vert en usage normal
+    settings.day   = head(Math.max(avg, day) * 1.6);
+    settings.week  = head(Math.max(week, avg*7) * 1.4);
+    settings.month = head(Math.max(month, avg*30) * 1.4);
+    settings.w5h   = head(Math.max(w5h, avg*0.6) * 1.8);
+    settings.w7d   = head(Math.max(w7d, avg*7) * 1.4);
+  }
 
   /* ---------- utilitaires ---------- */
   var COLORS = { opus: "#CC785C", sonnet: "#6A8CAF", haiku: "#7E9E6D", default: "#D4A27F" };
@@ -61,7 +88,9 @@
 
   /* ---------- rendu ---------- */
   function render() {
-    var d = DATA, demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
+    var d = DATA;
+    autoCalibrate(d);
+    d = DATA, demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var st = $("status"), dot = st.querySelector(".dot");
     if (demo) { dot.classList.add("demo"); $("status").querySelector("span:last-child").textContent = "Démonstration — lance la synchro pour tes vrais chiffres"; }
     else { dot.classList.remove("demo"); $("status").querySelector("span:last-child").textContent = "Synchronisé " + ago(d.generatedAt) + " · " + fmtFull(d.source.messages) + " messages"; }
@@ -162,14 +191,14 @@
 
   function renderApiCard(d) {
     var box = $("apicard"); if (!box) return;
-    var used = d.totals ? d.totals.cost : 0;
-    var p = pct(used, settings.apiCredits);
-    var col = ringColor(p);
+    var theo = d.totals ? d.totals.cost : 0;
     box.innerHTML =
-      '<div class="mring">' + ringSVG(p, 60, 7, "var(--cream-2)", col, '<div class="mp" style="color:' + col + '">' + p + '%</div>') + '</div>' +
-      '<div class="at"><p class="k"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Crédits API (facturés)</p>' +
-      '<p class="v">' + eur(used) + ' / ' + eur(settings.apiCredits) + '</p>' +
-      '<p class="s">' + (p >= 100 ? "Crédits épuisés — recharge nécessaire" : "Distinct de ton forfait Max") + '</p></div>';
+      '<div class="at" style="display:flex;align-items:center;gap:12px;width:100%">' +
+      '<div style="width:36px;height:36px;border-radius:9px;background:var(--cream-2);display:grid;place-items:center;flex:0 0 auto;color:var(--muted)">' +
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>' +
+      '<div style="min-width:0"><p class="k" style="margin:0 0 2px">Valeur consommee <span style="font-weight:400">(theorique)</span></p>' +
+      '<p class="v" style="margin:0">' + eur(theo) + '</p>' +
+      '<p class="s" style="margin:3px 0 0">Sur Max tu paies un forfait fixe : tu ne paies <b>rien de plus</b>. Equivalent au tarif API, a titre indicatif.</p></div></div>';
   }
 
   function renderAlerts(d, pMonth, dayU, weekU) {
@@ -391,9 +420,9 @@
     settings.day = +$("b-day").value || 0; settings.week = +$("b-week").value || 0; settings.month = +$("b-month").value || 0;
     settings.w5h = +$("b-w5h").value || 0; settings.w7d = +$("b-w7d").value || 0; settings.apiCredits = +$("b-api").value || 0;
     settings.eurRate = +$("b-eur").value || 0.92; settings.warnPct = +$("b-warn").value || 80;
-    collectProjects(); saveSettings(settings); closeSettings(); if (DATA) render();
+    settings.auto = false; collectProjects(); saveSettings(settings); closeSettings(); if (DATA) render();
   });
-  $("reset-settings").addEventListener("click", function () { settings = Object.assign({}, DEFAULTS, { projects: DEFAULTS.projects.slice() }); saveSettings(settings); fillSettings(); if (DATA) render(); });
+  $("reset-settings").addEventListener("click", function () { settings = Object.assign({}, DEFAULTS, { projects: DEFAULTS.projects.slice(), auto: true }); saveSettings(settings); fillSettings(); if (DATA) render(); });
 
 
   /* ---------- notifications + live ---------- */
