@@ -90,7 +90,7 @@
   function render() {
     var d = DATA;
     autoCalibrate(d);
-    d = DATA, demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
+    var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var st = $("status"), dot = st.querySelector(".dot");
     if (demo) { dot.classList.add("demo"); $("status").querySelector("span:last-child").textContent = "Démonstration — lance la synchro pour tes vrais chiffres"; }
     else { dot.classList.remove("demo"); $("status").querySelector("span:last-child").textContent = "Synchronisé " + ago(d.generatedAt) + " · " + fmtFull(d.source.messages) + " messages"; }
