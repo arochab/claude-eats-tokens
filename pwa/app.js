@@ -35,17 +35,24 @@
     var day = d.today ? d.today.total : avg;
     var w5h = d.windows ? d.windows.w5h.total : 0;
     var w7d = d.windows ? d.windows.w7d.total : week;
+    // pic journalier réel observé sur l'historique (base plus robuste que la moyenne)
+    var peakDay = 0;
+    if (d.timeline && d.timeline.length) {
+      for (var i = 0; i < d.timeline.length; i++) if (d.timeline[i].total > peakDay) peakDay = d.timeline[i].total;
+    }
     function head(n){ // arrondi "joli" au-dessus
       if (n<=0) return 1000000;
       var p=Math.pow(10, Math.floor(Math.log10(n)));
       return Math.ceil(n/p)*p;
     }
-    // budget = ~1,4x le max(historique, rythme) -> on reste dans le vert en usage normal
-    settings.day   = head(Math.max(avg, day) * 1.6);
-    settings.week  = head(Math.max(week, avg*7) * 1.4);
-    settings.month = head(Math.max(month, avg*30) * 1.4);
-    settings.w5h   = head(Math.max(w5h, avg*0.6) * 1.8);
-    settings.w7d   = head(Math.max(w7d, avg*7) * 1.4);
+    // --- Calibrage palier Max 20x : repères larges (tu es au plafond le plus haut),
+    //     basés sur ton PIC réel pour ne pas alerter en usage intense normal,
+    //     mais qui virent à l'ambre/rouge si pic vraiment anormal. ---
+    settings.day   = head(Math.max(peakDay, avg) * 1.5);          // ~1,5x ton plus gros jour
+    settings.week  = head(Math.max(week, avg*7) * 1.6);           // marge hebdo confortable
+    settings.month = head(Math.max(month, avg*30) * 1.6);         // marge mensuelle confortable
+    settings.w5h   = head(Math.max(w5h, peakDay*0.5) * 1.5);      // fenêtre 5h calée sur un demi-pic
+    settings.w7d   = head(Math.max(w7d, avg*7) * 1.6);
   }
 
   /* ---------- utilitaires ---------- */
