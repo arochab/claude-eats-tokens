@@ -1,7 +1,7 @@
-const CACHE = "claude-eats-tokens-v3";
+const CACHE = "claude-eats-tokens-v4";
 const ASSETS = [
-  "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/manifest.json",
-  "./pwa/icon-192.png", "./pwa/icon-512.png", "./data/usage.demo.json"
+  "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
+  "./pwa/manifest.json", "./pwa/icon-192.png", "./pwa/icon-512.png"
 ];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -13,14 +13,17 @@ self.addEventListener("activate", (e) => {
 });
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  if (url.pathname.endsWith("usage.json") || url.pathname.endsWith("usage.demo.json") || url.pathname.endsWith("/usage.json")) {
-    e.respondWith(
-      fetch(e.request).then((r) => { const c = r.clone(); caches.open(CACHE).then((x) => x.put(e.request, c)); return r; })
-        .catch(() => caches.match(e.request))
-    );
+  // Les données usage.json : JAMAIS de cache, toujours le réseau direct (network-only).
+  if (url.pathname.endsWith("usage.json") || url.href.indexOf("onrender.com") >= 0) {
+    e.respondWith(fetch(e.request));
     return;
   }
-  e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+  // App shell : réseau d'abord (pour récupérer les MAJ), repli cache.
+  e.respondWith(
+    fetch(e.request).then((r) => {
+      const c = r.clone(); caches.open(CACHE).then((x) => x.put(e.request, c)); return r;
+    }).catch(() => caches.match(e.request))
+  );
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();

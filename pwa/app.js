@@ -503,5 +503,16 @@
   ensureNotifPermission();
   load();
   startLive();
-  if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("service-worker.js", { scope: "./" }).catch(function () {}); });
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("service-worker.js", { scope: "./" }).then(function (reg) {
+        reg.update(); // force la vérif de mise à jour à chaque ouverture
+        // si un nouveau SW prend le contrôle, on recharge une fois pour repartir propre
+        var refreshed = false;
+        navigator.serviceWorker.addEventListener("controllerchange", function () {
+          if (refreshed) return; refreshed = true; window.location.reload();
+        });
+      }).catch(function () {});
+    });
+  }
 })();
