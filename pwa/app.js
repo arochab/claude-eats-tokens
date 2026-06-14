@@ -505,14 +505,23 @@
   startLive();
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("service-worker.js", { scope: "./" }).then(function (reg) {
-        reg.update(); // force la vérif de mise à jour à chaque ouverture
-        // si un nouveau SW prend le contrôle, on recharge une fois pour repartir propre
-        var refreshed = false;
-        navigator.serviceWorker.addEventListener("controllerchange", function () {
-          if (refreshed) return; refreshed = true; window.location.reload();
+      // 1) tue TOUS les anciens service workers (élimine la version fantôme)
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        var hasNew = false;
+        regs.forEach(function (r) {
+          var u = (r.active && r.active.scriptURL) || "";
+          if (u.indexOf("sw.v5.js") < 0) { r.unregister(); }
+          else { hasNew = true; }
         });
-      }).catch(function () {});
+        // 2) enregistre le nouveau (nom de fichier neuf = jamais servi depuis le cache)
+        navigator.serviceWorker.register("sw.v5.js", { scope: "./" }).catch(function () {});
+      }).catch(function () {
+        navigator.serviceWorker.register("sw.v5.js", { scope: "./" }).catch(function () {});
+      });
+      var refreshed = false;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (refreshed) return; refreshed = true; window.location.reload();
+      });
     });
   }
 })();
