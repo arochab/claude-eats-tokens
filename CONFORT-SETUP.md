@@ -23,6 +23,25 @@ tourne en fond automatiquement.
 
 ---
 
+
+## A-bis) Méthode ROBUSTE recommandée (tâche planifiée)
+
+Le simple raccourci "Démarrage" peut ne pas relancer le moteur si le PC reste
+allumé plusieurs jours sans redémarrer. Pour un fonctionnement fiable :
+
+**Double-clic sur `installer-tache-planifiee.bat`**
+
+Ça crée une vraie tâche planifiée Windows qui :
+- lance le moteur à chaque ouverture de session,
+- le lance aussi immédiatement,
+- et remplace l'ancien raccourci Démarrage (supprimé automatiquement).
+
+Pour désactiver : `desinstaller-tache-planifiee.bat`.
+
+> Si tes chiffres semblent vieux un jour : ouvre PowerShell et lance
+> `cmd /c "call secret.local.bat && python tools\push_usage.py"` pour forcer
+> un rafraîchissement immédiat (laisse la fenêtre ouverte).
+
 ## B) Persistance Gist (l'app s'ouvre toujours, même PC éteint)
 
 Sans ça, le serveur gratuit s'endort et « oublie » tes chiffres → l'app peut
