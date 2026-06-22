@@ -30,6 +30,7 @@ body{font-family:var(--sans);background:var(--cream);color:var(--slate);line-hei
 .status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:7px 14px;margin-bottom:18px;width:fit-content}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--sage)}
 .dot.demo{background:var(--clay)}
+.dot.err{background:var(--danger)}
 
 /* segmented period filter */
 .seg{display:flex;background:var(--cream-2);border-radius:11px;padding:3px;margin-bottom:18px;gap:3px}

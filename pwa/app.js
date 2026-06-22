@@ -127,9 +127,15 @@
     var d = VIEW;
     autoCalibrate(d);
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
-    var st = $("status"), dot = st.querySelector(".dot");
-    if (demo) { dot.classList.add("demo"); $("status").querySelector("span:last-child").textContent = "Démonstration — lance la synchro pour tes vrais chiffres"; }
-    else { dot.classList.remove("demo"); $("status").querySelector("span:last-child").textContent = "Synchronisé " + ago(d.generatedAt) + " · " + fmtFull(d.source.messages) + " messages"; }
+    if (demo) {
+      setStatus("Démonstration — lance la synchro pour tes vrais chiffres", "demo");
+    } else {
+      // alerte de fraîcheur : si les données du serveur sont vieilles (>1h), on le dit.
+      var stale = (typeof d.serverAgeSeconds === "number" && d.serverAgeSeconds > 3600);
+      var msg = "Synchronisé " + ago(d.generatedAt) + " · " + fmtFull(d.source.messages) + " messages";
+      if (stale) msg = "⚠ Données possiblement périmées (" + ago(d.generatedAt) + ")";
+      setStatus(msg, stale ? "err" : null);
+    }
 
     var month = d.month ? d.month.currentMonth : (d.last30Days ? d.last30Days.total : 0);
     var pMonth = pct(month, settings.month);
@@ -404,24 +410,36 @@
   function drawTrend(rows) {
     var ctx = $("trend").getContext("2d");
     var g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, "rgba(204,120,92,.28)"); g.addColorStop(1, "rgba(204,120,92,0)");
-    if (trendChart) trendChart.destroy();
-    trendChart = new Chart(ctx, {
+    var cfg = {
       type: "line",
       data: { labels: rows.map(function (r) { return dayLabel(r.date); }), datasets: [{ data: rows.map(function (r) { return r.total; }), borderColor: "#CC785C", borderWidth: 2.5, backgroundColor: g, fill: true, tension: .38, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#CC785C", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", padding: 10, displayColors: false, callbacks: { label: function (c) { return fmtFull(c.parsed.y) + " tokens"; } } } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } }, y: { grid: { color: "rgba(128,128,128,.12)" }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return fmt(v); } } } } }
-    });
+    };
+    // mémoïsation : on met à jour en place plutôt que détruire/recréer (A2-2)
+    if (trendChart) {
+      trendChart.data.labels = cfg.data.labels;
+      trendChart.data.datasets[0].data = cfg.data.datasets[0].data;
+      trendChart.data.datasets[0].backgroundColor = g;
+      trendChart.update("none");
+      return;
+    }
+    trendChart = new Chart(ctx, cfg);
   }
   function drawDonut(t) {
     var ctx = $("donut").getContext("2d");
     var data = [t.input, t.output, t.cacheCreate, t.cacheRead];
     var labels = ["Entrée", "Sortie", "Cache créé", "Cache lu"];
     var cols = [TONE.input, TONE.output, TONE.cacheCreate, TONE.cacheRead];
-    if (donutChart) donutChart.destroy();
-    donutChart = new Chart(ctx, {
-      type: "doughnut",
-      data: { labels: labels, datasets: [{ data: data, backgroundColor: cols, borderWidth: 0, hoverOffset: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", callbacks: { label: function (c) { return c.label + " : " + fmt(c.parsed); } } } } }
-    });
+    if (donutChart) {
+      donutChart.data.datasets[0].data = data;
+      donutChart.update("none");
+    } else {
+      donutChart = new Chart(ctx, {
+        type: "doughnut",
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: cols, borderWidth: 0, hoverOffset: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", callbacks: { label: function (c) { return c.label + " : " + fmt(c.parsed); } } } } }
+      });
+    }
     var tot = data.reduce(function (a, b) { return a + b; }, 0) || 1;
     $("donut-legend").innerHTML = labels.map(function (l, i) {
       return '<span><i style="background:' + cols[i] + '"></i>' + l + " " + Math.round(data[i] / tot * 100) + "%</span>";
@@ -451,21 +469,47 @@
   }
 
   /* ---------- chargement ---------- */
+  // fetch avec timeout (corrige REL-001 : Render endormi ne fige plus l'app)
+  function fetchTimeout(url, ms) {
+    if (typeof AbortController === "undefined") return fetch(url, { cache: "no-store" });
+    var ctrl = new AbortController();
+    var to = setTimeout(function () { ctrl.abort(); }, ms);
+    return fetch(url, { cache: "no-store", signal: ctrl.signal })
+      .finally(function () { clearTimeout(to); });
+  }
+  function setStatus(msg, kind) {
+    var el = $("status-txt"); if (el) el.textContent = msg;
+    var dot = $("status") && $("status").querySelector(".dot");
+    if (dot) { dot.classList.remove("demo", "err"); if (kind) dot.classList.add(kind); }
+  }
+
   function load(silent) {
     var sources = [];
-    if (PUSH_SERVER) sources.push(PUSH_SERVER.replace(/\/$/, "") + "/usage.json");
-    sources.push("data/usage.json");
+    if (PUSH_SERVER) sources.push({ url: PUSH_SERVER.replace(/\/$/, "") + "/usage.json", remote: true });
+    sources.push({ url: "data/usage.json", remote: false });
+    var sawRemoteTimeout = false;
+
     function tryAt(i) {
       if (i >= sources.length) {
-        return fetch("data/usage.demo.json", { cache: "no-store" })
+        // dernier repli : démo. On nuance le message selon ce qu'on a vu.
+        return fetchTimeout("data/usage.demo.json", 8000)
           .then(function (r) { return r.json(); })
-          .then(function (d) { DATA = d; render(); })
-          .catch(function () { if (!silent) $("status").querySelector("span:last-child").textContent = "Impossible de charger les données."; });
+          .then(function (d) { DATA = d; render(); /* render() pose le bandeau démo */ })
+          .catch(function () {
+            if (!silent) setStatus(
+              navigator.onLine === false ? "Hors-ligne — aucune donnée en cache."
+              : sawRemoteTimeout ? "Serveur endormi et aucune donnée locale. Réessaie dans ~1 min."
+              : "Aucune donnée à afficher. Lance la synchro sur ton PC.", "err");
+          });
       }
-      return fetch(sources[i], { cache: "no-store" })
-        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
-        .then(function (d) { if (!d || !d.totals || !d.totals.total) throw 0; DATA = d; render(); checkThresholds(d); })
-        .catch(function () { return tryAt(i + 1); });
+      var src = sources[i];
+      return fetchTimeout(src.url, src.remote ? 12000 : 8000)
+        .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+        .then(function (d) { if (!d || !d.totals || !d.totals.total) throw new Error("empty"); DATA = d; render(); checkThresholds(d); })
+        .catch(function (e) {
+          if (src.remote && e && e.name === "AbortError") sawRemoteTimeout = true;
+          return tryAt(i + 1);
+        });
     }
     return tryAt(0);
   }
