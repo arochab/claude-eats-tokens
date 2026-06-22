@@ -142,6 +142,21 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .sessrow .st{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sessrow .sv{color:var(--muted);flex:0 0 auto;font-size:12px}
 
+/* heatmap horaire (jour × heure) */
+.hourheat{overflow-x:auto}
+.hh-grid{display:flex;flex-direction:column;gap:3px;min-width:300px}
+.hh-row{display:flex;align-items:center;gap:3px}
+.hh-day{width:30px;flex:0 0 auto;font-size:10.5px;color:var(--muted)}
+.hh-cell{flex:1;min-width:7px;height:13px;border-radius:2px;background:var(--cream-2)}
+.hh-axis{margin-top:2px}
+.hh-axis-lbl{flex:1;text-align:left;font-size:9.5px;color:var(--muted)}
+.hh-axis .hh-axis-lbl:nth-child(n){flex:6}
+.hourheat-note{font-size:11.5px;color:var(--muted);margin:10px 0 0}
+
+/* export */
+.exportrow{display:flex;gap:10px;flex-wrap:wrap}
+.exportrow .btn{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:0;flex:1;min-width:140px;border:1px solid var(--line-strong)}
+
 /* états vides soignés */
 .emptystate{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:24px 12px;color:var(--muted)}
 .emptystate svg{opacity:.5}

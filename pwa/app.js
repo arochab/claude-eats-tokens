@@ -70,7 +70,7 @@
   function toneOf(p) { return CET.toneOf(p, settings.warnPct); }
   var $ = function (id) { return document.getElementById(id); };
 
-  var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null;
+  var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null, weekCmpChart = null;
 
   /* ---------- filtre projet : recompose une vue DATA-compatible ----------
      Quand un projet est sélectionné, on recalcule timeline / totals / today /
@@ -188,6 +188,9 @@
     renderModels(d);
     /* projets */
     renderProjects(DATA);  // toujours la liste complète (pour pouvoir changer de filtre)
+    /* analytics AXE 4 : heures de pointe + comparaison semaines (données globales) */
+    drawHourHeat(DATA.hourly);
+    drawWeekCmp(DATA.weekly);
     /* complexité projets en cours vs budget restant */
     renderComplexity(rest);
 
@@ -468,6 +471,104 @@
     }).join("");
   }
 
+  /* ---------- AXE 4 : heures de pointe (jour de semaine × heure) ---------- */
+  var WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  function drawHourHeat(hourly) {
+    var box = $("hourheat"); if (!box) return;
+    var grid = hourly && hourly.weekdayHour;
+    if (!grid || !grid.length) { box.innerHTML = emptyState("Pas encore de données horaires", "Reviens après quelques sessions."); $("hourheat-note").textContent = ""; return; }
+    var max = 1, peak = { d: 0, h: 0, v: 0 }, byHourTotal = new Array(24).fill(0);
+    for (var d = 0; d < 7; d++) for (var h = 0; h < 24; h++) {
+      var v = grid[d][h] || 0; if (v > max) max = v;
+      byHourTotal[h] += v;
+      if (v > peak.v) peak = { d: d, h: h, v: v };
+    }
+    function col(v) { if (!v) return "var(--cream-2)"; var r = v / max; return r > .75 ? "#B5563A" : r > .5 ? "#CC785C" : r > .25 ? "#D88E6E" : "#E8C5B5"; }
+    // en-tête heures (0,6,12,18) + grille
+    var html = '<div class="hh-grid">';
+    for (var dd = 0; dd < 7; dd++) {
+      html += '<div class="hh-row"><span class="hh-day">' + WEEKDAYS[dd] + '</span>';
+      for (var hh = 0; hh < 24; hh++) {
+        var val = grid[dd][hh] || 0;
+        html += '<span class="hh-cell" title="' + WEEKDAYS[dd] + " " + hh + "h : " + fmtFull(val) + ' tokens" style="background:' + col(val) + '"></span>';
+      }
+      html += '</div>';
+    }
+    html += '<div class="hh-row hh-axis"><span class="hh-day"></span>' +
+      [0, 6, 12, 18].map(function (h) { return '<span class="hh-axis-lbl">' + h + 'h</span>'; }).join("") + '</div>';
+    html += '</div>';
+    box.innerHTML = html;
+    // note : créneau le plus chargé
+    var topHour = byHourTotal.indexOf(Math.max.apply(null, byHourTotal));
+    $("hourheat-note").textContent = peak.v
+      ? "Pic le " + WEEKDAYS[peak.d] + " vers " + peak.h + "h · créneau le plus chargé : " + topHour + "h–" + ((topHour + 1) % 24) + "h."
+      : "";
+  }
+
+  /* ---------- AXE 4 : comparaison semaine vs semaine ---------- */
+  function drawWeekCmp(weekly) {
+    var weeks = (weekly && weekly.weeks) || [];
+    var card = $("weekcmp-card");
+    if (weeks.length < 2) { if (card) card.style.display = "none"; return; }
+    if (card) card.style.display = "";
+    var last = weeks.slice(-8);
+    var labels = last.map(function (w) { return w.week.replace(/^\d+-/, ""); }); // "S25"
+    var data = last.map(function (w) { return w.total; });
+    var cols = data.map(function (_, i) { return i === data.length - 1 ? "#CC785C" : "#D4A27F"; });
+    var ctx = $("weekcmp").getContext("2d");
+    if (weekCmpChart) {
+      weekCmpChart.data.labels = labels; weekCmpChart.data.datasets[0].data = data;
+      weekCmpChart.data.datasets[0].backgroundColor = cols; weekCmpChart.update("none");
+      return;
+    }
+    weekCmpChart = new Chart(ctx, {
+      type: "bar",
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: cols, borderRadius: 6, maxBarThickness: 38 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", displayColors: false, callbacks: { label: function (c) { return fmtFull(c.parsed.y) + " tokens"; } } } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 } } }, y: { grid: { color: "rgba(128,128,128,.12)" }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return fmt(v); } } } } }
+    });
+  }
+
+  /* ---------- AXE 4 : export CSV & PNG ---------- */
+  function download(filename, blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function exportCSV() {
+    if (!DATA) return;
+    var rows = [["date", "input", "output", "cacheCreate", "cacheRead", "total"]];
+    (DATA.timeline || []).forEach(function (r) {
+      rows.push([r.date, r.input, r.output, r.cacheCreate, r.cacheRead, r.total]);
+    });
+    rows.push([]);
+    rows.push(["projet", "tokens", "cout_usd", "sessions"]);
+    (DATA.projects || []).forEach(function (p) {
+      rows.push([(p.name || p.project), p.total, p.cost, p.sessionCount || ""]);
+    });
+    var csv = rows.map(function (r) {
+      return r.map(function (c) { var s = String(c == null ? "" : c); return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(",");
+    }).join("\n");
+    download("claude-eats-tokens_" + new Date().toISOString().slice(0, 10) + ".csv",
+      new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+  }
+  function exportPNG() {
+    // Capture le graphe d'évolution (canvas natif -> PNG, sans dépendance).
+    var canvas = $("trend");
+    if (!canvas) return;
+    // compose sur fond crème pour un PNG lisible
+    var out = document.createElement("canvas");
+    out.width = canvas.width; out.height = canvas.height;
+    var c = out.getContext("2d");
+    c.fillStyle = getComputedStyle(document.body).backgroundColor || "#F0EEE6";
+    c.fillRect(0, 0, out.width, out.height);
+    c.drawImage(canvas, 0, 0);
+    out.toBlob(function (blob) {
+      if (blob) download("claude-eats-tokens_evolution_" + new Date().toISOString().slice(0, 10) + ".png", blob);
+    });
+  }
+
   /* ---------- chargement ---------- */
   // fetch avec timeout (corrige REL-001 : Render endormi ne fige plus l'app)
   function fetchTimeout(url, ms) {
@@ -522,6 +623,8 @@
     $("chart-hint").textContent = "tokens / jour"; if (DATA) { var rows = periodRows(); drawTrend(rows); drawDonut(sumRows(rows)); }
   });
   $("refresh").addEventListener("click", function () { this.style.transform = "rotate(360deg)"; var s = this; setTimeout(function () { s.style.transform = ""; }, 400); load(); });
+  if ($("export-csv")) $("export-csv").addEventListener("click", exportCSV);
+  if ($("export-png")) $("export-png").addEventListener("click", exportPNG);
 
   /* ----- système de "sheets" accessible (focus trap + Échap) — AXE 3 ----- */
   var _sheetReturnFocus = null;
