@@ -2,18 +2,19 @@
 push_usage.py — tourne sur le PC d'Adam.
 
 Lit les logs locaux de Claude Code (~/.claude/projects/**.jsonl), agrège la
-consommation de tokens (par jour / modèle / projet + fenêtres glissantes), puis
-POST le résultat vers le serveur Render (/push). En boucle toutes les N secondes.
+consommation de tokens (par jour / modèle / VRAI projet + fenêtres glissantes),
+puis POST le résultat vers le serveur Render (/push). En boucle toutes les N s.
 
-La PWA hébergée (GitHub Pages) lit ensuite ces chiffres depuis Render — donc
-l'app est consultable depuis le téléphone même quand le PC dort (derniers
-chiffres connus).
+La logique de calcul vit dans `usage_core.py` (testée). Ici on ne fait que de
+l'I/O : lire les fichiers en streaming (robuste aux gros volumes), parser ligne
+à ligne (robuste aux lignes corrompues), assembler, et pousser.
 
 Usage :
   set PUSH_URL=https://claude-eats-tokens.onrender.com
   set PUSH_SECRET=monsecret
   python tools/push_usage.py            # boucle
   python tools/push_usage.py --once     # un seul envoi
+  python tools/push_usage.py --once --verbose   # + diagnostic parsing
 
 Aucune dépendance hors `requests`.
 """
@@ -22,97 +23,53 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import usage_core as uc
 
 CANDIDATE_DIRS = [
     Path.home() / ".claude" / "projects",
     Path.home() / ".config" / "claude" / "projects",
 ]
 
-PRICING = {  # USD / million tokens
-    "opus":    {"in": 15.0, "cw": 18.75, "cr": 1.5,  "out": 75.0},
-    "sonnet":  {"in": 3.0,  "cw": 3.75,  "cr": 0.3,  "out": 15.0},
-    "haiku":   {"in": 0.8,  "cw": 1.0,   "cr": 0.08, "out": 4.0},
-    "default": {"in": 3.0,  "cw": 3.75,  "cr": 0.3,  "out": 15.0},
-}
+
+def _first_text(content):
+    """Extrait le texte d'un message.content (string ou liste de blocs)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "text":
+                return b.get("text", "")
+    return ""
 
 
-def price_for(model):
-    m = (model or "").lower()
-    if "opus" in m: return PRICING["opus"]
-    if "sonnet" in m: return PRICING["sonnet"]
-    if "haiku" in m: return PRICING["haiku"]
-    return PRICING["default"]
+def iter_records(fp):
+    """Génère (record, parse_error) ligne à ligne — JAMAIS le fichier entier en
+    mémoire (corrige A2-5). Les lignes illisibles remontent comme erreurs
+    comptabilisées au lieu d'être avalées en silence (corrige A2-18)."""
+    try:
+        with open(fp, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    yield json.loads(line), False
+                except Exception:
+                    yield None, True
+    except Exception:
+        # fichier illisible (verrou Windows, suppression concurrente) : on skip
+        return
 
 
-def empty():
-    return {"input": 0, "output": 0, "cacheCreate": 0, "cacheRead": 0}
-
-
-def add(t, u):
-    t["input"] += u.get("input_tokens", 0) or 0
-    t["output"] += u.get("output_tokens", 0) or 0
-    t["cacheCreate"] += u.get("cache_creation_input_tokens", 0) or 0
-    t["cacheRead"] += u.get("cache_read_input_tokens", 0) or 0
-
-
-def cost_of(t, model):
-    p = price_for(model)
-    return (t["input"]*p["in"] + t["cacheCreate"]*p["cw"]
-            + t["cacheRead"]*p["cr"] + t["output"]*p["out"]) / 1_000_000
-
-
-def model_family(m):
-    """Cle de regroupement : toutes les versions d'Opus -> 'opus', etc."""
-    s = (m or "").lower()
-    if "opus" in s: return "opus"
-    if "sonnet" in s: return "sonnet"
-    if "haiku" in s: return "haiku"
-    if "fable" in s: return "fable"
-    if "synthetic" in s: return None  # ignore les entrees techniques
-    return "autre"
-
-def pretty_model(family):
-    return {"opus":"Claude Opus","sonnet":"Claude Sonnet","haiku":"Claude Haiku",
-            "fable":"Claude Fable","autre":"Autre"}.get(family, family or "Inconnu")
-
-
-import re as _re
-def _is_hash(seg):
-    # un fragment d'id de session : hexa pur (ex 37ca98, 0925cb) ou tres court alphanum
-    return bool(_re.fullmatch(r"[0-9a-f]{4,12}", seg or "", _re.IGNORECASE))
-
-def pretty_project(p):
-    # Les noms de dossiers Claude Code = chemin slugifie (C--Users-adam-...-mon-projet)
-    # ou parfois un id de session. On cherche le dernier segment PARLANT (pas un hash).
-    raw = (p or "").replace("\\", "-").replace("/", "-")
-    skip = {"C", "Users", "Desktop", "Documents", "adamc", "adamc_ixt0882", "adam", "AppData", "Roaming"}
-    parts = [x for x in raw.split("-") if x and x not in skip]
-    # garde les segments non-hash
-    real = [x for x in parts if not _is_hash(x)]
-    if real:
-        name = real[-1]
-        if len(name) <= 3 and len(real) >= 2:
-            name = real[-2] + "-" + name
-    elif parts:
-        name = parts[-1]  # tout est hash -> on garde le dernier
-    else:
-        name = p or "projet"
-    return name.replace("_", " ").strip() or "projet"
-
-
-def iso_week(d):
-    dt = datetime.fromisoformat(d)
-    iso = dt.isocalendar()
-    return f"{iso[0]}-S{iso[1]:02d}"
-
-
-def build():
-    source_dir = None
-    files = []
+def build(verbose=False):
+    """Agrège tous les logs en un payload usage.json (schéma v2)."""
+    source_dir, files = None, []
     for d in CANDIDATE_DIRS:
         if d.exists():
             f = list(d.rglob("*.jsonl"))
@@ -120,146 +77,270 @@ def build():
                 source_dir, files = str(d), f
                 break
 
-    by_day, by_model, by_project, by_hour = {}, {}, {}, {}
+    by_day, by_model, by_hour = {}, {}, {}
+    # by_project : clé = chemin du projet -> {tot, models{fam:acc}, sessions{}, last, name}
+    by_project = {}
     seen = set()
-    messages, first_ts, last_ts = 0, None, None
+    messages = 0
+    skipped_lines = 0
+    first_ts = last_ts = None
 
     for fp in files:
-        project = fp.parent.name
-        try:
-            text = fp.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            continue
-        for line in text.splitlines():
-            line = line.strip()
-            if not line:
+        # Repli si le cwd manque sur tous les enregistrements : nom de dossier.
+        fallback_name = fp.parent.name
+        # On lit le fichier en streaming. On garde un peu de contexte de session
+        # (titre, 1er prompt) pour le repli de libellé (A1-4).
+        session_id = fp.stem
+        session_title = None
+        session_first_prompt = None
+        session_project_key = None
+
+        for rec, err in iter_records(fp):
+            if err:
+                skipped_lines += 1
                 continue
-            try:
-                rec = json.loads(line)
-            except Exception:
-                continue
+
+            # Contexte de session (pour repli de libellé) — peu coûteux.
+            rtype = rec.get("type")
+            if rtype == "custom-title" and not session_title:
+                session_title = uc.label_from_text(rec.get("customTitle"))
+            if rtype == "user" and not session_first_prompt:
+                msg0 = rec.get("message") or {}
+                session_first_prompt = uc.label_from_text(_first_text(msg0.get("content")))
+
+            # Clé projet depuis le cwd réel (cœur AXE 1).
+            if session_project_key is None:
+                cwd = rec.get("cwd")
+                pk = uc.project_from_cwd(cwd)
+                if pk:
+                    session_project_key = pk
+
             msg = rec.get("message") or {}
             usage = msg.get("usage")
             if not usage:
                 continue
-            dedup = f"{msg.get('id','')}:{rec.get('requestId','')}"
-            if dedup != ":" and dedup in seen:
-                continue
-            if dedup != ":":
-                seen.add(dedup)
+
+            # Dédup : exige les deux champs (corrige DEDUP-KEY-COLLISION).
+            mid, rid = msg.get("id"), rec.get("requestId")
+            if mid and rid:
+                dk = f"{mid}:{rid}"
+                if dk in seen:
+                    continue
+                seen.add(dk)
+
             model = msg.get("model") or "unknown"
+            fam = uc.family(model)
             ts = rec.get("timestamp")
             day = (ts or "")[:10] if ts else "inconnu"
             hour = ts[:13] if ts else None
             if ts:
                 first_ts = ts if not first_ts or ts < first_ts else first_ts
                 last_ts = ts if not last_ts or ts > last_ts else last_ts
-            fam = model_family(model)
-            pname = pretty_project(project)
-            stores = [(by_day, day), (by_project, pname)]
-            if fam is not None:  # ignore <synthetic>
-                stores.append((by_model, fam))
-            for store, key in stores:
-                store.setdefault(key, empty())
-                add(store[key], usage)
+
+            # jour
+            by_day.setdefault(day, uc.empty())
+            uc.add_usage(by_day[day], usage)
+            # heure
             if hour:
-                by_hour.setdefault(hour, empty())
-                add(by_hour[hour], usage)
+                by_hour.setdefault(hour, uc.empty())
+                uc.add_usage(by_hour[hour], usage)
+            # modèle (ignore <synthetic>)
+            if fam is not None:
+                by_model.setdefault(fam, uc.empty())
+                uc.add_usage(by_model[fam], usage)
+
+            # projet — clé = chemin, avec breakdown par modèle (corrige A1-3)
+            pkey = session_project_key or f"@dir/{fallback_name}"
+            proj = by_project.setdefault(pkey, {
+                "name": uc.display_name(session_project_key) if session_project_key else uc.display_name(fallback_name),
+                "path": session_project_key or fallback_name,
+                "models": {},          # fam -> accumulateur
+                "sessions": {},        # sessionId -> {tokens, last, models:set, title}
+                "lastActivity": None,
+            })
+            mfam = fam if fam is not None else "autre"
+            proj["models"].setdefault(mfam, uc.empty())
+            uc.add_usage(proj["models"][mfam], usage)
+
+            sess = proj["sessions"].setdefault(session_id, {
+                "sessionId": session_id, "tokens": 0, "lastActivity": None,
+                "models": set(), "title": None,
+            })
+            sess["tokens"] += uc.total_of({
+                "input": usage.get("input_tokens", 0) or 0,
+                "output": usage.get("output_tokens", 0) or 0,
+                "cacheCreate": usage.get("cache_creation_input_tokens", 0) or 0,
+                "cacheRead": usage.get("cache_read_input_tokens", 0) or 0,
+            })
+            if fam:
+                sess["models"].add(fam)
+            if ts and (not sess["lastActivity"] or ts > sess["lastActivity"]):
+                sess["lastActivity"] = ts
+            if ts and (not proj["lastActivity"] or ts > proj["lastActivity"]):
+                proj["lastActivity"] = ts
             messages += 1
 
+        # Après le fichier : pose le titre/1er prompt sur la session si présente.
+        if session_project_key or fallback_name:
+            pkey = session_project_key or f"@dir/{fallback_name}"
+            proj = by_project.get(pkey)
+            if proj and session_id in proj["sessions"]:
+                proj["sessions"][session_id]["title"] = session_title or session_first_prompt
+
+    # ---- Timeline ----
     days = sorted(d for d in by_day if d != "inconnu")
     timeline = []
     for d in days:
         t = by_day[d]
-        timeline.append({"date": d, **t,
-                         "total": t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]})
+        timeline.append({"date": d, **t, "total": uc.total_of(t)})
 
-    def window(hours):
-        now = datetime.now(timezone.utc)
-        t = empty()
-        for hk, v in by_hour.items():
-            hms = datetime.fromisoformat(hk + ":00:00+00:00")
-            if (now - hms) <= timedelta(hours=hours):
-                for k in ("input", "output", "cacheCreate", "cacheRead"):
-                    t[k] += v[k]
-        t["total"] = t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]
-        return t
-
-    # reset fenêtre 5h
-    w5h_reset = None
     now = datetime.now(timezone.utc)
-    in_win = sorted(hk for hk in by_hour
-                    if (now - datetime.fromisoformat(hk + ":00:00+00:00")) <= timedelta(hours=5))
-    if in_win:
-        w5h_reset = (datetime.fromisoformat(in_win[0] + ":00:00+00:00")
-                     + timedelta(hours=5)).isoformat()
 
     def srange(n):
-        t = empty()
+        t = uc.empty()
         for r in timeline[-n:]:
             for k in ("input", "output", "cacheCreate", "cacheRead"):
                 t[k] += r[k]
-        t["total"] = t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]
+        t["total"] = uc.total_of(t)
         return t
 
+    # ---- Modèles (global) ----
     models = []
     for fam, t in by_model.items():
-        tot = t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]
-        models.append({"model": fam, "label": pretty_model(fam), **t, "total": tot,
-                       "cost": round(cost_of(t, fam), 2)})
+        models.append({"model": fam, "label": uc.pretty_model(fam), **t,
+                       "total": uc.total_of(t), "cost": round(uc.cost_of(t, fam), 2)})
     models.sort(key=lambda x: -x["total"])
 
+    # ---- Projets (coût pondéré par modèle réel — corrige A1-3/A1-2/A1-4/A1-9) ----
     projects = []
-    for pname, t in by_project.items():
-        tot = t["input"]+t["output"]+t["cacheCreate"]+t["cacheRead"]
-        projects.append({"project": pname, "total": tot,
-                         "cost": round(cost_of(t, ""), 2)})
+    for pkey, p in by_project.items():
+        tot_acc = uc.empty()
+        cost = 0.0
+        model_break = []
+        for fam, acc in p["models"].items():
+            for k in ("input", "output", "cacheCreate", "cacheRead"):
+                tot_acc[k] += acc[k]
+            c = uc.cost_of(acc, fam)
+            cost += c
+            model_break.append({"model": fam, "label": uc.pretty_model(fam),
+                                "total": uc.total_of(acc), "cost": round(c, 2)})
+        model_break.sort(key=lambda x: -x["total"])
+        # sessions : top par tokens, sérialisables
+        sess_list = []
+        for s in p["sessions"].values():
+            sess_list.append({
+                "sessionId": s["sessionId"], "title": s["title"],
+                "tokens": s["tokens"], "lastActivity": s["lastActivity"],
+                "models": sorted(s["models"]),
+            })
+        sess_list.sort(key=lambda x: -x["tokens"])
+        projects.append({
+            "project": p["name"],          # rétrocompat (ancien champ)
+            "name": p["name"],
+            "path": p["path"],
+            "total": uc.total_of(tot_acc),
+            "cost": round(cost, 2),
+            "models": model_break,
+            "sessionCount": len(sess_list),
+            "sessions": sess_list[:20],    # drill-down (cap raisonnable)
+            "lastActivity": p["lastActivity"],
+            **tot_acc,
+        })
+    # Fusion au niveau affichage des projets de même nom (A1-2 : données
+    # toujours distinctes par chemin, mais une entrée par projet perçu).
+    projects = uc.merge_projects_by_name(projects)
     projects.sort(key=lambda x: -x["total"])
-    projects = projects[:12]
 
-    grand = empty()
-    gcost = 0.0
-    for m, t in by_model.items():
-        for k in ("input", "output", "cacheCreate", "cacheRead"):
-            grand[k] += t[k]
-        gcost += cost_of(t, m)
-    gtotal = grand["input"]+grand["output"]+grand["cacheCreate"]+grand["cacheRead"]
+    # bucket "Autres" si > 12 (corrige A1-6 : plus de perte silencieuse)
+    TOP = 12
+    projects_out = projects[:TOP]
+    if len(projects) > TOP:
+        tail = projects[TOP:]
+        other = uc.empty()
+        ocost = 0.0
+        for p in tail:
+            for k in ("input", "output", "cacheCreate", "cacheRead"):
+                other[k] += p[k]
+            ocost += p["cost"]
+        projects_out.append({
+            "project": "Autres", "name": "Autres", "path": None,
+            "total": uc.total_of(other), "cost": round(ocost, 2),
+            "models": [], "sessionCount": sum(p["sessionCount"] for p in tail),
+            "sessions": [], "lastActivity": max((p["lastActivity"] for p in tail if p["lastActivity"]), default=None),
+            "isOthers": True, **other,
+        })
 
-    today_str = datetime.now(timezone.utc).date().isoformat()
+    # ---- Fenêtres ----
+    w5h = uc.window_total(by_hour, 5, now)
+    w7d = uc.window_total(by_hour, 24 * 7, now)
+    w5h_reset = uc.w5h_reset_at(by_hour, now)
+
+    # ---- Semaines / mois / rythme ----
+    today_str = now.date().isoformat()
     today = next((r for r in timeline if r["date"] == today_str), None)
 
     week_map = {}
     for r in timeline:
-        wk = iso_week(r["date"])
+        wk = uc.iso_week(r["date"])
         week_map[wk] = week_map.get(wk, 0) + r["total"]
-    current_week = week_map.get(iso_week(today_str), 0) if timeline else 0
+    current_week = week_map.get(uc.iso_week(today_str), 0) if timeline else 0
 
     month_prefix = today_str[:7]
     month_rows = [r for r in timeline if r["date"][:7] == month_prefix]
     current_month = sum(r["total"] for r in month_rows)
-    dom = datetime.now(timezone.utc).day
+    dom = now.day
     import calendar
-    dim = calendar.monthrange(datetime.now().year, datetime.now().month)[1]
-    projection = round(current_month / dom * dim) if dom else 0
-    avg = round(srange(30)["total"] / min(30, max(1, len(timeline))))
+    dim = calendar.monthrange(now.year, now.month)[1]
+    projection = uc.month_projection(current_month, dom, dim)
+    avg = round(srange(30)["total"] / min(30, max(1, len(timeline)))) if timeline else 0
 
-    return {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+    # ---- Heatmap horaire (jour de semaine x heure) — corrige MISSING-PEAK-HOURS ----
+    hourly = {}  # "HH" -> total, ET grille weekday x hour
+    weekday_hour = [[0] * 24 for _ in range(7)]
+    for hk, v in by_hour.items():
+        try:
+            dt = datetime.fromisoformat(hk + ":00:00+00:00")
+        except Exception:
+            continue
+        h = dt.hour
+        vt = uc.total_of(v)
+        hourly[f"{h:02d}"] = hourly.get(f"{h:02d}", 0) + vt
+        weekday_hour[dt.weekday()][h] += vt
+
+    grand = uc.empty()
+    gcost = 0.0
+    for fam, t in by_model.items():
+        for k in ("input", "output", "cacheCreate", "cacheRead"):
+            grand[k] += t[k]
+        gcost += uc.cost_of(t, fam)
+    gtotal = uc.total_of(grand)
+
+    payload = {
+        "schema": uc.SCHEMA_VERSION,
+        "generatedAt": now.isoformat(),
         "source": {"claudeCodeDir": source_dir, "fileCount": len(files),
-                   "messages": messages, "firstActivity": first_ts,
-                   "lastActivity": last_ts, "apiConnected": False},
+                   "messages": messages, "skippedLines": skipped_lines,
+                   "firstActivity": first_ts, "lastActivity": last_ts,
+                   "apiConnected": False},
         "totals": {**grand, "total": gtotal, "cost": round(gcost, 2)},
         "today": {"total": today["total"] if today else 0,
-                  "cost": round(cost_of(today, "") if today else 0, 2)},
+                  "cost": round(uc.cost_of(today, "") if today else 0, 2)},
         "last7Days": srange(7), "last30Days": srange(30),
-        "windows": {"w5h": window(5), "w5hResetAt": w5h_reset, "w7d": window(24*7)},
+        "windows": {"w5h": w5h, "w5hResetAt": w5h_reset, "w7d": w7d},
         "weekly": {"weeks": [{"week": k, "total": v} for k, v in sorted(week_map.items())],
                    "currentWeek": current_week},
         "month": {"currentMonth": current_month, "projection": projection,
                   "dayOfMonth": dom, "daysInMonth": dim},
         "pace": {"avgPerDay": avg},
-        "timeline": timeline, "models": models, "projects": projects, "api": None,
+        "timeline": timeline, "models": models, "projects": projects_out,
+        "hourly": {"byHour": [{"hour": h, "total": hourly[h]} for h in sorted(hourly)],
+                   "weekdayHour": weekday_hour},
+        "api": None,
     }
+    if verbose:
+        print(f"  fichiers={len(files)} messages={messages} "
+              f"lignes_corrompues={skipped_lines} projets={len(projects)}")
+    return payload
 
 
 def push(payload, url, secret):
@@ -271,30 +352,41 @@ def push(payload, url, secret):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="un seul envoi")
+    ap.add_argument("--verbose", action="store_true", help="diagnostic parsing")
     ap.add_argument("--interval", type=int, default=int(os.environ.get("INTERVAL", "60")))
     args = ap.parse_args()
 
     url = os.environ.get("PUSH_URL", "").strip()
     secret = os.environ.get("PUSH_SECRET", "").strip()
     if not url or not secret:
-        print("⚠  Définis PUSH_URL et PUSH_SECRET (voir .env.example). On écrit quand même data/usage.json en local.")
+        print("⚠  Définis PUSH_URL et PUSH_SECRET (voir .env.example). "
+              "On écrit quand même data/usage.json en local.")
 
     out = Path(__file__).resolve().parent.parent / "data" / "usage.json"
     out.parent.mkdir(parents=True, exist_ok=True)
 
+    consecutive_errors = 0
+
     def cycle():
-        payload = build()
+        nonlocal consecutive_errors
+        payload = build(verbose=args.verbose)
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         total = payload["totals"]["total"]
         if url and secret:
             try:
                 r = push(payload, url, secret)
-                ok = "OK" if r.ok else f"ERR {r.status_code}"
+                if r.ok:
+                    ok, consecutive_errors = "OK", 0
+                else:
+                    consecutive_errors += 1
+                    ok = f"ERR {r.status_code}"
             except Exception as e:
+                consecutive_errors += 1
                 ok = f"ERR {e}"
         else:
             ok = "local only"
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {total:,} tokens → {ok}")
+        warn = "  ⚠ ÉCHECS RÉPÉTÉS — vérifie le serveur/réseau" if consecutive_errors >= 3 else ""
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] {total:,} tokens → {ok}{warn}")
 
     if args.once:
         cycle()

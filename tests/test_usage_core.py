@@ -1,0 +1,206 @@
+"""
+Tests de la logique pure (tests/test_usage_core.py).
+
+Lance : python -m pytest tests/ -q   (ou : python -m unittest discover -s tests)
+
+Chaque test prouve une formule ou une règle sur des chiffres/chemins CONNUS.
+On vise l'AXE 1 (inférence projet) et l'exactitude des calculs (AXE 4).
+"""
+import os
+import sys
+import unittest
+from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+import usage_core as uc  # noqa: E402
+
+
+class TestProjectInference(unittest.TestCase):
+    """AXE 1 — le cœur. Basé sur les VRAIS cwd observés dans les logs d'Adam."""
+
+    def test_worktree_claude_strips_to_project(self):
+        # Le bug historique : ceci renvoyait 'lumiere' / '37ca98'. Doit donner le projet.
+        cwd = r"C:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\AGENTIC-FIGMA-MCP\.claude\worktrees\nifty-lumiere-37ca98"
+        p = uc.project_from_cwd(cwd)
+        self.assertEqual(uc.display_name(p), "AGENTIC-FIGMA-MCP")
+
+    def test_all_worktrees_of_same_project_collapse(self):
+        # 3 worktrees différents du même projet -> même clé.
+        base = r"C:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\AGENTIC-FIGMA-MCP\.claude\worktrees"
+        keys = {
+            uc.project_from_cwd(base + r"\nifty-lumiere-37ca98"),
+            uc.project_from_cwd(base + r"\sad-gates-0925cb"),
+            uc.project_from_cwd(base + r"\quirky-darwin-275e6e"),
+        }
+        self.assertEqual(len(keys), 1)
+        self.assertEqual(uc.display_name(next(iter(keys))), "AGENTIC-FIGMA-MCP")
+
+    def test_codex_worktree(self):
+        cwd = r"C:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\00-AXIS-CONTROL\.codex\worktrees\M016-RC5-CODEX"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "00-AXIS-CONTROL")
+
+    def test_plain_project_no_worktree(self):
+        cwd = r"C:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\00-AXIS-CONTROL"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "00-AXIS-CONTROL")
+
+    def test_nested_project_last_segment(self):
+        cwd = r"c:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\skool-ai-automation\kapman-news"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "kapman-news")
+
+    def test_dev_short_root(self):
+        cwd = r"C:\DEV\AGENTIC-FIGMA-MCP\.claude\worktrees\gallant-elion-190581"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "AGENTIC-FIGMA-MCP")
+
+    def test_unix_style_path(self):
+        cwd = "/home/claude/work/my-project"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "my-project")
+
+    def test_drive_root_is_none(self):
+        self.assertIsNone(uc.project_from_cwd("C:\\"))
+        self.assertIsNone(uc.project_from_cwd(""))
+        self.assertIsNone(uc.project_from_cwd(None))
+
+    def test_collision_different_roots_distinct_keys(self):
+        # Même feuille, racines différentes -> clés DISTINCTES (corrige A1-2).
+        a = uc.project_from_cwd(r"C:\DEV\FIGMA-MCP")
+        b = uc.project_from_cwd(r"C:\Users\x\Desktop\Other\FIGMA-MCP")
+        self.assertNotEqual(a, b)
+        self.assertEqual(uc.display_name(a), uc.display_name(b))  # même nom affiché
+
+    def test_build_subfolder_trims_to_project(self):
+        # '…/mixhub/APP/src' doit donner le projet 'mixhub', PAS 'src'.
+        cwd = r"C:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\mixhub\APP\src"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "mixhub")
+
+    def test_subfolder_and_root_merge_to_same_key(self):
+        root = uc.project_from_cwd(r"C:\Users\x\Desktop\Pro\mixhub")
+        sub = uc.project_from_cwd(r"C:\Users\x\Desktop\Pro\mixhub\APP\src")
+        self.assertEqual(root, sub)  # même clé -> fusion
+
+    def test_home_dir_is_none(self):
+        # Session lancée depuis le home : pas un vrai projet.
+        self.assertIsNone(uc.project_from_cwd(r"C:\Users\adamc_ixt0882"))
+        self.assertEqual(uc.display_name(uc.project_from_cwd(r"C:\Users\adamc_ixt0882")), "Sans projet")
+
+    def test_username_with_digits_skipped(self):
+        self.assertTrue(uc._looks_like_username("adamc_ixt0882"))
+        self.assertTrue(uc._looks_like_username("ADAMC~1"))
+        self.assertFalse(uc._looks_like_username("mixhub"))
+        self.assertFalse(uc._looks_like_username("AGENTIC-FIGMA-MCP"))
+
+    def test_temp_standalone_kept(self):
+        # AppData/Local/Temp/svg2png : svg2png est un vrai nom, on le garde.
+        cwd = r"C:\Users\adamc_ixt0882\AppData\Local\Temp\svg2png"
+        self.assertEqual(uc.display_name(uc.project_from_cwd(cwd)), "svg2png")
+
+
+class TestLabelFallback(unittest.TestCase):
+    def test_label_truncates_and_normalizes(self):
+        txt = "Hard stop.\n\nThe latest verified APK still failed on Adam's real Android phone."
+        lbl = uc.label_from_text(txt, max_len=30)
+        self.assertLessEqual(len(lbl), 30)
+        self.assertNotIn("\n", lbl)
+        self.assertTrue(lbl.startswith("Hard stop."))
+
+    def test_label_empty(self):
+        self.assertIsNone(uc.label_from_text(""))
+        self.assertIsNone(uc.label_from_text(None))
+        self.assertIsNone(uc.label_from_text("   \n  "))
+
+
+class TestModelFamilyAndPricing(unittest.TestCase):
+    def test_family_mapping(self):
+        self.assertEqual(uc.family("claude-opus-4-8"), "opus")
+        self.assertEqual(uc.family("claude-sonnet-4-6"), "sonnet")
+        self.assertEqual(uc.family("claude-haiku-4-5"), "haiku")
+        self.assertIsNone(uc.family("<synthetic>"))
+
+    def test_cost_uses_correct_model(self):
+        # 1M output tokens : Opus coûte $75, Sonnet $15. La VRAIE correction A1-3.
+        acc = {"input": 0, "output": 1_000_000, "cacheCreate": 0, "cacheRead": 0}
+        self.assertAlmostEqual(uc.cost_of(acc, "opus"), 75.0, places=4)
+        self.assertAlmostEqual(uc.cost_of(acc, "sonnet"), 15.0, places=4)
+        # Le bug historique passait "" -> tarif Sonnet pour de l'Opus :
+        self.assertNotAlmostEqual(uc.cost_of(acc, ""), uc.cost_of(acc, "opus"))
+
+    def test_per_project_cost_is_weighted_sum(self):
+        # Projet = 80% Opus + 20% Sonnet en output. Le coût doit refléter le mix.
+        opus = {"input": 0, "output": 800_000, "cacheCreate": 0, "cacheRead": 0}
+        sonnet = {"input": 0, "output": 200_000, "cacheCreate": 0, "cacheRead": 0}
+        weighted = uc.cost_of(opus, "opus") + uc.cost_of(sonnet, "sonnet")
+        # = 0.8*75 + 0.2*15 = 60 + 3 = 63
+        self.assertAlmostEqual(weighted, 63.0, places=4)
+        # L'ancien calcul (tout Sonnet) aurait donné 15 -> 4.2x trop bas.
+        all_sonnet = uc.cost_of({"input": 0, "output": 1_000_000, "cacheCreate": 0, "cacheRead": 0}, "sonnet")
+        self.assertAlmostEqual(all_sonnet, 15.0, places=4)
+        self.assertGreater(weighted, all_sonnet * 4)
+
+
+class TestWindows(unittest.TestCase):
+    def _buckets(self):
+        # 3 heures de données : 10h, 13h, 15h (UTC).
+        return {
+            "2026-06-22T10": {"input": 100, "output": 0, "cacheCreate": 0, "cacheRead": 0},
+            "2026-06-22T13": {"input": 200, "output": 0, "cacheCreate": 0, "cacheRead": 0},
+            "2026-06-22T15": {"input": 400, "output": 0, "cacheCreate": 0, "cacheRead": 0},
+        }
+
+    def test_window_5h_includes_only_recent(self):
+        now = datetime(2026, 6, 22, 16, 30, tzinfo=timezone.utc)
+        # 5h avant 16:30 = 11:30 -> exclut 10h, inclut 13h & 15h.
+        t = uc.window_total(self._buckets(), 5, now)
+        self.assertEqual(t["input"], 600)  # 200 + 400
+
+    def test_window_full_history(self):
+        now = datetime(2026, 6, 22, 16, 30, tzinfo=timezone.utc)
+        t = uc.window_total(self._buckets(), 24, now)
+        self.assertEqual(t["input"], 700)  # tous
+
+    def test_w5h_reset_is_oldest_plus_5h(self):
+        now = datetime(2026, 6, 22, 16, 30, tzinfo=timezone.utc)
+        reset = uc.w5h_reset_at(self._buckets(), now)
+        # plus vieux dans la fenêtre 5h = 13h -> reset 18h
+        self.assertEqual(reset, "2026-06-22T18:00:00+00:00")
+
+
+class TestMergeByName(unittest.TestCase):
+    def test_same_name_two_roots_merge(self):
+        projects = [
+            {"name": "AGENTIC-FIGMA-MCP", "path": "C:/DEV/AGENTIC-FIGMA-MCP",
+             "total": 100, "cost": 10.0, "sessionCount": 27, "sessions": [],
+             "models": [{"model": "opus", "label": "Claude Opus", "total": 100, "cost": 10.0}],
+             "input": 100, "output": 0, "cacheCreate": 0, "cacheRead": 0, "lastActivity": "2026-06-01T00:00:00Z"},
+            {"name": "AGENTIC-FIGMA-MCP", "path": "C:/Users/x/AGENTIC-FIGMA-MCP",
+             "total": 50, "cost": 5.0, "sessionCount": 6, "sessions": [],
+             "models": [{"model": "opus", "label": "Claude Opus", "total": 50, "cost": 5.0}],
+             "input": 50, "output": 0, "cacheCreate": 0, "cacheRead": 0, "lastActivity": "2026-06-10T00:00:00Z"},
+        ]
+        out = uc.merge_projects_by_name(projects)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["total"], 150)
+        self.assertEqual(out[0]["cost"], 15.0)
+        self.assertEqual(out[0]["sessionCount"], 33)
+        self.assertEqual(len(out[0]["paths"]), 2)
+        self.assertEqual(out[0]["lastActivity"], "2026-06-10T00:00:00Z")  # le plus récent
+        self.assertEqual(out[0]["models"][0]["total"], 150)  # breakdown fusionné
+
+    def test_distinct_names_untouched(self):
+        projects = [
+            {"name": "a", "path": "C:/a", "total": 10, "cost": 1.0, "sessionCount": 1, "sessions": [], "models": [], "input": 10, "output": 0, "cacheCreate": 0, "cacheRead": 0, "lastActivity": None},
+            {"name": "b", "path": "C:/b", "total": 20, "cost": 2.0, "sessionCount": 1, "sessions": [], "models": [], "input": 20, "output": 0, "cacheCreate": 0, "cacheRead": 0, "lastActivity": None},
+        ]
+        out = uc.merge_projects_by_name(projects)
+        self.assertEqual(len(out), 2)
+
+
+class TestProjection(unittest.TestCase):
+    def test_linear_projection(self):
+        # 7M tokens au jour 13 sur 30 -> ~16.15M
+        self.assertEqual(uc.month_projection(7_000_000, 13, 30), round(7_000_000 / 13 * 30))
+
+    def test_projection_day_zero_safe(self):
+        self.assertEqual(uc.month_projection(5, 0, 30), 0)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
