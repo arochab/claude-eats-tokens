@@ -81,11 +81,50 @@
       (centerHTML || "");
   }
 
-  var DATA = null, period = "7", trendChart = null, donutChart = null;
+  var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null;
+
+  /* ---------- filtre projet : recompose une vue DATA-compatible ----------
+     Quand un projet est sélectionné, on recalcule timeline / totals / today /
+     semaine / mois / modèles à partir des seules données de ce projet. Aucune
+     donnée inventée : on n'utilise que ce que le moteur a réellement agrégé. */
+  function filteredData() {
+    if (!projectFilter || !DATA) return DATA;
+    var p = (DATA.projects || []).filter(function (x) {
+      return (x.name || x.project) === projectFilter && !x.isOthers;
+    })[0];
+    if (!p) return DATA;
+    var tl = (p.timeline || []).map(function (r) {
+      // on ne connaît que le total/jour du projet -> on remplit le total,
+      // les sous-catégories restent agrégées au niveau projet (donut global).
+      return { date: r.date, input: 0, output: 0, cacheCreate: 0, cacheRead: 0, total: r.total };
+    });
+    var byDate = {}; tl.forEach(function (r) { byDate[r.date] = r.total; });
+    var todayStr = new Date().toISOString().slice(0, 10);
+    function sumLast(n) { var s = 0; tl.slice(-n).forEach(function (r) { s += r.total; }); return s; }
+    var monthPrefix = todayStr.slice(0, 7);
+    var monthTotal = tl.filter(function (r) { return r.date.slice(0, 7) === monthPrefix; })
+                       .reduce(function (a, r) { return a + r.total; }, 0);
+    return Object.assign({}, DATA, {
+      _filtered: projectFilter,
+      timeline: tl,
+      totals: { input: p.input || 0, output: p.output || 0, cacheCreate: p.cacheCreate || 0,
+                cacheRead: p.cacheRead || 0, total: p.total || 0, cost: p.cost || 0 },
+      today: { total: byDate[todayStr] || 0, cost: 0 },
+      last7Days: { total: sumLast(7) }, last30Days: { total: sumLast(30) },
+      weekly: { weeks: DATA.weekly ? DATA.weekly.weeks : [], currentWeek: sumLast(7) },
+      month: Object.assign({}, DATA.month, { currentMonth: monthTotal }),
+      models: (p.models || []).map(function (m) {
+        return { model: m.model, label: m.label, total: m.total, cost: m.cost,
+                 input: 0, output: 0, cacheCreate: 0, cacheRead: 0 };
+      }),
+      // windows non recalculables par projet : on les neutralise proprement
+      windows: null,
+    });
+  }
 
   /* ---------- sélection de période ---------- */
   function periodRows() {
-    var tl = DATA.timeline || [];
+    var tl = (VIEW || DATA).timeline || [];
     if (period === "today") return tl.slice(-1);
     if (period === "7") return tl.slice(-7);
     if (period === "30") return tl.slice(-30);
@@ -95,7 +134,8 @@
 
   /* ---------- rendu ---------- */
   function render() {
-    var d = DATA;
+    VIEW = filteredData();
+    var d = VIEW;
     autoCalibrate(d);
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var st = $("status"), dot = st.querySelector(".dot");
@@ -152,7 +192,7 @@
     /* modèles */
     renderModels(d);
     /* projets */
-    renderProjects(d);
+    renderProjects(DATA);  // toujours la liste complète (pour pouvoir changer de filtre)
     /* complexité projets en cours vs budget restant */
     renderComplexity(rest);
 
@@ -281,15 +321,76 @@
     });
     if (!(d.models || []).length) box.innerHTML = '<p style="color:var(--muted);font-size:13px">Aucune donnée.</p>';
   }
+  var projSort = "tokens";
   function renderProjects(d) {
     var pbox = $("projects"); pbox.innerHTML = "";
-    (d.projects || []).forEach(function (p) {
-      var el = document.createElement("div"); el.className = "proj";
-      el.innerHTML = '<span class="pn"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span class="t">' + esc(p.project) + '</span></span><span class="pv"><b>' + fmt(p.total) + "</b>" + money(p.cost) + "</span>";
+    var projects = (d.projects || []).slice();
+    if (!projects.length) {
+      pbox.innerHTML = emptyState("Aucun projet détecté",
+        "Lance la synchro (push_usage.py) pour voir tes projets Claude Code regroupés ici.");
+      return;
+    }
+    // tri
+    if (projSort === "recent") {
+      projects.sort(function (a, b) {
+        return (b.lastActivity || "").localeCompare(a.lastActivity || "");
+      });
+    } else {
+      projects.sort(function (a, b) { return (b.total || 0) - (a.total || 0); });
+    }
+    var grand = projects.reduce(function (s, p) { return s + (p.total || 0); }, 0) || 1;
+    projects.forEach(function (p, i) {
+      var share = Math.round((p.total / grand) * 100);
+      var name = p.name || p.project || "Sans projet";
+      var isOthers = !!p.isOthers;
+      var sessTxt = p.sessionCount != null ? p.sessionCount + (p.sessionCount > 1 ? " sessions" : " session") : "";
+      var lastTxt = p.lastActivity ? " · " + ago(p.lastActivity) : "";
+      var el = document.createElement(isOthers ? "div" : "button");
+      el.className = "proj" + (isOthers ? " others" : "");
+      if (!isOthers) {
+        el.setAttribute("type", "button");
+        el.setAttribute("aria-label", "Détails du projet " + name + ", " + fmt(p.total) + " tokens");
+        el.dataset.idx = i;
+        el.addEventListener("click", function () { openProjSheet(p); });
+      }
+      el.innerHTML =
+        '<span class="pn"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>' +
+          '<span class="t"><span class="pname">' + esc(name) + '</span>' +
+          (sessTxt || lastTxt ? '<span class="pmeta">' + esc(sessTxt + lastTxt) + '</span>' : '') + '</span></span>' +
+        '<span class="pv"><b>' + fmt(p.total) + '</b><span class="pshare">' + share + '%</span>' +
+          '<span class="pcost">' + money(p.cost) + '</span></span>' +
+        '<span class="pbar"><span style="width:' + Math.max(2, share) + '%"></span></span>';
       pbox.appendChild(el);
     });
-    if (!(d.projects || []).length) pbox.innerHTML = '<p style="color:var(--muted);font-size:13px">Aucun projet détecté.</p>';
   }
+
+  function openProjSheet(p) {
+    var name = p.name || p.project || "Sans projet";
+    $("projsheet-title").childNodes[0].nodeValue = name + " ";
+    var body = $("projsheet-body");
+    var models = (p.models || []).map(function (m) {
+      var c = modelColor(m.label || m.model);
+      return '<div class="model"><div class="row"><span class="name"><span class="swatch" style="background:' + c + '"></span>' +
+        esc(m.label || m.model) + '</span><span class="val"><b>' + fmt(m.total) + '</b> · ' + money(m.cost) + '</span></div></div>';
+    }).join("");
+    var sessions = (p.sessions || []).slice(0, 12).map(function (s) {
+      var title = s.title || s.sessionId || "session";
+      return '<div class="sessrow"><span class="st">' + esc(title) + '</span>' +
+        '<span class="sv">' + fmt(s.tokens) + (s.lastActivity ? ' · ' + ago(s.lastActivity) : '') + '</span></div>';
+    }).join("");
+    var paths = (p.paths && p.paths.length > 1)
+      ? '<p class="psub">' + p.paths.length + ' emplacements regroupés sous ce nom.</p>' : '';
+    body.innerHTML =
+      '<div class="psum"><div><p class="k">Total</p><p class="vbig">' + fmt(p.total) + '</p></div>' +
+      '<div><p class="k">Valeur (théorique)</p><p class="vbig">' + eur(p.cost) + '</p></div>' +
+      '<div><p class="k">Sessions</p><p class="vbig">' + (p.sessionCount || 0) + '</p></div></div>' + paths +
+      (models ? '<div class="grouplabel">Modèles utilisés</div>' + models : '') +
+      (sessions ? '<div class="grouplabel">Discussions récentes</div>' + sessions : '');
+    var filterBtn = $("projsheet-filter");
+    filterBtn.onclick = function () { setProjectFilter(name); closeProjSheet(); };
+    openSheet("projsheet");
+  }
+  function closeProjSheet() { closeSheet("projsheet"); }
 
   function renderComplexity(restMonth) {
     var card = $("complexity-card"), box = $("complexity");
@@ -379,12 +480,6 @@
     }
     return tryAt(0);
   }
-  function _oldload(silent) {
-    fetch("data/usage.json", { cache: "no-store" }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
-      .then(function (d) { if (!d || !d.totals || !d.totals.total) throw 0; DATA = d; render(); checkThresholds(d); })
-      .catch(function () { fetch("data/usage.demo.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) { DATA = d; render(); }).catch(function () { if (!silent) $("status").querySelector("span:last-child").textContent = "Impossible de charger les données."; }); });
-  }
-
   /* ---------- événements ---------- */
   $("period").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
@@ -395,12 +490,71 @@
   });
   $("refresh").addEventListener("click", function () { this.style.transform = "rotate(360deg)"; var s = this; setTimeout(function () { s.style.transform = ""; }, 400); load(); });
 
+  /* ----- système de "sheets" accessible (focus trap + Échap) — AXE 3 ----- */
+  var _sheetReturnFocus = null;
+  function _focusables(root) {
+    return [].slice.call(root.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )).filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+  }
+  function openSheet(id) {
+    var sheet = $(id);
+    _sheetReturnFocus = document.activeElement;
+    sheet.classList.add("open");
+    var f = _focusables(sheet);
+    if (f.length) f[0].focus();
+    sheet._keyHandler = function (e) {
+      if (e.key === "Escape") { closeSheet(id); return; }
+      if (e.key === "Tab") {
+        var items = _focusables(sheet); if (!items.length) return;
+        var first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    sheet.addEventListener("keydown", sheet._keyHandler);
+  }
+  function closeSheet(id) {
+    var sheet = $(id);
+    sheet.classList.remove("open");
+    if (sheet._keyHandler) { sheet.removeEventListener("keydown", sheet._keyHandler); sheet._keyHandler = null; }
+    if (_sheetReturnFocus && _sheetReturnFocus.focus) { _sheetReturnFocus.focus(); _sheetReturnFocus = null; }
+  }
+
+  function emptyState(title, hint) {
+    return '<div class="emptystate"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' +
+      '<p class="es-t">' + esc(title) + '</p><p class="es-h">' + esc(hint) + '</p></div>';
+  }
+
   /* ----- réglages ----- */
-  function openSettings() { fillSettings(); $("settings").classList.add("open"); }
-  function closeSettings() { $("settings").classList.remove("open"); }
+  function openSettings() { fillSettings(); openSheet("settings"); }
+  function closeSettings() { closeSheet("settings"); }
   $("open-settings").addEventListener("click", openSettings);
   $("close-settings").addEventListener("click", closeSettings);
   $("settings").addEventListener("click", function (e) { if (e.target === this) closeSettings(); });
+
+  /* ----- drill-down projet + tri + filtre ----- */
+  $("close-projsheet").addEventListener("click", closeProjSheet);
+  $("projsheet").addEventListener("click", function (e) { if (e.target === this) closeProjSheet(); });
+  $("projects-card").querySelector(".proj-sort").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    projSort = b.getAttribute("data-sort");
+    [].forEach.call(this.children, function (x) {
+      var on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if (DATA) renderProjects(filteredData());
+  });
+
+  /* filtre projet : recalcule TOUTES les vues (AXE 3) */
+  var projectFilter = null;
+  function setProjectFilter(name) {
+    projectFilter = name || null;
+    var box = $("projfilter");
+    if (projectFilter) { box.hidden = false; $("projfilter-name").textContent = projectFilter; }
+    else box.hidden = true;
+    if (DATA) render();
+  }
+  $("projfilter-clear").addEventListener("click", function () { setProjectFilter(null); });
   function fillSettings() {
     $("b-day").value = settings.day; $("b-week").value = settings.week; $("b-month").value = settings.month;
     $("b-w5h").value = settings.w5h; $("b-w7d").value = settings.w7d; $("b-api").value = settings.apiCredits;
@@ -510,20 +664,19 @@
   ensureNotifPermission();
   load();
   startLive();
+  var SW_FILE = "sw.v6.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      // 1) tue TOUS les anciens service workers (élimine la version fantôme)
+      // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
       navigator.serviceWorker.getRegistrations().then(function (regs) {
-        var hasNew = false;
         regs.forEach(function (r) {
           var u = (r.active && r.active.scriptURL) || "";
-          if (u.indexOf("sw.v5.js") < 0) { r.unregister(); }
-          else { hasNew = true; }
+          if (u.indexOf(SW_FILE) < 0) { r.unregister(); }
         });
-        // 2) enregistre le nouveau (nom de fichier neuf = jamais servi depuis le cache)
-        navigator.serviceWorker.register("sw.v5.js", { scope: "./" }).catch(function () {});
+        // 2) enregistre la version courante (nom de fichier neuf = jamais en cache)
+        navigator.serviceWorker.register(SW_FILE, { scope: "./" }).catch(function () {});
       }).catch(function () {
-        navigator.serviceWorker.register("sw.v5.js", { scope: "./" }).catch(function () {});
+        navigator.serviceWorker.register(SW_FILE, { scope: "./" }).catch(function () {});
       });
       var refreshed = false;
       navigator.serviceWorker.addEventListener("controllerchange", function () {

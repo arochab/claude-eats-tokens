@@ -41,6 +41,11 @@
     <button data-p="all">Tout</button>
   </div>
 
+  <div class="projfilter" id="projfilter" hidden>
+    <span>Filtré : <b id="projfilter-name"></b></span>
+    <button id="projfilter-clear" aria-label="Retirer le filtre projet">Tout voir ✕</button>
+  </div>
+
   <section class="verdict" id="verdict">
     <div class="vmain">
       <div class="vscore" id="vscore"><b id="vscore-n">—</b><small>/100</small></div>
@@ -103,8 +108,13 @@
     <div id="models"></div>
   </section>
 
-  <section class="card">
-    <h2>Top projets <span class="hint">Claude Code</span></h2>
+  <section class="card" id="projects-card">
+    <h2>Projets
+      <span class="proj-sort" role="group" aria-label="Trier les projets">
+        <button id="sort-tokens" class="on" data-sort="tokens" aria-pressed="true">tokens</button>
+        <button id="sort-recent" data-sort="recent" aria-pressed="false">récence</button>
+      </span>
+    </h2>
     <div id="projects"></div>
   </section>
 
@@ -161,6 +171,17 @@
 
     <button class="btn" id="save-settings">Enregistrer</button>
     <button class="btn ghost" id="reset-settings">Réinitialiser les valeurs par défaut</button>
+  </div>
+</div>
+
+<!-- Drill-down projet -->
+<div class="sheet" id="projsheet" role="dialog" aria-modal="true" aria-labelledby="projsheet-title">
+  <div class="sheet-inner">
+    <h2 id="projsheet-title">Projet
+      <button class="iconbtn" id="close-projsheet" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </h2>
+    <div id="projsheet-body"></div>
+    <button class="btn" id="projsheet-filter">Filtrer le tableau de bord sur ce projet</button>
   </div>
 </div>
 

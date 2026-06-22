@@ -31,6 +31,13 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import usage_core as uc
 
+# Console Windows en UTF-8 (sinon ⚠/→ plantent en cp1252).
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 CANDIDATE_DIRS = [
     Path.home() / ".claude" / "projects",
     Path.home() / ".config" / "claude" / "projects",
@@ -156,11 +163,19 @@ def build(verbose=False):
                 "path": session_project_key or fallback_name,
                 "models": {},          # fam -> accumulateur
                 "sessions": {},        # sessionId -> {tokens, last, models:set, title}
+                "byDay": {},           # 'YYYY-MM-DD' -> total (timeline projet)
                 "lastActivity": None,
             })
             mfam = fam if fam is not None else "autre"
             proj["models"].setdefault(mfam, uc.empty())
             uc.add_usage(proj["models"][mfam], usage)
+            if day != "inconnu":
+                proj["byDay"][day] = proj["byDay"].get(day, 0) + uc.total_of({
+                    "input": usage.get("input_tokens", 0) or 0,
+                    "output": usage.get("output_tokens", 0) or 0,
+                    "cacheCreate": usage.get("cache_creation_input_tokens", 0) or 0,
+                    "cacheRead": usage.get("cache_read_input_tokens", 0) or 0,
+                })
 
             sess = proj["sessions"].setdefault(session_id, {
                 "sessionId": session_id, "tokens": 0, "lastActivity": None,
@@ -234,6 +249,7 @@ def build(verbose=False):
                 "models": sorted(s["models"]),
             })
         sess_list.sort(key=lambda x: -x["tokens"])
+        proj_timeline = [{"date": d, "total": p["byDay"][d]} for d in sorted(p["byDay"])]
         projects.append({
             "project": p["name"],          # rétrocompat (ancien champ)
             "name": p["name"],
@@ -243,6 +259,7 @@ def build(verbose=False):
             "models": model_break,
             "sessionCount": len(sess_list),
             "sessions": sess_list[:20],    # drill-down (cap raisonnable)
+            "timeline": proj_timeline,
             "lastActivity": p["lastActivity"],
             **tot_acc,
         })

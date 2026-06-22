@@ -1,410 +1,1592 @@
 {
-  "generatedAt": "2026-06-13T08:00:00.000Z",
+  "schema": 2,
+  "generatedAt": "2026-06-22T18:00:00+00:00",
   "demo": true,
   "source": {
     "claudeCodeDir": null,
     "fileCount": 51,
     "messages": 2640,
-    "firstActivity": "2026-05-10T09:00:00Z",
-    "lastActivity": "2026-06-13T07:51:00Z",
+    "skippedLines": 0,
+    "firstActivity": "2026-05-20T09:00:00Z",
+    "lastActivity": "2026-06-22T18:00:00+00:00",
     "apiConnected": false
   },
   "totals": {
-    "input": 214656,
-    "output": 1073280,
-    "cacheCreate": 1609920,
-    "cacheRead": 13952640,
-    "total": 16850496,
-    "cost": 26.97
+    "input": 721058,
+    "output": 3550433,
+    "cacheCreate": 5325736,
+    "cacheRead": 45880259,
+    "total": 55477486,
+    "cost": 268.36
   },
   "today": {
-    "total": 0,
-    "cost": 0.0
+    "total": 2303378,
+    "cost": 3.7
   },
   "last7Days": {
-    "input": 48504,
-    "output": 242520,
-    "cacheCreate": 363780,
-    "cacheRead": 3152760,
-    "total": 3807564
+    "input": 169952,
+    "output": 836821,
+    "cacheCreate": 1255250,
+    "cacheRead": 10813717,
+    "total": 13075740
   },
   "last30Days": {
-    "input": 184680,
-    "output": 923400,
-    "cacheCreate": 1385100,
-    "cacheRead": 12004200,
-    "total": 14497380
+    "input": 646044,
+    "output": 3181064,
+    "cacheCreate": 4771673,
+    "cacheRead": 41107094,
+    "total": 49705875
   },
-  "timeline": [
-    {
-      "date": "2026-05-10",
-      "input": 0,
-      "output": 0,
-      "cacheCreate": 0,
-      "cacheRead": 0,
-      "total": 0
-    },
-    {
-      "date": "2026-05-11",
-      "input": 4864,
-      "output": 24320,
-      "cacheCreate": 36480,
-      "cacheRead": 316160,
-      "total": 381824
-    },
-    {
-      "date": "2026-05-12",
-      "input": 8864,
-      "output": 44320,
-      "cacheCreate": 66480,
-      "cacheRead": 576160,
-      "total": 695824
-    },
-    {
-      "date": "2026-05-13",
-      "input": 13064,
-      "output": 65320,
-      "cacheCreate": 97980,
-      "cacheRead": 849160,
-      "total": 1025524
-    },
-    {
-      "date": "2026-05-14",
-      "input": 3184,
-      "output": 15920,
-      "cacheCreate": 23880,
-      "cacheRead": 206960,
-      "total": 249944
-    },
-    {
-      "date": "2026-05-15",
-      "input": 3584,
-      "output": 17920,
-      "cacheCreate": 26880,
-      "cacheRead": 232960,
-      "total": 281344
-    },
-    {
-      "date": "2026-05-16",
-      "input": 3936,
-      "output": 19680,
-      "cacheCreate": 29520,
-      "cacheRead": 255840,
-      "total": 308976
-    },
-    {
-      "date": "2026-05-17",
-      "input": 0,
-      "output": 0,
-      "cacheCreate": 0,
-      "cacheRead": 0,
-      "total": 0
-    },
-    {
-      "date": "2026-05-18",
-      "input": 3344,
-      "output": 16720,
-      "cacheCreate": 25080,
-      "cacheRead": 217360,
-      "total": 262504
-    },
-    {
-      "date": "2026-05-19",
-      "input": 10712,
-      "output": 53560,
-      "cacheCreate": 80340,
-      "cacheRead": 696280,
-      "total": 840892
-    },
-    {
-      "date": "2026-05-20",
-      "input": 5912,
-      "output": 29560,
-      "cacheCreate": 44340,
-      "cacheRead": 384280,
-      "total": 464092
-    },
-    {
-      "date": "2026-05-21",
-      "input": 3008,
-      "output": 15040,
-      "cacheCreate": 22560,
-      "cacheRead": 195520,
-      "total": 236128
-    },
-    {
-      "date": "2026-05-22",
-      "input": 3808,
-      "output": 19040,
-      "cacheCreate": 28560,
-      "cacheRead": 247520,
-      "total": 298928
-    },
-    {
-      "date": "2026-05-23",
-      "input": 3544,
-      "output": 17720,
-      "cacheCreate": 26580,
-      "cacheRead": 230360,
-      "total": 278204
-    },
-    {
-      "date": "2026-05-24",
-      "input": 0,
-      "output": 0,
-      "cacheCreate": 0,
-      "cacheRead": 0,
-      "total": 0
-    },
-    {
-      "date": "2026-05-25",
-      "input": 11424,
-      "output": 57120,
-      "cacheCreate": 85680,
-      "cacheRead": 742560,
-      "total": 896784
-    },
-    {
-      "date": "2026-05-26",
-      "input": 9352,
-      "output": 46760,
-      "cacheCreate": 70140,
-      "cacheRead": 607880,
-      "total": 734132
-    },
-    {
-      "date": "2026-05-27",
-      "input": 3368,
-      "output": 16840,
-      "cacheCreate": 25260,
-      "cacheRead": 218920,
-      "total": 264388
-    },
-    {
-      "date": "2026-05-28",
-      "input": 11664,
-      "output": 58320,
-      "cacheCreate": 87480,
-      "cacheRead": 758160,
-      "total": 915624
-    },
-    {
-      "date": "2026-05-29",
-      "input": 4424,
-      "output": 22120,
-      "cacheCreate": 33180,
-      "cacheRead": 287560,
-      "total": 347284
-    },
-    {
-      "date": "2026-05-30",
-      "input": 12728,
-      "output": 63640,
-      "cacheCreate": 95460,
-      "cacheRead": 827320,
-      "total": 999148
-    },
-    {
-      "date": "2026-05-31",
-      "input": 3408,
-      "output": 17040,
-      "cacheCreate": 25560,
-      "cacheRead": 221520,
-      "total": 267528
-    },
-    {
-      "date": "2026-06-01",
-      "input": 11848,
-      "output": 59240,
-      "cacheCreate": 88860,
-      "cacheRead": 770120,
-      "total": 930068
-    },
-    {
-      "date": "2026-06-02",
-      "input": 11992,
-      "output": 59960,
-      "cacheCreate": 89940,
-      "cacheRead": 779480,
-      "total": 941372
-    },
-    {
-      "date": "2026-06-03",
-      "input": 8896,
-      "output": 44480,
-      "cacheCreate": 66720,
-      "cacheRead": 578240,
-      "total": 698336
-    },
-    {
-      "date": "2026-06-04",
-      "input": 3208,
-      "output": 16040,
-      "cacheCreate": 24060,
-      "cacheRead": 208520,
-      "total": 251828
-    },
-    {
-      "date": "2026-06-05",
-      "input": 6016,
-      "output": 30080,
-      "cacheCreate": 45120,
-      "cacheRead": 391040,
-      "total": 472256
-    },
-    {
-      "date": "2026-06-06",
-      "input": 0,
-      "output": 0,
-      "cacheCreate": 0,
-      "cacheRead": 0,
-      "total": 0
-    },
-    {
-      "date": "2026-06-07",
-      "input": 7144,
-      "output": 35720,
-      "cacheCreate": 53580,
-      "cacheRead": 464360,
-      "total": 560804
-    },
-    {
-      "date": "2026-06-08",
-      "input": 9264,
-      "output": 46320,
-      "cacheCreate": 69480,
-      "cacheRead": 602160,
-      "total": 727224
-    },
-    {
-      "date": "2026-06-09",
-      "input": 4760,
-      "output": 23800,
-      "cacheCreate": 35700,
-      "cacheRead": 309400,
-      "total": 373660
-    },
-    {
-      "date": "2026-06-10",
-      "input": 11256,
-      "output": 56280,
-      "cacheCreate": 84420,
-      "cacheRead": 731640,
-      "total": 883596
-    },
-    {
-      "date": "2026-06-11",
-      "input": 4328,
-      "output": 21640,
-      "cacheCreate": 32460,
-      "cacheRead": 281320,
-      "total": 339748
-    },
-    {
-      "date": "2026-06-12",
-      "input": 11752,
-      "output": 58760,
-      "cacheCreate": 88140,
-      "cacheRead": 763880,
-      "total": 922532
-    },
-    {
-      "date": "2026-06-13",
-      "input": 0,
-      "output": 0,
-      "cacheCreate": 0,
-      "cacheRead": 0,
-      "total": 0
-    }
-  ],
   "windows": {
     "w5h": {
-      "input": 18000,
-      "output": 92000,
-      "cacheCreate": 140000,
-      "cacheRead": 1180000,
-      "total": 1430000
+      "input": 11968,
+      "output": 58956,
+      "cacheCreate": 88442,
+      "cacheRead": 761956,
+      "total": 921322
     },
-    "w5hResetAt": "2026-06-13T12:30:00.000Z",
+    "w5hResetAt": "2026-06-22T20:00:00+00:00",
     "w7d": {
-      "input": 48504,
-      "output": 242520,
-      "cacheCreate": 363780,
-      "cacheRead": 3152760,
-      "total": 3807564
+      "input": 169449,
+      "output": 834928,
+      "cacheCreate": 1252463,
+      "cacheRead": 10790664,
+      "total": 13047504
     }
   },
   "weekly": {
-    "weeks": [],
-    "currentWeek": 3807564
+    "weeks": [
+      {
+        "week": "2026-S21",
+        "total": 6290347
+      },
+      {
+        "week": "2026-S22",
+        "total": 10504726
+      },
+      {
+        "week": "2026-S23",
+        "total": 11315533
+      },
+      {
+        "week": "2026-S24",
+        "total": 12126361
+      },
+      {
+        "week": "2026-S25",
+        "total": 12937141
+      },
+      {
+        "week": "2026-S26",
+        "total": 2303378
+      }
+    ],
+    "currentWeek": 2303378
   },
   "month": {
-    "currentMonth": 7101424,
-    "projection": 16387902,
-    "dayOfMonth": 13,
+    "currentMonth": 38682413,
+    "projection": 52748745,
+    "dayOfMonth": 22,
     "daysInMonth": 30
   },
   "pace": {
-    "avgPerDay": 483246
+    "avgPerDay": 1656862
   },
+  "timeline": [
+    {
+      "date": "2026-05-20",
+      "input": 22517,
+      "output": 110876,
+      "cacheCreate": 166316,
+      "cacheRead": 1432773,
+      "total": 1732482
+    },
+    {
+      "date": "2026-05-21",
+      "input": 24959,
+      "output": 122892,
+      "cacheCreate": 184340,
+      "cacheRead": 1588053,
+      "total": 1920244
+    },
+    {
+      "date": "2026-05-22",
+      "input": 19764,
+      "output": 97317,
+      "cacheCreate": 145976,
+      "cacheRead": 1257562,
+      "total": 1520619
+    },
+    {
+      "date": "2026-05-23",
+      "input": 7774,
+      "output": 38284,
+      "cacheCreate": 57431,
+      "cacheRead": 494777,
+      "total": 598266
+    },
+    {
+      "date": "2026-05-24",
+      "input": 6740,
+      "output": 33195,
+      "cacheCreate": 49795,
+      "cacheRead": 429006,
+      "total": 518736
+    },
+    {
+      "date": "2026-05-25",
+      "input": 22732,
+      "output": 111933,
+      "cacheCreate": 167899,
+      "cacheRead": 1446419,
+      "total": 1748983
+    },
+    {
+      "date": "2026-05-26",
+      "input": 25289,
+      "output": 124518,
+      "cacheCreate": 186778,
+      "cacheRead": 1609068,
+      "total": 1945653
+    },
+    {
+      "date": "2026-05-27",
+      "input": 24409,
+      "output": 120188,
+      "cacheCreate": 180286,
+      "cacheRead": 1553122,
+      "total": 1878005
+    },
+    {
+      "date": "2026-05-28",
+      "input": 27030,
+      "output": 133091,
+      "cacheCreate": 199640,
+      "cacheRead": 1719871,
+      "total": 2079632
+    },
+    {
+      "date": "2026-05-29",
+      "input": 21387,
+      "output": 105299,
+      "cacheCreate": 157952,
+      "cacheRead": 1360721,
+      "total": 1645359
+    },
+    {
+      "date": "2026-05-30",
+      "input": 8402,
+      "output": 41391,
+      "cacheCreate": 62088,
+      "cacheRead": 534898,
+      "total": 646779
+    },
+    {
+      "date": "2026-05-31",
+      "input": 7280,
+      "output": 35857,
+      "cacheCreate": 53786,
+      "cacheRead": 463392,
+      "total": 560315
+    },
+    {
+      "date": "2026-06-01",
+      "input": 24534,
+      "output": 120801,
+      "cacheCreate": 181204,
+      "cacheRead": 1561041,
+      "total": 1887580
+    },
+    {
+      "date": "2026-06-02",
+      "input": 27270,
+      "output": 134276,
+      "cacheCreate": 201418,
+      "cacheRead": 1735153,
+      "total": 2098117
+    },
+    {
+      "date": "2026-06-03",
+      "input": 26302,
+      "output": 129503,
+      "cacheCreate": 194257,
+      "cacheRead": 1673476,
+      "total": 2023538
+    },
+    {
+      "date": "2026-06-04",
+      "input": 29103,
+      "output": 143295,
+      "cacheCreate": 214942,
+      "cacheRead": 1851684,
+      "total": 2239024
+    },
+    {
+      "date": "2026-06-05",
+      "input": 23006,
+      "output": 113281,
+      "cacheCreate": 169927,
+      "cacheRead": 1463879,
+      "total": 1770093
+    },
+    {
+      "date": "2026-06-06",
+      "input": 9033,
+      "output": 44494,
+      "cacheCreate": 66745,
+      "cacheRead": 575012,
+      "total": 695284
+    },
+    {
+      "date": "2026-06-07",
+      "input": 7820,
+      "output": 38519,
+      "cacheCreate": 57780,
+      "cacheRead": 497778,
+      "total": 601897
+    },
+    {
+      "date": "2026-06-08",
+      "input": 26337,
+      "output": 129671,
+      "cacheCreate": 194510,
+      "cacheRead": 1675663,
+      "total": 2026181
+    },
+    {
+      "date": "2026-06-09",
+      "input": 29254,
+      "output": 144033,
+      "cacheCreate": 216052,
+      "cacheRead": 1861241,
+      "total": 2250580
+    },
+    {
+      "date": "2026-06-10",
+      "input": 28194,
+      "output": 138817,
+      "cacheCreate": 208228,
+      "cacheRead": 1793831,
+      "total": 2169070
+    },
+    {
+      "date": "2026-06-11",
+      "input": 31176,
+      "output": 153494,
+      "cacheCreate": 230245,
+      "cacheRead": 1983501,
+      "total": 2398416
+    },
+    {
+      "date": "2026-06-12",
+      "input": 24628,
+      "output": 121265,
+      "cacheCreate": 181900,
+      "cacheRead": 1567042,
+      "total": 1894835
+    },
+    {
+      "date": "2026-06-13",
+      "input": 9667,
+      "output": 47598,
+      "cacheCreate": 71402,
+      "cacheRead": 615129,
+      "total": 743796
+    },
+    {
+      "date": "2026-06-14",
+      "input": 8361,
+      "output": 41181,
+      "cacheCreate": 61773,
+      "cacheRead": 532168,
+      "total": 643483
+    },
+    {
+      "date": "2026-06-15",
+      "input": 28138,
+      "output": 138543,
+      "cacheCreate": 207816,
+      "cacheRead": 1790282,
+      "total": 2164779
+    },
+    {
+      "date": "2026-06-16",
+      "input": 31234,
+      "output": 153791,
+      "cacheCreate": 230690,
+      "cacheRead": 1987323,
+      "total": 2403038
+    },
+    {
+      "date": "2026-06-17",
+      "input": 30086,
+      "output": 148130,
+      "cacheCreate": 222200,
+      "cacheRead": 1914182,
+      "total": 2314598
+    },
+    {
+      "date": "2026-06-18",
+      "input": 33246,
+      "output": 163695,
+      "cacheCreate": 245546,
+      "cacheRead": 2115317,
+      "total": 2557804
+    },
+    {
+      "date": "2026-06-19",
+      "input": 26249,
+      "output": 129250,
+      "cacheCreate": 193875,
+      "cacheRead": 1670199,
+      "total": 2019573
+    },
+    {
+      "date": "2026-06-20",
+      "input": 10295,
+      "output": 50704,
+      "cacheCreate": 76057,
+      "cacheRead": 655243,
+      "total": 792299
+    },
+    {
+      "date": "2026-06-21",
+      "input": 8902,
+      "output": 43838,
+      "cacheCreate": 65761,
+      "cacheRead": 566549,
+      "total": 685050
+    },
+    {
+      "date": "2026-06-22",
+      "input": 29940,
+      "output": 147413,
+      "cacheCreate": 221121,
+      "cacheRead": 1904904,
+      "total": 2303378
+    }
+  ],
   "models": [
     {
-      "model": "claude-opus-4",
+      "model": "opus",
       "label": "Claude Opus",
-      "input": 85862,
-      "output": 482976,
-      "cacheCreate": 643968,
-      "cacheRead": 5860108,
-      "total": 7077208,
-      "cost": 52.1
+      "input": 379339,
+      "output": 1867760,
+      "cacheCreate": 2801682,
+      "cacheRead": 24135831,
+      "total": 29184612,
+      "cost": 234.51
     },
     {
-      "model": "claude-sonnet-4",
+      "model": "sonnet",
       "label": "Claude Sonnet",
-      "input": 107328,
-      "output": 515174,
-      "cacheCreate": 837158,
-      "cacheRead": 6976320,
-      "total": 8425248,
-      "cost": 17.8
+      "input": 249080,
+      "output": 1226507,
+      "cacheCreate": 1839790,
+      "cacheRead": 15849531,
+      "total": 19164908,
+      "cost": 30.8
     },
     {
-      "model": "claude-haiku-4",
+      "model": "haiku",
       "label": "Claude Haiku",
-      "input": 21465,
-      "output": 75129,
-      "cacheCreate": 128793,
-      "cacheRead": 1116211,
-      "total": 1348039,
-      "cost": 1.5
+      "input": 92639,
+      "output": 456166,
+      "cacheCreate": 684264,
+      "cacheRead": 5894897,
+      "total": 7127966,
+      "cost": 3.05
     }
   ],
   "projects": [
     {
-      "project": "claude-eats-tokens",
-      "total": 4886643,
-      "cost": 21.3
-    },
-    {
       "project": "brandpulse-app",
-      "total": 3875614,
-      "cost": 18.9
+      "name": "brandpulse-app",
+      "path": "C:/Users/adam/Desktop/brandpulse-app",
+      "paths": [
+        "C:/Users/adam/Desktop/brandpulse-app"
+      ],
+      "total": 17483898,
+      "cost": 106.77,
+      "models": [
+        {
+          "model": "opus",
+          "label": "Claude Opus",
+          "total": 12238761,
+          "cost": 98.34
+        },
+        {
+          "model": "sonnet",
+          "label": "Claude Sonnet",
+          "total": 5245137,
+          "cost": 8.43
+        }
+      ],
+      "sessionCount": 4,
+      "sessions": [
+        {
+          "sessionId": "bran-00",
+          "title": "Refonte de l'onboarding mobile",
+          "tokens": 5944525,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "bran-01",
+          "title": "Fix paiement Stripe en prod",
+          "tokens": 4895491,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "bran-02",
+          "title": "A/B test page d'accueil",
+          "tokens": 3846457,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "bran-03",
+          "title": "Audit accessibilité",
+          "tokens": 2797423,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-05-20",
+          "total": 546000
+        },
+        {
+          "date": "2026-05-21",
+          "total": 605176
+        },
+        {
+          "date": "2026-05-22",
+          "total": 479232
+        },
+        {
+          "date": "2026-05-23",
+          "total": 188552
+        },
+        {
+          "date": "2026-05-24",
+          "total": 163488
+        },
+        {
+          "date": "2026-05-25",
+          "total": 551200
+        },
+        {
+          "date": "2026-05-26",
+          "total": 613184
+        },
+        {
+          "date": "2026-05-27",
+          "total": 591864
+        },
+        {
+          "date": "2026-05-28",
+          "total": 655408
+        },
+        {
+          "date": "2026-05-29",
+          "total": 518544
+        },
+        {
+          "date": "2026-05-30",
+          "total": 203840
+        },
+        {
+          "date": "2026-05-31",
+          "total": 176592
+        },
+        {
+          "date": "2026-06-01",
+          "total": 594880
+        },
+        {
+          "date": "2026-06-02",
+          "total": 661232
+        },
+        {
+          "date": "2026-06-03",
+          "total": 637728
+        },
+        {
+          "date": "2026-06-04",
+          "total": 705640
+        },
+        {
+          "date": "2026-06-05",
+          "total": 557856
+        },
+        {
+          "date": "2026-06-06",
+          "total": 219128
+        },
+        {
+          "date": "2026-06-07",
+          "total": 189696
+        },
+        {
+          "date": "2026-06-08",
+          "total": 638560
+        },
+        {
+          "date": "2026-06-09",
+          "total": 709280
+        },
+        {
+          "date": "2026-06-10",
+          "total": 683592
+        },
+        {
+          "date": "2026-06-11",
+          "total": 755872
+        },
+        {
+          "date": "2026-06-12",
+          "total": 597168
+        },
+        {
+          "date": "2026-06-13",
+          "total": 234416
+        },
+        {
+          "date": "2026-06-14",
+          "total": 202800
+        },
+        {
+          "date": "2026-06-15",
+          "total": 682240
+        },
+        {
+          "date": "2026-06-16",
+          "total": 757328
+        },
+        {
+          "date": "2026-06-17",
+          "total": 729456
+        },
+        {
+          "date": "2026-06-18",
+          "total": 806104
+        },
+        {
+          "date": "2026-06-19",
+          "total": 636480
+        },
+        {
+          "date": "2026-06-20",
+          "total": 249703
+        },
+        {
+          "date": "2026-06-21",
+          "total": 215903
+        },
+        {
+          "date": "2026-06-22",
+          "total": 725920
+        }
+      ],
+      "lastActivity": "2026-06-22T18:00:00+00:00",
+      "input": 227257,
+      "output": 1118947,
+      "cacheCreate": 1678434,
+      "cacheRead": 14459260
     },
     {
       "project": "kapman-news",
-      "total": 3033089,
-      "cost": 12.4
+      "name": "kapman-news",
+      "path": "C:/Users/adam/Desktop/kapman-news",
+      "paths": [
+        "C:/Users/adam/Desktop/kapman-news"
+      ],
+      "total": 13785348,
+      "cost": 15.66,
+      "models": [
+        {
+          "model": "sonnet",
+          "label": "Claude Sonnet",
+          "total": 8271222,
+          "cost": 13.29
+        },
+        {
+          "model": "haiku",
+          "label": "Claude Haiku",
+          "total": 5514126,
+          "cost": 2.36
+        }
+      ],
+      "sessionCount": 3,
+      "sessions": [
+        {
+          "sessionId": "kapm-00",
+          "title": "Pipeline scraping quotidien",
+          "tokens": 6203406,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "haiku",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "kapm-01",
+          "title": "Génération newsletter",
+          "tokens": 4824871,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "haiku",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "kapm-02",
+          "title": "Dédup des articles",
+          "tokens": 2757069,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "haiku",
+            "sonnet"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-05-20",
+          "total": 430500
+        },
+        {
+          "date": "2026-05-21",
+          "total": 477157
+        },
+        {
+          "date": "2026-05-22",
+          "total": 377856
+        },
+        {
+          "date": "2026-05-23",
+          "total": 148666
+        },
+        {
+          "date": "2026-05-24",
+          "total": 128904
+        },
+        {
+          "date": "2026-05-25",
+          "total": 434600
+        },
+        {
+          "date": "2026-05-26",
+          "total": 483472
+        },
+        {
+          "date": "2026-05-27",
+          "total": 466662
+        },
+        {
+          "date": "2026-05-28",
+          "total": 516764
+        },
+        {
+          "date": "2026-05-29",
+          "total": 408852
+        },
+        {
+          "date": "2026-05-30",
+          "total": 160720
+        },
+        {
+          "date": "2026-05-31",
+          "total": 139236
+        },
+        {
+          "date": "2026-06-01",
+          "total": 469040
+        },
+        {
+          "date": "2026-06-02",
+          "total": 521356
+        },
+        {
+          "date": "2026-06-03",
+          "total": 502823
+        },
+        {
+          "date": "2026-06-04",
+          "total": 556369
+        },
+        {
+          "date": "2026-06-05",
+          "total": 439848
+        },
+        {
+          "date": "2026-06-06",
+          "total": 172774
+        },
+        {
+          "date": "2026-06-07",
+          "total": 149568
+        },
+        {
+          "date": "2026-06-08",
+          "total": 503480
+        },
+        {
+          "date": "2026-06-09",
+          "total": 559240
+        },
+        {
+          "date": "2026-06-10",
+          "total": 538986
+        },
+        {
+          "date": "2026-06-11",
+          "total": 595975
+        },
+        {
+          "date": "2026-06-12",
+          "total": 470844
+        },
+        {
+          "date": "2026-06-13",
+          "total": 184828
+        },
+        {
+          "date": "2026-06-14",
+          "total": 159900
+        },
+        {
+          "date": "2026-06-15",
+          "total": 537920
+        },
+        {
+          "date": "2026-06-16",
+          "total": 597124
+        },
+        {
+          "date": "2026-06-17",
+          "total": 575148
+        },
+        {
+          "date": "2026-06-18",
+          "total": 635582
+        },
+        {
+          "date": "2026-06-19",
+          "total": 501839
+        },
+        {
+          "date": "2026-06-20",
+          "total": 196881
+        },
+        {
+          "date": "2026-06-21",
+          "total": 170232
+        },
+        {
+          "date": "2026-06-22",
+          "total": 572360
+        }
+      ],
+      "lastActivity": "2026-06-22T18:00:00+00:00",
+      "input": 179183,
+      "output": 882237,
+      "cacheCreate": 1323373,
+      "cacheRead": 11400555
     },
     {
       "project": "serp-scraper",
-      "total": 2696079,
-      "cost": 9.8
+      "name": "serp-scraper",
+      "path": "C:/Users/adam/Desktop/serp-scraper",
+      "paths": [
+        "C:/Users/adam/Desktop/serp-scraper"
+      ],
+      "total": 10086828,
+      "cost": 48.63,
+      "models": [
+        {
+          "model": "opus",
+          "label": "Claude Opus",
+          "total": 5043414,
+          "cost": 40.53
+        },
+        {
+          "model": "sonnet",
+          "label": "Claude Sonnet",
+          "total": 5043414,
+          "cost": 8.11
+        }
+      ],
+      "sessionCount": 2,
+      "sessions": [
+        {
+          "sessionId": "serp-00",
+          "title": "Anti-bot Cloudflare",
+          "tokens": 5547755,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "serp-01",
+          "title": "Parsing résultats Google",
+          "tokens": 4539072,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-05-20",
+          "total": 315000
+        },
+        {
+          "date": "2026-05-21",
+          "total": 349140
+        },
+        {
+          "date": "2026-05-22",
+          "total": 276480
+        },
+        {
+          "date": "2026-05-23",
+          "total": 108780
+        },
+        {
+          "date": "2026-05-24",
+          "total": 94320
+        },
+        {
+          "date": "2026-05-25",
+          "total": 318000
+        },
+        {
+          "date": "2026-05-26",
+          "total": 353760
+        },
+        {
+          "date": "2026-05-27",
+          "total": 341460
+        },
+        {
+          "date": "2026-05-28",
+          "total": 378120
+        },
+        {
+          "date": "2026-05-29",
+          "total": 299160
+        },
+        {
+          "date": "2026-05-30",
+          "total": 117600
+        },
+        {
+          "date": "2026-05-31",
+          "total": 101880
+        },
+        {
+          "date": "2026-06-01",
+          "total": 343200
+        },
+        {
+          "date": "2026-06-02",
+          "total": 381480
+        },
+        {
+          "date": "2026-06-03",
+          "total": 367920
+        },
+        {
+          "date": "2026-06-04",
+          "total": 407100
+        },
+        {
+          "date": "2026-06-05",
+          "total": 321840
+        },
+        {
+          "date": "2026-06-06",
+          "total": 126420
+        },
+        {
+          "date": "2026-06-07",
+          "total": 109440
+        },
+        {
+          "date": "2026-06-08",
+          "total": 368400
+        },
+        {
+          "date": "2026-06-09",
+          "total": 409200
+        },
+        {
+          "date": "2026-06-10",
+          "total": 394380
+        },
+        {
+          "date": "2026-06-11",
+          "total": 436080
+        },
+        {
+          "date": "2026-06-12",
+          "total": 344520
+        },
+        {
+          "date": "2026-06-13",
+          "total": 135240
+        },
+        {
+          "date": "2026-06-14",
+          "total": 117000
+        },
+        {
+          "date": "2026-06-15",
+          "total": 393600
+        },
+        {
+          "date": "2026-06-16",
+          "total": 436920
+        },
+        {
+          "date": "2026-06-17",
+          "total": 420840
+        },
+        {
+          "date": "2026-06-18",
+          "total": 465060
+        },
+        {
+          "date": "2026-06-19",
+          "total": 367199
+        },
+        {
+          "date": "2026-06-20",
+          "total": 144060
+        },
+        {
+          "date": "2026-06-21",
+          "total": 124559
+        },
+        {
+          "date": "2026-06-22",
+          "total": 418800
+        }
+      ],
+      "lastActivity": "2026-06-22T18:00:00+00:00",
+      "input": 131098,
+      "output": 645534,
+      "cacheCreate": 968318,
+      "cacheRead": 8341878
     },
     {
       "project": "mixhub",
-      "total": 2359069,
-      "cost": 5.1
+      "name": "mixhub",
+      "path": "C:/Users/adam/Desktop/mixhub",
+      "paths": [
+        "C:/Users/adam/Desktop/mixhub"
+      ],
+      "total": 8069409,
+      "cost": 52.56,
+      "models": [
+        {
+          "model": "opus",
+          "label": "Claude Opus",
+          "total": 6455569,
+          "cost": 51.87
+        },
+        {
+          "model": "haiku",
+          "label": "Claude Haiku",
+          "total": 1613840,
+          "cost": 0.69
+        }
+      ],
+      "sessionCount": 2,
+      "sessions": [
+        {
+          "sessionId": "mixh-00",
+          "title": "Moteur de recommandation",
+          "tokens": 4841645,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "haiku",
+            "opus"
+          ]
+        },
+        {
+          "sessionId": "mixh-01",
+          "title": "Import bibliothèque",
+          "tokens": 3227763,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "haiku",
+            "opus"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-05-20",
+          "total": 252000
+        },
+        {
+          "date": "2026-05-21",
+          "total": 279312
+        },
+        {
+          "date": "2026-05-22",
+          "total": 221184
+        },
+        {
+          "date": "2026-05-23",
+          "total": 87024
+        },
+        {
+          "date": "2026-05-24",
+          "total": 75456
+        },
+        {
+          "date": "2026-05-25",
+          "total": 254400
+        },
+        {
+          "date": "2026-05-26",
+          "total": 283008
+        },
+        {
+          "date": "2026-05-27",
+          "total": 273168
+        },
+        {
+          "date": "2026-05-28",
+          "total": 302496
+        },
+        {
+          "date": "2026-05-29",
+          "total": 239328
+        },
+        {
+          "date": "2026-05-30",
+          "total": 94080
+        },
+        {
+          "date": "2026-05-31",
+          "total": 81504
+        },
+        {
+          "date": "2026-06-01",
+          "total": 274560
+        },
+        {
+          "date": "2026-06-02",
+          "total": 305184
+        },
+        {
+          "date": "2026-06-03",
+          "total": 294336
+        },
+        {
+          "date": "2026-06-04",
+          "total": 325680
+        },
+        {
+          "date": "2026-06-05",
+          "total": 257472
+        },
+        {
+          "date": "2026-06-06",
+          "total": 101136
+        },
+        {
+          "date": "2026-06-07",
+          "total": 87552
+        },
+        {
+          "date": "2026-06-08",
+          "total": 294720
+        },
+        {
+          "date": "2026-06-09",
+          "total": 327360
+        },
+        {
+          "date": "2026-06-10",
+          "total": 315504
+        },
+        {
+          "date": "2026-06-11",
+          "total": 348864
+        },
+        {
+          "date": "2026-06-12",
+          "total": 275616
+        },
+        {
+          "date": "2026-06-13",
+          "total": 108192
+        },
+        {
+          "date": "2026-06-14",
+          "total": 93600
+        },
+        {
+          "date": "2026-06-15",
+          "total": 314880
+        },
+        {
+          "date": "2026-06-16",
+          "total": 349536
+        },
+        {
+          "date": "2026-06-17",
+          "total": 336672
+        },
+        {
+          "date": "2026-06-18",
+          "total": 372048
+        },
+        {
+          "date": "2026-06-19",
+          "total": 293760
+        },
+        {
+          "date": "2026-06-20",
+          "total": 115247
+        },
+        {
+          "date": "2026-06-21",
+          "total": 99647
+        },
+        {
+          "date": "2026-06-22",
+          "total": 335040
+        }
+      ],
+      "lastActivity": "2026-06-22T18:00:00+00:00",
+      "input": 104874,
+      "output": 516416,
+      "cacheCreate": 774642,
+      "cacheRead": 6673477
+    },
+    {
+      "project": "claude-eats-tokens",
+      "name": "claude-eats-tokens",
+      "path": "C:/Users/adam/Desktop/claude-eats-tokens",
+      "paths": [
+        "C:/Users/adam/Desktop/claude-eats-tokens"
+      ],
+      "total": 6052003,
+      "cost": 44.74,
+      "models": [
+        {
+          "model": "opus",
+          "label": "Claude Opus",
+          "total": 5446868,
+          "cost": 43.77
+        },
+        {
+          "model": "sonnet",
+          "label": "Claude Sonnet",
+          "total": 605135,
+          "cost": 0.97
+        }
+      ],
+      "sessionCount": 2,
+      "sessions": [
+        {
+          "sessionId": "clau-00",
+          "title": "Vue projets réels",
+          "tokens": 3026001,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        },
+        {
+          "sessionId": "clau-01",
+          "title": "Audit & refactor",
+          "tokens": 3026001,
+          "lastActivity": "2026-06-22T18:00:00+00:00",
+          "models": [
+            "opus",
+            "sonnet"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-05-20",
+          "total": 189000
+        },
+        {
+          "date": "2026-05-21",
+          "total": 209483
+        },
+        {
+          "date": "2026-05-22",
+          "total": 165888
+        },
+        {
+          "date": "2026-05-23",
+          "total": 65267
+        },
+        {
+          "date": "2026-05-24",
+          "total": 56592
+        },
+        {
+          "date": "2026-05-25",
+          "total": 190800
+        },
+        {
+          "date": "2026-05-26",
+          "total": 212256
+        },
+        {
+          "date": "2026-05-27",
+          "total": 204876
+        },
+        {
+          "date": "2026-05-28",
+          "total": 226872
+        },
+        {
+          "date": "2026-05-29",
+          "total": 179496
+        },
+        {
+          "date": "2026-05-30",
+          "total": 70560
+        },
+        {
+          "date": "2026-05-31",
+          "total": 61128
+        },
+        {
+          "date": "2026-06-01",
+          "total": 205920
+        },
+        {
+          "date": "2026-06-02",
+          "total": 228888
+        },
+        {
+          "date": "2026-06-03",
+          "total": 220752
+        },
+        {
+          "date": "2026-06-04",
+          "total": 244259
+        },
+        {
+          "date": "2026-06-05",
+          "total": 193104
+        },
+        {
+          "date": "2026-06-06",
+          "total": 75851
+        },
+        {
+          "date": "2026-06-07",
+          "total": 65664
+        },
+        {
+          "date": "2026-06-08",
+          "total": 221040
+        },
+        {
+          "date": "2026-06-09",
+          "total": 245520
+        },
+        {
+          "date": "2026-06-10",
+          "total": 236628
+        },
+        {
+          "date": "2026-06-11",
+          "total": 261647
+        },
+        {
+          "date": "2026-06-12",
+          "total": 206712
+        },
+        {
+          "date": "2026-06-13",
+          "total": 81144
+        },
+        {
+          "date": "2026-06-14",
+          "total": 70200
+        },
+        {
+          "date": "2026-06-15",
+          "total": 236160
+        },
+        {
+          "date": "2026-06-16",
+          "total": 262152
+        },
+        {
+          "date": "2026-06-17",
+          "total": 252504
+        },
+        {
+          "date": "2026-06-18",
+          "total": 279036
+        },
+        {
+          "date": "2026-06-19",
+          "total": 220319
+        },
+        {
+          "date": "2026-06-20",
+          "total": 86435
+        },
+        {
+          "date": "2026-06-21",
+          "total": 74736
+        },
+        {
+          "date": "2026-06-22",
+          "total": 251279
+        }
+      ],
+      "lastActivity": "2026-06-22T18:00:00+00:00",
+      "input": 78646,
+      "output": 387299,
+      "cacheCreate": 580969,
+      "cacheRead": 5005089
     }
   ],
+  "hourly": {
+    "byHour": [
+      {
+        "hour": "10",
+        "total": 11094961
+      },
+      {
+        "hour": "11",
+        "total": 11094961
+      },
+      {
+        "hour": "15",
+        "total": 11094961
+      },
+      {
+        "hour": "16",
+        "total": 11094961
+      },
+      {
+        "hour": "21",
+        "total": 11094961
+      }
+    ],
+    "weekdayHour": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2026103,
+        2026103,
+        0,
+        0,
+        0,
+        2026103,
+        2026103,
+        0,
+        0,
+        0,
+        0,
+        2026103,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1739412,
+        1739412,
+        0,
+        0,
+        0,
+        1739412,
+        1739412,
+        0,
+        0,
+        0,
+        0,
+        1739412,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2023463,
+        2023463,
+        0,
+        0,
+        0,
+        2023463,
+        2023463,
+        0,
+        0,
+        0,
+        0,
+        2023463,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2238941,
+        2238941,
+        0,
+        0,
+        0,
+        2238941,
+        2238941,
+        0,
+        0,
+        0,
+        0,
+        2238941,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1770018,
+        1770018,
+        0,
+        0,
+        0,
+        1770018,
+        1770018,
+        0,
+        0,
+        0,
+        0,
+        1770018,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        695206,
+        695206,
+        0,
+        0,
+        0,
+        695206,
+        695206,
+        0,
+        0,
+        0,
+        0,
+        695206,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        601818,
+        601818,
+        0,
+        0,
+        0,
+        601818,
+        601818,
+        0,
+        0,
+        0,
+        0,
+        601818,
+        0,
+        0
+      ]
+    ]
+  },
   "api": null
 }

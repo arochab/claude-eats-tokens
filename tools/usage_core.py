@@ -276,7 +276,7 @@ def merge_projects_by_name(projects):
                 "project": key, "name": key, "path": p.get("path"),
                 "paths": [], "input": 0, "output": 0, "cacheCreate": 0,
                 "cacheRead": 0, "total": 0, "cost": 0.0, "sessionCount": 0,
-                "sessions": [], "models": {}, "lastActivity": None,
+                "sessions": [], "models": {}, "lastActivity": None, "_days": {},
             }
             order.append(key)
         m = merged[key]
@@ -285,6 +285,8 @@ def merge_projects_by_name(projects):
         m["cost"] = round(m["cost"] + p.get("cost", 0.0), 2)
         m["sessionCount"] += p.get("sessionCount", 0)
         m["sessions"].extend(p.get("sessions", []))
+        for row in p.get("timeline", []):
+            m["_days"][row["date"]] = m["_days"].get(row["date"], 0) + row.get("total", 0)
         if p.get("path"):
             m["paths"].append(p["path"])
         # fusion des breakdown modèles
@@ -302,5 +304,7 @@ def merge_projects_by_name(projects):
         m["models"] = sorted(m["models"].values(), key=lambda x: -x["total"])
         m["sessions"].sort(key=lambda x: -x.get("tokens", 0))
         m["sessions"] = m["sessions"][:20]
+        m["timeline"] = [{"date": d, "total": m["_days"][d]} for d in sorted(m["_days"])]
+        del m["_days"]
         out.append(m)
     return out

@@ -105,14 +105,47 @@ body{font-family:var(--sans);background:var(--cream);color:var(--slate);line-hei
 .bar{height:8px;background:var(--cream-2);border-radius:99px;overflow:hidden}
 .bar>span{display:block;height:100%;border-radius:99px}
 
-.proj{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--line)}
+/* ===== Projets (liste enrichie, triable, cliquable) ===== */
+.proj-sort{display:inline-flex;gap:2px;background:var(--cream-2);border-radius:8px;padding:2px}
+.proj-sort button{border:none;background:transparent;color:var(--muted);font-family:var(--sans);font-size:11.5px;font-weight:500;padding:4px 9px;border-radius:6px;cursor:pointer;transition:.15s}
+.proj-sort button.on{background:var(--paper);color:var(--slate);box-shadow:0 1px 2px rgba(26,25,21,.06)}
+.proj{display:grid;grid-template-columns:1fr auto;grid-template-areas:"pn pv" "pbar pbar";gap:4px 10px;align-items:center;width:100%;text-align:left;padding:12px 0;border-top:1px solid var(--line);background:none;border-left:none;border-right:none;border-bottom:none;font-family:var(--sans);color:inherit;cursor:pointer;transition:background .12s}
 .proj:first-of-type{border-top:none}
-.proj .pn{font-size:14px;display:flex;align-items:center;gap:9px;min-width:0}
+button.proj:hover{background:rgba(204,120,92,.05)}
+.proj.others{cursor:default}
+.proj .pn{grid-area:pn;font-size:14px;display:flex;align-items:center;gap:9px;min-width:0}
 .proj .pn .ico{width:28px;height:28px;border-radius:8px;background:var(--cream-2);display:grid;place-items:center;flex:0 0 auto;color:var(--terracotta-d)}
 .proj .pn .ico svg{width:14px;height:14px}
-.proj .pn .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.proj .pv{font-size:13px;color:var(--muted);text-align:right;flex:0 0 auto;padding-left:10px}
-.proj .pv b{display:block;color:var(--slate);font-weight:500;font-size:14px}
+.proj .pn .t{display:flex;flex-direction:column;min-width:0}
+.proj .pname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.proj .pmeta{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj .pv{grid-area:pv;font-size:12px;color:var(--muted);text-align:right;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end}
+.proj .pv b{color:var(--slate);font-weight:600;font-size:14px}
+.proj .pshare{font-size:11px;color:var(--terracotta-d);font-weight:500}
+.proj .pcost{font-size:11px}
+.proj .pbar{grid-area:pbar;height:5px;background:var(--cream-2);border-radius:99px;overflow:hidden}
+.proj .pbar>span{display:block;height:100%;background:var(--clay);border-radius:99px;transition:width .4s}
+
+/* bandeau de filtre projet */
+.projfilter{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(204,120,92,.12);border:1px solid rgba(204,120,92,.3);border-radius:999px;padding:8px 14px;margin-bottom:14px;font-size:13px}
+.projfilter b{font-weight:600}
+.projfilter button{border:none;background:var(--terracotta);color:#fff;font-size:12px;font-weight:600;border-radius:999px;padding:5px 12px;cursor:pointer}
+
+/* drill-down projet */
+.psum{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+.psum .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px}
+.psum .vbig{font-family:var(--serif);font-size:20px;margin:0;line-height:1.1}
+.psub{font-size:12px;color:var(--muted);margin:4px 0 10px}
+.sessrow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
+.sessrow:first-of-type{border-top:none}
+.sessrow .st{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sessrow .sv{color:var(--muted);flex:0 0 auto;font-size:12px}
+
+/* états vides soignés */
+.emptystate{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:24px 12px;color:var(--muted)}
+.emptystate svg{opacity:.5}
+.emptystate .es-t{font-family:var(--serif);font-size:16px;color:var(--slate);margin:4px 0 0}
+.emptystate .es-h{font-size:12.5px;margin:0;max-width:30ch;line-height:1.5}
 
 /* settings sheet */
 .sheet{position:fixed;inset:0;background:rgba(26,25,21,.4);display:none;z-index:50;align-items:flex-end;justify-content:center}
@@ -184,4 +217,41 @@ body{font-family:var(--sans);background:var(--cream);color:var(--slate);line-hei
 @media (prefers-color-scheme:dark){
   .verdict.ok .vstate{color:#aacc96}.verdict.warn .vstate{color:#e8b86a}.verdict.bad .vstate{color:#e8a48c}
   .vsub{color:var(--slate-soft)}
+}
+
+/* ===========================================================================
+   AXE 3 — Accessibilité & polish
+   =========================================================================== */
+/* focus visible cohérent au clavier (corrige A3-1) */
+:focus-visible{outline:2px solid var(--terracotta);outline-offset:2px;border-radius:4px}
+.field input:focus-visible,.field select:focus-visible{outline:2px solid var(--terracotta);outline-offset:1px;border-color:var(--terracotta)}
+/* on garde outline:none uniquement quand le focus n'est pas clavier */
+.field input:focus:not(:focus-visible){outline:none;border-color:var(--terracotta)}
+
+/* hover/feedback (corrige A3-14/15) */
+.iconbtn:hover{background:var(--cream-2)}
+.seg button:hover:not(.on){background:rgba(240,238,230,.5)}
+.proj-sort button:hover:not(.on){color:var(--slate)}
+
+/* dark mode : héro un peu moins noir (corrige A3-6) */
+@media (prefers-color-scheme:dark){
+  .hero{background:#16150F}
+  .projfilter{background:rgba(204,120,92,.18)}
+  button.proj:hover{background:rgba(204,120,92,.10)}
+}
+
+/* respect du mouvement réduit (corrige A3-8) */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .dot.live::after{display:none}
+}
+
+/* très petits écrans <360px (corrige A3-9) */
+@media (max-width:360px){
+  .app{padding:16px 12px 20px}
+  .hero{flex-direction:column;gap:14px;text-align:center}
+  .ring{width:104px;height:104px}
+  .minirings,.grid2{grid-template-columns:1fr}
+  .seg button{font-size:12px}
+  .psum{grid-template-columns:1fr 1fr}
 }
