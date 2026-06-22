@@ -197,6 +197,21 @@
     var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
     $("foot").innerHTML = "Source : <b>" + esc(short(src)) + "</b>" + (d.source && d.source.apiConnected ? " · API connectée" : "") +
       "<br/>Coût estimé au tarif API, converti à " + settings.eurRate + " €/$. Données locales.";
+
+    updateChartA11y(d, month, pMonth);
+  }
+
+  // descriptions accessibles dynamiques des graphes/jauges (A3-4/A3-11)
+  function updateChartA11y(d, month, pMonth) {
+    function setLabel(id, txt) { var el = $(id); if (el) el.setAttribute("aria-label", txt); }
+    var rows = periodRows();
+    var sum = sumRows(rows);
+    setLabel("hero-ring", "Budget mensuel : " + pMonth + "% utilisé, " + fmt(month) + " sur " + fmt(settings.month) + " tokens.");
+    setLabel("trend", "Évolution : " + fmt(sum.total) + " tokens sur la période sélectionnée (" + rows.length + " jours).");
+    var tot = sum.total || 1;
+    setLabel("donut", "Répartition : entrée " + Math.round(sum.input / tot * 100) + "%, sortie " +
+      Math.round(sum.output / tot * 100) + "%, cache créé " + Math.round(sum.cacheCreate / tot * 100) +
+      "%, cache lu " + Math.round(sum.cacheRead / tot * 100) + "%.");
   }
   function short(s) { s = String(s); return s.length > 40 ? "…" + s.slice(-38) : s; }
 
@@ -615,12 +630,26 @@
     return tryAt(0);
   }
   /* ---------- événements ---------- */
+  function selectPeriod(b) {
+    [].forEach.call($("period").children, function (x) {
+      var on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    period = b.getAttribute("data-p");
+    $("chart-hint").textContent = "tokens / jour";
+    if (DATA) { var rows = periodRows(); drawTrend(rows); drawDonut(sumRows(rows)); }
+  }
   $("period").addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) return;
-    [].forEach.call(this.children, function (x) { x.classList.remove("on"); });
-    b.classList.add("on"); period = b.getAttribute("data-p");
-    var hint = { today: "aujourd'hui", "7": "7 jours", "30": "30 jours", all: "tout l'historique" }[period];
-    $("chart-hint").textContent = "tokens / jour"; if (DATA) { var rows = periodRows(); drawTrend(rows); drawDonut(sumRows(rows)); }
+    var b = e.target.closest("button"); if (b) selectPeriod(b);
+  });
+  // navigation clavier flèches gauche/droite entre les périodes (A3-7)
+  $("period").addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    var btns = [].slice.call(this.children);
+    var cur = btns.indexOf(document.activeElement);
+    if (cur < 0) return;
+    e.preventDefault();
+    var next = e.key === "ArrowRight" ? (cur + 1) % btns.length : (cur - 1 + btns.length) % btns.length;
+    btns[next].focus(); selectPeriod(btns[next]);
   });
   $("refresh").addEventListener("click", function () { this.style.transform = "rotate(360deg)"; var s = this; setTimeout(function () { s.style.transform = ""; }, 400); load(); });
   if ($("export-csv")) $("export-csv").addEventListener("click", exportCSV);
