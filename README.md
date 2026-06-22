@@ -45,10 +45,10 @@ The joke writes itself — Claude Code is a hungry beast, and you can't see, fro
 </td>
 <td width="50%" valign="top">
 
-- **Live, hands-off** — a silent engine on your PC pushes every 60s and auto-starts with Windows; a private Gist keeps the numbers alive even when the free server sleeps.
-- **Visual breakdown** — calendar heatmap, input/output/cache donut, per-model split (Opus/Sonnet/Haiku/Fable merged across versions), top projects.
-- **Threshold notifications** — Web Push at 50 / 80 / 100% of any budget.
-- **Installable** — Add to Home Screen → full-screen icon, offline shell, no app store.
+- **Real projects, grouped** — every session is traced back to its real project via its working directory (all the `.claude/worktrees/*` of one repo collapse into a single entry), with per-project cost weighted by the *actual* model mix, a drill-down into its sessions, and a one-tap filter that recomputes the whole dashboard.
+- **Visual breakdown** — daily calendar heatmap, **peak-hours heatmap** (day × hour), input/output/cache donut, per-model split, week-vs-week comparison.
+- **Export** — one click to CSV (raw timeline + projects) or PNG (the trend chart).
+- **Live & accessible** — silent 60s push, Windows autostart, private-Gist persistence; keyboard navigation, focus states, screen-reader chart descriptions, reduced-motion, installable PWA with offline shell.
 
 </td>
 </tr>
@@ -103,9 +103,13 @@ python server/app.py                # → http://localhost:5000
 # Push your real numbers from this PC
 export PUSH_URL="http://localhost:5000"
 python tools/push_usage.py --once
+
+# Run the tests (Python + Node, no extra deps beyond Flask for the server tests)
+pip install -r server/requirements.txt
+python tests/run_all.py
 ```
 
-Without a server the app falls back to `data/usage.json`, then to a bundled demo dataset.
+Without a server the app falls back to `data/usage.json`, then to a bundled demo dataset. On `localhost` the front skips Render and reads the local file directly.
 
 ## Deploy (free, end to end)
 
@@ -130,11 +134,14 @@ Full step-by-step in [`DEPLOIEMENT.md`](DEPLOIEMENT.md) and [`CONFORT-SETUP.md`]
 
 ```
 index.html                 landing + dashboard (front root, for Pages scope)
-pwa/                       app.js · styles.css · config.js · manifest · icons
-service-worker.js · sw.v5.js   cache + push (root scope, self-updating)
-data/usage.json            latest numbers (pushed) · usage.demo.json (sample)
-server/app.py              Flask push server (Render) + Gist persistence
-tools/push_usage.py        PC-side: read logs → aggregate → POST /push
+pwa/                       app.js · format.js (pure helpers) · styles.css · config.js · manifest · icons
+sw.v6.js                   service worker at root (network-first shell, network-only data, cache-purge)
+data/usage.json            latest numbers (pushed, schema v2) · usage.demo.json (sample)
+server/app.py              Flask push server (Render) + Gist persistence (timing-safe auth, retry)
+tools/usage_core.py        pure logic (cwd→project, model cost, windows) — fully unit-tested
+tools/push_usage.py        PC-side: stream logs → aggregate → POST /push
+tools/make_demo.py         regenerate the demo dataset
+tests/                     41 tests · run with `python tests/run_all.py` (Python + Node)
 installer-demarrage-auto.bat   silent Windows autostart for the engine
 .github/workflows/         pages.yml — deploy PWA on push
 assets/                    hero, demo.gif, screenshots
