@@ -55,31 +55,20 @@
     settings.w7d   = head(Math.max(w7d, avg*7) * 1.6);
   }
 
-  /* ---------- utilitaires ---------- */
-  var COLORS = { opus: "#CC785C", sonnet: "#6A8CAF", haiku: "#7E9E6D", default: "#D4A27F" };
+  /* ---------- utilitaires ----------
+     Les helpers PURS vivent dans pwa/format.js (window.CET, testé sous Node).
+     Ici on garde des alias fins, dont ceux qui dépendent de `settings`. */
+  var CET = window.CET;
   var TONE = { input: "#6A8CAF", output: "#CC785C", cacheCreate: "#D4A27F", cacheRead: "#7E9E6D" };
-  function modelColor(l) { l = (l || "").toLowerCase(); return l.indexOf("opus") >= 0 ? COLORS.opus : l.indexOf("sonnet") >= 0 ? COLORS.sonnet : l.indexOf("haiku") >= 0 ? COLORS.haiku : COLORS.default; }
-  function fmt(n) { n = n || 0; if (n >= 1e9) return (n / 1e9).toFixed(1).replace(".", ",") + " Md"; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(".", ",") + " M"; if (n >= 1e3) return (n / 1e3).toFixed(0) + " k"; return String(Math.round(n)); }
-  function fmtFull(n) { return (n || 0).toLocaleString("fr-FR"); }
+  var modelColor = CET.modelColor, fmt = CET.fmt, fmtFull = CET.fmtFull,
+      pct = CET.pct, esc = CET.esc, dayLabel = CET.dayLabel, ringSVG = CET.ringSVG;
   function eur(usd) { return (usd * settings.eurRate).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"; }
   function money(usd) { return "≈ " + eur(usd); }
-  function pct(a, b) { return b ? Math.min(999, Math.round((a / b) * 100)) : 0; }
-  function dayLabel(iso) { return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); }
-  function ago(iso) { if (!iso) return "—"; var m = (Date.now() - new Date(iso).getTime()) / 60000; if (m < 1) return "à l'instant"; if (m < 60) return "il y a " + Math.round(m) + " min"; if (m < 1440) return "il y a " + Math.round(m / 60) + " h"; return "il y a " + Math.round(m / 1440) + " j"; }
-  function until(iso) { if (!iso) return ""; var m = (new Date(iso).getTime() - Date.now()) / 60000; if (m <= 0) return "réinitialisée"; if (m < 60) return "reset dans " + Math.round(m) + " min"; return "reset dans " + Math.round(m / 60) + " h " + Math.round(m % 60) + " min"; }
+  function ago(iso) { return CET.ago(iso); }
+  function until(iso) { return CET.until(iso); }
+  function ringColor(p) { return CET.ringColor(p, settings.warnPct); }
+  function toneOf(p) { return CET.toneOf(p, settings.warnPct); }
   var $ = function (id) { return document.getElementById(id); };
-  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
-  function ringColor(p) { return p >= 100 ? "#B5563A" : p >= settings.warnPct ? "#C8923D" : (p >= 50 ? "#C8923D" : "#7E9E6D"); }
-  function toneOf(p) { return p >= 100 ? "bad" : p >= settings.warnPct ? "bad" : (p >= 50 ? "warn" : "ok"); }
-
-  /* anneau SVG */
-  function ringSVG(p, size, stroke, track, fg, centerHTML) {
-    var r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.min(p, 100) / 100);
-    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
-      '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + track + '" stroke-width="' + stroke + '"/>' +
-      '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + fg + '" stroke-width="' + stroke + '" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/></svg>' +
-      (centerHTML || "");
-  }
 
   var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null;
 
