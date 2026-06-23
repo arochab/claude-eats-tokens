@@ -916,7 +916,7 @@
   loadEurRate();
   load();
   startLive();
-  var SW_FILE = "sw.v10.js";
+  var SW_FILE = "sw.v11.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
