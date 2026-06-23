@@ -45,6 +45,9 @@ body{font-family:var(--sans);background:
 
 /* premier lancement / démo : guidage clair */
 .firstrun{display:flex;gap:13px;align-items:flex-start;background:rgba(212,162,127,.12);border:1px solid rgba(212,162,127,.3);border-radius:var(--r-lg);padding:15px 16px;margin-bottom:16px}
+/* l'attribut hidden doit l'emporter sur display:flex (sinon bandeau démo affiché à tort) */
+.firstrun[hidden]{display:none}
+[hidden]{display:none!important}
 .firstrun .fr-ic{width:34px;height:34px;border-radius:9px;flex:0 0 auto;background:rgba(212,162,127,.22);display:grid;place-items:center;color:var(--terracotta-d)}
 .firstrun .fr-ic svg{width:18px;height:18px}
 .firstrun .fr-t{font-family:var(--serif);font-size:15px;margin:0 0 3px}
