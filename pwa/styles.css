@@ -65,7 +65,9 @@ body{font-family:var(--sans);background:
 .alert b{font-weight:600}
 
 /* primary ring hero — pièce maîtresse éditoriale */
-.hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#211F1A 0%,var(--slate) 55%,#15140F 100%);color:var(--cream);border-radius:var(--r-xl);padding:24px 24px 22px;margin-bottom:16px;box-shadow:var(--shadow-lg);display:flex;gap:22px;align-items:center}
+/* le héro est TOUJOURS sombre -> texte clair fixe (pas la variable thémée). */
+.hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#211F1A 0%,#1A1915 55%,#15140F 100%);color:#F0EEE6;border-radius:var(--r-xl);padding:24px 24px 22px;margin-bottom:16px;box-shadow:var(--shadow-lg);display:flex;gap:22px;align-items:center}
+.hero .info .v,.hero .pct b{color:#F0EEE6}
 .hero::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(240,238,230,.06);pointer-events:none}
 .ring{position:relative;width:120px;height:120px;flex:0 0 auto}
 .ring svg{transform:rotate(-90deg)}
@@ -235,8 +237,12 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 
 @media (prefers-color-scheme:dark){
   :root{--cream:#1A1915;--cream-2:#2A2925;--paper:#23221E;--slate:#F0EEE6;--slate-soft:#D8D5CA;--muted:#9A988C;--line:rgba(240,238,230,.10);--line-strong:rgba(240,238,230,.18)}
-  .hero{background:#100F0C}
+  /* fond sombre cohérent (sinon le dégradé crème clair "bave" en haut) */
+  body{background:radial-gradient(1200px 600px at 50% -10%, #211F1A 0%, #141310 60%) fixed,#141310}
+  .hero{background:linear-gradient(155deg,#2A2722 0%,#1E1C17 55%,#121009 100%)}
   .field input,.field select{background:#2A2925}
+  /* squelette de chargement visible sur fond sombre */
+  .sk{background:linear-gradient(90deg,#2A2925 25%,#33312c 50%,#2A2925 75%);background-size:200% 100%}
 }
 
 /* live pulse */
