@@ -142,59 +142,35 @@
     var month = d.month ? d.month.currentMonth : (d.last30Days ? d.last30Days.total : 0);
     var pMonth = pct(month, settings.month);
 
-    /* héro = budget mensuel */
+    var dayU = d.today ? d.today.total : 0;
+    var weekU = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
+    var rest = Math.max(0, settings.month - month);
+
+    /* héro = budget mensuel (condensé : anneau + 1 ligne) */
     $("hero-lab").textContent = "Budget mensuel";
-    $("hero-ring-2d").innerHTML = ringSVG(pMonth, 118, 11, "rgba(240,238,230,.14)", ringColor(pMonth),
-      '<div class="pct"><b>' + pMonth + '%</b><small>utilisé</small></div>');
+    $("hero-ring-2d").innerHTML = ringSVG(pMonth, 120, 11, "rgba(240,238,230,.14)", ringColor(pMonth),
+      '<div class="pct"><b>' + pMonth + '%</b><small>du mois</small></div>');
     $("hero-used").classList.remove("sk");
     $("hero-used").textContent = fmt(month) + " / " + fmt(settings.month);
-    var rest = Math.max(0, settings.month - month);
-    $("hero-rest").textContent = "Reste " + fmt(rest) + " ce mois-ci";
+    $("hero-rest").textContent = "Reste " + fmt(rest);
     if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> Jour ' + d.month.dayOfMonth + " / " + d.month.daysInMonth;
 
-    /* mini-anneaux : jour, semaine, fenêtre 5h, fenêtre 7j, crédits API */
-    var rings = [];
-    var dayU = d.today ? d.today.total : 0;
-    rings.push(miniRing("Aujourd'hui", dayU, settings.day));
-    var weekU = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
-    rings.push(miniRing("Cette semaine", weekU, settings.week));
-    if (d.windows) {
-      rings.push(miniRing("Fenêtre 5 h", d.windows.w5h.total, settings.w5h, until(d.windows.w5hResetAt)));
-      rings.push(miniRing("Fenêtre 7 j", d.windows.w7d.total, settings.w7d));
-    }
-    if (d.source && d.source.apiConnected && d.api) {
-      // si dispo : coût API réel — sinon on estime via crédits & coût total
-    }
-    $("minirings").innerHTML = rings.join("");
-    renderApiCard(d);
+    /* verdict (panneau d'alarme) + alertes */
     renderVerdict(d, dayU, weekU);
-
-    /* alertes de seuil */
     renderAlerts(d, pMonth, dayU, weekU);
 
-    /* stats jour / semaine + tendances */
+    /* mini-stats : aujourd'hui · semaine · rythme/projection */
     $("s-today").textContent = fmt(dayU);
     $("s-week").textContent = fmt(weekU);
     renderTrends(d);
-
-    /* rythme & projection */
     renderPace(d, month);
 
-    /* graphe + donut + heatmap selon période */
+    /* graphe d'évolution selon période */
     var rows = periodRows();
     drawTrend(rows);
-    drawDonut(sumRows(rows));
-    drawHeat(d.timeline || []);
 
-    /* modèles */
-    renderModels(d);
-    /* projets */
-    renderProjects(DATA);  // toujours la liste complète (pour pouvoir changer de filtre)
-    /* analytics AXE 4 : heures de pointe + comparaison semaines (données globales) */
-    drawHourHeat(DATA.hourly);
-    drawWeekCmp(DATA.weekly);
-    /* complexité projets en cours vs budget restant */
-    renderComplexity(rest);
+    /* projets (liste complète, drill-down porte le donut + modèles) */
+    renderProjects(DATA);
 
     var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
     $("foot").innerHTML = "Source : <b>" + esc(short(src)) + "</b>" + (d.source && d.source.apiConnected ? " · API connectée" : "") +
@@ -305,23 +281,39 @@
   }
 
   function renderPace(d, month) {
-    if (!d.pace || !d.month) { $("pace").innerHTML = ""; return; }
+    var paceBox = $("pace-banner");
+    if (!d.pace || !d.month) {
+      if ($("s-pace")) $("s-pace").textContent = "—";
+      if (paceBox) paceBox.innerHTML = "";
+      return;
+    }
     var proj = d.month.projection, budget = settings.month;
     var projPct = pct(proj, budget);
     var avg = d.pace.avgPerDay;
-    var daysLeft = avg ? Math.floor(Math.max(0, budget - month) / avg) : 999;
+    // mini-stat "au rythme actuel" : projection fin de mois en % + tendance
     var tone = projPct >= 100 ? "bad" : projPct >= settings.warnPct ? "warn" : "ok";
-    var verdict = projPct >= 100 ? "Au rythme actuel, tu dépasseras ton budget mensuel." :
-      projPct >= settings.warnPct ? "Au rythme actuel, tu frôleras ton plafond." :
-      "Au rythme actuel, tu restes sous ton budget.";
-    $("pace").innerHTML =
-      banner(tone, verdict + " Projection fin de mois : <b>" + fmt(proj) + "</b> (" + projPct + "% du budget).") +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">' +
-      paceCell("Rythme moyen", fmt(avg) + " /j") +
-      paceCell("Jours restants à ce rythme", (daysLeft > 365 ? "365+" : daysLeft) + " j") +
-      '</div>';
+    if ($("s-pace")) $("s-pace").textContent = fmt(proj);
+    var tp = $("t-pace");
+    if (tp) { tp.className = "trend " + (projPct >= 100 ? "up" : "down"); tp.textContent = "→ " + projPct + "% du mois"; }
+    // bandeau : la DATE d'épuisement en clair (plus parlant qu'un %)
+    var daysLeft = avg ? Math.floor(Math.max(0, budget - month) / avg) : 999;
+    var verdict;
+    if (projPct >= 100) {
+      var exDate = avg ? exhaustDate(month, budget, avg) : null;
+      verdict = "Au rythme actuel, tu dépasseras ton budget" + (exDate ? " — épuisé vers le <b>" + exDate + "</b>." : ".");
+    } else if (projPct >= settings.warnPct) {
+      verdict = "Au rythme actuel, tu <b>frôleras</b> ton plafond (proj. " + projPct + "%).";
+    } else {
+      verdict = "Au rythme actuel, tu restes <b>sous</b> ton budget (proj. " + projPct + "%, ~" + (daysLeft > 365 ? "365+" : daysLeft) + " j de marge).";
+    }
+    if (paceBox) paceBox.innerHTML = banner(tone, verdict);
   }
-  function paceCell(k, v) { return '<div style="background:var(--cream-2);border-radius:12px;padding:12px 14px"><div style="font-size:12px;color:var(--muted);margin-bottom:4px">' + k + '</div><div style="font-family:var(--serif);font-size:19px">' + v + '</div></div>'; }
+  // date approximative d'épuisement du budget mensuel au rythme avg
+  function exhaustDate(usedSoFar, budget, avgPerDay) {
+    var daysLeft = Math.max(0, (budget - usedSoFar) / avgPerDay);
+    var dt = new Date(Date.now() + daysLeft * 86400000);
+    return dt.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  }
 
   function renderModels(d) {
     var box = $("models"); box.innerHTML = "";
@@ -395,15 +387,41 @@
     }).join("");
     var paths = (p.paths && p.paths.length > 1)
       ? '<p class="psub">' + p.paths.length + ' emplacements regroupés sous ce nom.</p>' : '';
+    // donut "où partent les tokens" pour CE projet (fusion AXE 4)
+    var hasBreakdown = (p.input || p.output || p.cacheCreate || p.cacheRead);
+    var donutBlock = hasBreakdown
+      ? '<div class="grouplabel">Où partent les tokens</div>' +
+        '<div class="donut-wrap" style="margin:0 auto 4px"><canvas id="proj-donut" role="img" aria-label="Répartition des tokens du projet"></canvas></div>' +
+        '<div class="legend" id="proj-donut-legend"></div>' : '';
     body.innerHTML =
       '<div class="psum"><div><p class="k">Total</p><p class="vbig">' + fmt(p.total) + '</p></div>' +
       '<div><p class="k">Valeur (théorique)</p><p class="vbig">' + eur(p.cost) + '</p></div>' +
       '<div><p class="k">Sessions</p><p class="vbig">' + (p.sessionCount || 0) + '</p></div></div>' + paths +
       (models ? '<div class="grouplabel">Modèles utilisés</div>' + models : '') +
+      donutBlock +
       (sessions ? '<div class="grouplabel">Discussions récentes</div>' + sessions : '');
     var filterBtn = $("projsheet-filter");
     filterBtn.onclick = function () { setProjectFilter(name); closeProjSheet(); };
     openSheet("projsheet");
+    if (hasBreakdown) drawProjDonut(p);
+  }
+  var projDonutChart = null;
+  function drawProjDonut(p) {
+    var cv = $("proj-donut"); if (!cv) return;
+    var data = [p.input || 0, p.output || 0, p.cacheCreate || 0, p.cacheRead || 0];
+    var labels = ["Entrée", "Sortie", "Cache créé", "Cache lu"];
+    var cols = [TONE.input, TONE.output, TONE.cacheCreate, TONE.cacheRead];
+    if (projDonutChart) { try { projDonutChart.destroy(); } catch (e) {} projDonutChart = null; }
+    projDonutChart = new Chart(cv.getContext("2d"), {
+      type: "doughnut",
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: cols, borderWidth: 0, hoverOffset: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "64%", animation: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", callbacks: { label: function (c) { return c.label + " : " + fmt(c.parsed); } } } } }
+    });
+    var tot = data.reduce(function (a, b) { return a + b; }, 0) || 1;
+    var lg = $("proj-donut-legend");
+    if (lg) lg.innerHTML = labels.map(function (l, i) {
+      return '<span><i style="background:' + cols[i] + '"></i>' + l + " " + Math.round(data[i] / tot * 100) + "%</span>";
+    }).join("");
   }
   function closeProjSheet() { closeSheet("projsheet"); }
 
@@ -664,7 +682,7 @@
     });
     period = b.getAttribute("data-p");
     $("chart-hint").textContent = "tokens / jour";
-    if (DATA) { var rows = periodRows(); drawTrend(rows); drawDonut(sumRows(rows)); }
+    if (DATA) { drawTrend(periodRows()); }
   }
   $("period").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (b) selectPeriod(b);
@@ -857,7 +875,7 @@
   ensureNotifPermission();
   load();
   startLive();
-  var SW_FILE = "sw.v8.js";
+  var SW_FILE = "sw.v9.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)

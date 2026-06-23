@@ -92,6 +92,19 @@ body{font-family:var(--sans);background:
 .mr .mt .v{font-family:var(--serif);font-size:18px;margin:0;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .mr .mt .s{font-size:11px;color:var(--muted);margin:3px 0 0}
 
+/* mini-stats compactes : aujourd'hui · semaine · rythme */
+.ministats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.ministats .ms{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 13px 12px;box-shadow:var(--shadow);transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.ministats .ms:hover{transform:translateY(-1px);box-shadow:var(--shadow-lg)}
+.ministats .k{font-size:10.5px;letter-spacing:.02em;color:var(--muted);margin:0 0 6px;text-transform:uppercase}
+.ministats .v{font-family:var(--serif);font-size:20px;font-weight:500;margin:0;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.05}
+.ministats .trend{font-size:11px;margin:5px 0 0;display:flex;align-items:center;gap:3px;color:var(--muted)}
+.ministats .trend.up{color:var(--terracotta-d)}.ministats .trend.down{color:var(--sage)}
+.ministats .trend svg{width:11px;height:11px}
+@media (max-width:380px){.ministats{grid-template-columns:1fr}}
+#pace-banner{margin-bottom:14px}
+#pace-banner:empty{display:none}
+
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px;box-shadow:var(--shadow);transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
 .stat:hover{transform:translateY(-1px);box-shadow:var(--shadow-lg)}
