@@ -188,6 +188,10 @@
     /* graphe d'évolution selon période */
     var rows = periodRows();
     drawTrend(rows);
+    // libellé de période + total (pour que le sélecteur ait un effet VISIBLE)
+    var ptot = rows.reduce(function (a, r) { return a + r.total; }, 0);
+    var plabel = { today: "aujourd'hui", "7": "7 jours", "30": "30 jours", all: "tout l'historique" }[period] || "";
+    if ($("chart-hint")) $("chart-hint").textContent = plabel + " · " + fmt(ptot) + " tokens";
 
     /* projets (liste complète, drill-down porte le donut + modèles) */
     renderProjects(DATA);
@@ -468,7 +472,7 @@
     var g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, "rgba(204,120,92,.28)"); g.addColorStop(1, "rgba(204,120,92,0)");
     var cfg = {
       type: "line",
-      data: { labels: rows.map(function (r) { return dayLabel(r.date); }), datasets: [{ data: rows.map(function (r) { return r.total; }), borderColor: "#CC785C", borderWidth: 2.5, backgroundColor: g, fill: true, tension: .38, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#CC785C", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2 }] },
+      data: { labels: rows.map(function (r) { return dayLabel(r.date); }), datasets: [{ data: rows.map(function (r) { return r.total; }), borderColor: "#CC785C", borderWidth: 2.5, backgroundColor: g, fill: true, tension: .38, pointRadius: rows.length <= 2 ? 5 : 0, pointBackgroundColor: "#CC785C", pointHoverRadius: 5, pointHoverBackgroundColor: "#CC785C", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", padding: 10, displayColors: false, callbacks: { label: function (c) { return fmtFull(c.parsed.y) + " tokens"; } } } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } }, y: { grid: { color: "rgba(128,128,128,.12)" }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return fmt(v); } } } } }
     };
     // mémoïsation : on met à jour en place plutôt que détruire/recréer (A2-2)
@@ -476,6 +480,7 @@
       trendChart.data.labels = cfg.data.labels;
       trendChart.data.datasets[0].data = cfg.data.datasets[0].data;
       trendChart.data.datasets[0].backgroundColor = g;
+      trendChart.data.datasets[0].pointRadius = rows.length <= 2 ? 5 : 0;  // "today" = point visible
       trendChart.update("none");
       return;
     }
@@ -699,8 +704,12 @@
       var on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false");
     });
     period = b.getAttribute("data-p");
-    $("chart-hint").textContent = "tokens / jour";
-    if (DATA) { drawTrend(periodRows()); }
+    // libellé clair + total de la période, pour qu'on VOIE l'effet du clic
+    var rows = periodRows();
+    var tot = rows.reduce(function (a, r) { return a + r.total; }, 0);
+    var label = { today: "aujourd'hui", "7": "7 jours", "30": "30 jours", all: "tout l'historique" }[period] || "";
+    $("chart-hint").textContent = label + " · " + fmt(tot) + " tokens";
+    if (DATA) { drawTrend(rows); }
   }
   $("period").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (b) selectPeriod(b);
