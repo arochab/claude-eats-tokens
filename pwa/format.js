@@ -160,11 +160,82 @@
   function hms(h) { if (!isFinite(h)) return "—"; if (h < 1) return Math.round(h * 60) + " min"; return Math.floor(h) + " h " + Math.round((h % 1) * 60) + " min"; }
   function clock(ms) { var dt = new Date(ms); return dt.getHours() + " h" + (dt.getMinutes() ? String(dt.getMinutes()).padStart(2, "0") : ""); }
 
+  /* ---------- FEU TRICOLORE UNIFIÉ (user-first) ----------
+     UNE réponse : "je peux continuer ?" = le PIRE risque parmi tes 3 horizons
+     (fenêtre 5 h, semaine glissante, mois). Sur Max, seule la fenêtre 5 h peut
+     vraiment te RALENTIR -> elle seule peut virer au rouge ; semaine/mois = info.
+     Retourne {level:'green'|'orange'|'red', title, msg, gauges:[...]}.
+     Pur, nowMs injectable, dégradé propre si données manquantes. */
+  function status(d, nowMs) {
+    var now = nowMs == null ? Date.now() : nowMs;
+    var pace = (d && d.pace) || {}, win = (d && d.windows) || {};
+    var gauges = [], worst = "green", worstSignal = null;
+    var LV = { green: 0, orange: 1, red: 2 };
+    function bump(level, sig) { if (LV[level] > LV[worst]) { worst = level; worstSignal = sig; } }
+
+    // --- Fenêtre 5 h : la SEULE qui peut te ralentir réellement (rouge possible) ---
+    var base5h = pace.baseline5h;
+    if (base5h && base5h.base > 0) {
+      var w5 = win.w5h ? win.w5h.total : 0;
+      var ratio5 = w5 / base5h.base;
+      var resetMs = win.w5hResetAt ? Date.parse(win.w5hResetAt) : NaN;
+      var hoursLeft = isFinite(resetMs) ? Math.max(0, (resetMs - now) / 3600000) : null;
+      var lvl, msg, pctFill = Math.min(100, Math.round((w5 / base5h.high) * 100));
+      // proche de TA zone inhabituelle (base5h.high) = vrai risque de ralentissement
+      if (w5 >= base5h.high * 0.85) {
+        lvl = "red"; msg = "Tu es au max de ta fenêtre 5 h — Claude risque de te ralentir." +
+          (hoursLeft != null ? " Reset dans " + hms(hoursLeft) + "." : "");
+      } else if (ratio5 >= 4 || (w5 >= base5h.high * 0.6)) {
+        lvl = "orange"; msg = "Fenêtre 5 h bien remplie (" + ratio5.toFixed(1) + "× ton habitude). Finis ta tâche en cours." +
+          (hoursLeft != null ? " Reset dans " + hms(hoursLeft) + "." : "");
+      } else {
+        lvl = "green"; msg = "Fenêtre 5 h tranquille.";
+      }
+      gauges.push({ key: "5h", label: "Fenêtre 5 h", fill: pctFill, level: lvl,
+        sub: hoursLeft != null ? "reset dans " + hms(hoursLeft) : "", value: fmt(w5) });
+      bump(lvl, msg);
+    }
+
+    // --- Semaine glissante (7 j) : info (orange max, jamais rouge : pas un mur dur ici) ---
+    var weeks = (d && d.weekly && d.weekly.weeks) ? d.weekly.weeks.map(function (w) { return w.total; }) : [];
+    if (weeks.length >= 3 && win.w7d) {
+      var w7 = win.w7d.total, medW = median(weeks.slice(0, -1));
+      if (medW > 0) {
+        var rW = w7 / medW;
+        var lvlW = rW >= 2.5 ? "orange" : "green";
+        gauges.push({ key: "7d", label: "Semaine", fill: Math.min(100, Math.round(rW / 3 * 100)),
+          level: lvlW, sub: rW.toFixed(1) + "× ton habitude", value: fmt(w7) });
+        if (lvlW === "orange") bump("orange", "Semaine glissante chargée (" + rW.toFixed(1) + "× ton habitude).");
+      }
+    }
+
+    // --- Mois : info (orange max) ---
+    if (d && d.month && typeof d.month.ratio3m === "number") {
+      var rM = d.month.ratio3m;  // % vs médiane 3 mois
+      var lvlM = rM >= 250 ? "orange" : "green";
+      gauges.push({ key: "month", label: "Ce mois", fill: Math.min(100, Math.round(rM / 3)),
+        level: lvlM, sub: rM + "% de ta médiane 3 mois", value: fmt(d.month.currentMonth || 0) });
+      if (lvlM === "orange") bump("orange", "Mois bien au-dessus de ton habitude (" + rM + "% de ta médiane).");
+    }
+
+    var titles = {
+      green: "Fonce, tu es large",
+      orange: "Ça chauffe — garde un œil",
+      red: "Pause conseillée",
+    };
+    return {
+      level: worst,
+      title: titles[worst],
+      msg: worstSignal || (gauges.length ? "Tout est tranquille sur tes 3 horizons." : "Pas encore assez d'historique pour évaluer."),
+      gauges: gauges,
+    };
+  }
+
   var api = {
     COLORS: COLORS, modelColor: modelColor, fmt: fmt, fmtFull: fmtFull,
     pct: pct, esc: esc, ringColor: ringColor, toneOf: toneOf, ago: ago,
     until: until, dayLabel: dayLabel, ringSVG: ringSVG,
-    median: median, assistant: assistant,
+    median: median, assistant: assistant, status: status,
   };
 
   root.CET = api;

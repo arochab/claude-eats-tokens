@@ -232,30 +232,33 @@
   }
 
   function renderVerdict(d, dayU, weekU) {
-    // VERDICT HONNÊTE (schéma v3) : rang percentile du jour dans TON historique.
-    // Zéro budget inventé. Le "score" = "plus chargé que X% de tes journées".
-    var pace = d.pace || {};
-    var rank = (typeof pace.todayRank === "number") ? pace.todayRank : null;
+    // FEU TRICOLORE UNIFIÉ : "je peux continuer ?" = pire risque parmi
+    // fenêtre 5h / semaine / mois. Calculé dans CET.status (pur, testé).
+    var st = CET.status ? CET.status(d, Date.now()) : null;
     var v = $("verdict");
-    if (rank == null) {
-      // pas assez d'historique : on n'invente rien
-      v.className = "verdict ok";
-      $("vscore-n").textContent = "—";
-      $("vstate").textContent = "Démarrage";
-      $("vsub").textContent = "Pas encore assez d'historique pour te situer.";
-      return;
+    if (!st) { v.className = "verdict ok"; return; }
+    // mapping feu -> tons du design system
+    var toneMap = { green: "ok", orange: "warn", red: "bad" };
+    var iconMap = {
+      green: '<path d="M20 6 9 17l-5-5"/>',                         // check
+      orange: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>', // triangle
+      red: '<rect x="6" y="6" width="12" height="12" rx="2"/>',     // stop
+    };
+    v.className = "verdict " + (toneMap[st.level] || "ok");
+    $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + iconMap[st.level] + '</svg>';
+    $("vstate").textContent = st.title;
+    $("vsub").textContent = st.msg;
+    // 3 jauges : fenêtre 5h / semaine / mois
+    var gz = $("vgauges");
+    if (gz) {
+      gz.innerHTML = (st.gauges || []).map(function (g) {
+        var col = g.level === "red" ? "#B5563A" : g.level === "orange" ? "#C8923D" : "#7E9E6D";
+        return '<div class="vg"><div class="vg-top"><span class="vg-lab">' + esc(g.label) + '</span>' +
+          '<span class="vg-val">' + esc(g.value) + '</span></div>' +
+          '<div class="vg-bar"><span style="width:' + Math.max(3, g.fill) + '%;background:' + col + '"></span></div>' +
+          (g.sub ? '<div class="vg-sub">' + esc(g.sub) + '</div>' : '') + '</div>';
+      }).join("");
     }
-    // ton = position relative à TA médiane (pas un plafond) : >85e = pic, <50e = calme
-    var tone = rank >= 90 ? "bad" : rank >= 70 ? "warn" : "ok";
-    var state = rank >= 90 ? "Grosse journée" : rank >= 70 ? "Ça monte" : (rank >= 40 ? "Journée normale" : "Journée calme");
-    var med = pace.medianPerDay || 0;
-    var todayT = pace.todayTotal != null ? pace.todayTotal : dayU;
-    var sub = "Aujourd'hui " + fmt(todayT) + " — plus chargée que " + rank +
-              "% de tes journées passées (médiane : " + fmt(med) + "/j).";
-    v.className = "verdict " + tone;
-    $("vscore-n").textContent = rank;
-    $("vstate").textContent = state;
-    $("vsub").textContent = sub;
   }
 
   function renderApiCard(d) {
@@ -916,7 +919,7 @@
   loadEurRate();
   load();
   startLive();
-  var SW_FILE = "sw.v11.js";
+  var SW_FILE = "sw.v12.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)

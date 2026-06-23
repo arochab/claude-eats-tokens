@@ -261,16 +261,28 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .verdict.ok{background:rgba(126,158,109,.14);border-color:rgba(126,158,109,.22)}
 .verdict.warn{background:rgba(200,146,61,.15);border-color:rgba(200,146,61,.25)}
 .verdict.bad{background:rgba(181,86,58,.15);border-color:rgba(181,86,58,.25)}
-.vmain{display:flex;align-items:center;gap:18px}
-.vscore{width:76px;height:76px;border-radius:50%;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;box-shadow:0 6px 16px rgba(26,25,21,.12)}
-.verdict.ok .vscore{background:linear-gradient(150deg,#8cae78,var(--sage))}
-.verdict.warn .vscore{background:linear-gradient(150deg,#d6a64e,var(--amber))}
-.verdict.bad .vscore{background:linear-gradient(150deg,#c4694b,var(--danger))}
-.vscore b{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
-.vscore small{font-size:10px;opacity:.85;margin-top:1px}
-.vstate{font-family:var(--serif);font-weight:500;font-size:23px;margin:0;line-height:1.1;letter-spacing:-.01em}
+.vmain{display:flex;align-items:center;gap:16px}
+/* feu tricolore : pastille icône colorée */
+.vlight{width:64px;height:64px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(26,25,21,.12)}
+.vlight svg{width:32px;height:32px}
+.verdict.ok .vlight{background:linear-gradient(150deg,#8cae78,var(--sage))}
+.verdict.warn .vlight{background:linear-gradient(150deg,#d6a64e,var(--amber))}
+.verdict.bad .vlight{background:linear-gradient(150deg,#c4694b,var(--danger))}
+.vstate{font-family:var(--serif);font-weight:500;font-size:22px;margin:0;line-height:1.1;letter-spacing:-.01em}
 .verdict.ok .vstate{color:#3f5733}.verdict.warn .vstate{color:#7a5410}.verdict.bad .vstate{color:var(--terracotta-d)}
-.vsub{font-size:13px;margin:5px 0 0;color:var(--slate-soft);line-height:1.4}
+.vsub{font-size:13px;margin:5px 0 0;color:var(--slate-soft);line-height:1.45}
+/* 3 jauges sous le feu : fenêtre 5h / semaine / mois */
+.vgauges{display:flex;flex-direction:column;gap:11px;margin-top:16px;padding-top:15px;border-top:1px solid rgba(26,25,21,.08)}
+.vg-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.vg-lab{font-size:12.5px;color:var(--slate-soft);font-weight:500}
+.vg-val{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vg-bar{height:7px;background:rgba(26,25,21,.08);border-radius:99px;overflow:hidden}
+.vg-bar>span{display:block;height:100%;border-radius:99px;transition:width .4s var(--ease)}
+.vg-sub{font-size:11px;color:var(--muted);margin-top:3px}
+@media (prefers-color-scheme:dark){
+  .vgauges{border-top-color:rgba(240,238,230,.1)}
+  .vg-bar{background:rgba(240,238,230,.1)}
+}
 
 /* crédits API — section à part */
 .apicard{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:14px;display:flex;align-items:center;gap:15px}

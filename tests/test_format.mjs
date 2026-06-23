@@ -130,3 +130,48 @@ test("assistant — max 3 signaux, triés par gravité", () => {
     assert.ok(order[sigs[0].level] <= order[sigs[1].level]);
   }
 });
+
+// ---------- Feu tricolore unifié (status) ----------
+test("status — données insuffisantes -> dégradé propre", () => {
+  const s = CET.status({}, Date.now());
+  assert.equal(s.level, "green");
+  assert.ok(Array.isArray(s.gauges));
+});
+
+test("status — tout calme -> VERT", () => {
+  const d = baseD();
+  d.windows.w5h.total = 40_000_000;                         // 5h tranquille
+  d.windows.w7d.total = 100;                                // ~ médiane des semaines
+  d.weekly.weeks = [{total:80},{total:100},{total:120}];    // semaine calme
+  d.month = { ratio3m: 100, currentMonth: 5_000_000 };      // mois calme
+  const s = CET.status(d, Date.now());
+  assert.equal(s.level, "green");
+  assert.match(s.title, /Fonce/);
+});
+
+test("status — fenêtre 5h au max -> ROUGE", () => {
+  const d = baseD();
+  d.windows.w5h.total = 1_300_000_000;  // ~93% de high (1.4Md) -> rouge
+  const s = CET.status(d, Date.now());
+  assert.equal(s.level, "red");
+  assert.match(s.title, /Pause/);
+  assert.match(s.msg, /ralentir/);
+});
+
+test("status — le feu prend le PIRE des 3 horizons", () => {
+  const d = baseD();
+  d.windows.w5h.total = 40_000_000;       // 5h vert
+  d.windows.w7d.total = 300;              // semaine: 6x la médiane(50) -> orange
+  const s = CET.status(d, Date.now());
+  assert.equal(s.level, "orange");        // le pire (semaine) gagne
+});
+
+test("status — gauges couvrent 5h/semaine/mois", () => {
+  const d = baseD();
+  d.month = { ratio3m: 120, currentMonth: 5_000_000 };
+  const s = CET.status(d, Date.now());
+  const keys = s.gauges.map(g => g.key);
+  assert.ok(keys.includes("5h"));
+  assert.ok(keys.includes("7d"));
+  assert.ok(keys.includes("month"));
+});
