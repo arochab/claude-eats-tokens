@@ -23,8 +23,8 @@
       <div><h1>Claude Eats Tokens</h1><p class="sub">à quel point Claude a faim aujourd'hui</p></div>
     </div>
     <div class="tophdr-actions">
-      <button class="iconbtn" id="toggle-3d" aria-label="Activer / désactiver l'ambiance animée" aria-pressed="true" title="Ambiance animée">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4M21 5h-4"/></svg>
+      <button class="iconbtn" id="share-app" aria-label="Partager" title="Partager">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
       <button class="iconbtn" id="open-settings" aria-label="Réglages">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -36,6 +36,14 @@
   </header>
 
   <div class="status" id="status"><span class="dot"></span><span id="status-txt">Chargement…</span></div>
+
+  <div class="firstrun" id="firstrun" hidden>
+    <div class="fr-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/><circle cx="12" cy="12" r="3"/></svg></div>
+    <div class="fr-body">
+      <p class="fr-t">Données de démonstration</p>
+      <p class="fr-h">Pour voir tes vrais chiffres, lance le moteur sur ton PC : double-clic sur <b>DEMARRER.bat</b>. Il lit tes logs Claude Code et les envoie ici.</p>
+    </div>
+  </div>
 
   <div class="seg" id="period" role="group" aria-label="Période d'affichage">
     <button type="button" data-p="today" aria-pressed="false">Aujourd'hui</button>
@@ -59,7 +67,6 @@
   <div id="alerts"></div>
 
   <section class="hero">
-    <div class="hero-ambiance" id="hero-3d" aria-hidden="true"></div>
     <div class="ring" id="hero-ring"><div class="ring-2d" id="hero-ring-2d"></div></div>
     <div class="info">
       <p class="lab" id="hero-lab">Budget mensuel</p>
@@ -156,9 +163,9 @@
 </div>
 
 <!-- Réglages -->
-<div class="sheet" id="settings">
+<div class="sheet" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
   <div class="sheet-inner">
-    <h2>Réglages
+    <h2 id="settings-title">Réglages
       <button class="iconbtn" id="close-settings" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
     <p class="lead">Tes plafonds restent sur cet appareil. Modifie-les quand tu veux.</p>
@@ -215,11 +222,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
 <script src="pwa/config.js"></script>
 <script src="pwa/format.js"></script>
-<script src="pwa/three3d.js"></script>
-<script src="pwa/three-scenes.js"></script>
 <script src="pwa/app.js"></script>
 </body>
 </html>

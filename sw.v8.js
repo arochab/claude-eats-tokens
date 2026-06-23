@@ -1,12 +1,12 @@
-/* Service worker v7 — Claude Eats Tokens.
+/* Service worker v8 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v7 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v8 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19). */
-const CACHE = "cet-v7";
+const CACHE = "cet-v8";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
-  "./pwa/format.js", "./pwa/three3d.js", "./pwa/three-scenes.js",
+  "./pwa/format.js",
   "./pwa/manifest.json", "./pwa/icon-192.png", "./pwa/icon-512.png",
 ];
 

@@ -43,6 +43,14 @@ body{font-family:var(--sans);background:
 .dot.demo{background:var(--clay)}
 .dot.err{background:var(--danger)}
 
+/* premier lancement / démo : guidage clair */
+.firstrun{display:flex;gap:13px;align-items:flex-start;background:rgba(212,162,127,.12);border:1px solid rgba(212,162,127,.3);border-radius:var(--r-lg);padding:15px 16px;margin-bottom:16px}
+.firstrun .fr-ic{width:34px;height:34px;border-radius:9px;flex:0 0 auto;background:rgba(212,162,127,.22);display:grid;place-items:center;color:var(--terracotta-d)}
+.firstrun .fr-ic svg{width:18px;height:18px}
+.firstrun .fr-t{font-family:var(--serif);font-size:15px;margin:0 0 3px}
+.firstrun .fr-h{font-size:12.5px;color:var(--slate-soft);margin:0;line-height:1.5}
+.firstrun .fr-h b{font-weight:600;color:var(--slate)}
+
 /* segmented period filter */
 .seg{display:flex;background:var(--cream-2);border-radius:11px;padding:3px;margin-bottom:18px;gap:3px}
 .seg button{flex:1;border:none;background:transparent;color:var(--muted);font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 0;border-radius:9px;cursor:pointer;transition:.15s}
@@ -157,17 +165,8 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .sessrow .st{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sessrow .sv{color:var(--muted);flex:0 0 auto;font-size:12px}
 
-/* ===========================================================================
-   Ambiance 3D (three.js) — DÉCOR discret derrière le héro uniquement.
-   Pas de 3D sur les data-viz : les chiffres restent en 2D classique, lisibles.
-   =========================================================================== */
 .ring{position:relative}
 .ring .ring-2d{position:absolute;inset:0}
-/* le canvas d'ambiance remplit le héro, derrière tout le contenu */
-.hero-ambiance{position:absolute;inset:0;z-index:0;border-radius:var(--r-xl);overflow:hidden;pointer-events:none}
-.hero-ambiance canvas{width:100%;height:100%;display:block}
-.hero > .ring,.hero > .info{position:relative;z-index:1}
-#toggle-3d[aria-pressed="false"]{color:var(--muted)}
 
 /* heatmap horaire (jour × heure) */
 .hourheat{overflow-x:auto}

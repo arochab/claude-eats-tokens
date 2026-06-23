@@ -71,6 +71,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null, weekCmpChart = null;
+  var SUPPORTED_SCHEMA = 2;  // version max de usage.json comprise par ce front
 
   /* ---------- filtre projet : recompose une vue DATA-compatible ----------
      Quand un projet est sélectionné, on recalcule timeline / totals / today /
@@ -127,6 +128,7 @@
     var d = VIEW;
     autoCalibrate(d);
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
+    var fr = $("firstrun"); if (fr) fr.hidden = !demo;
     if (demo) {
       setStatus("Démonstration — lance la synchro pour tes vrais chiffres", "demo");
     } else {
@@ -193,9 +195,6 @@
     drawWeekCmp(DATA.weekly);
     /* complexité projets en cours vs budget restant */
     renderComplexity(rest);
-
-    /* visualisations 3D (three.js) — pilotées par les VRAIS chiffres */
-    render3D(d, rows, pMonth);
 
     var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
     $("foot").innerHTML = "Source : <b>" + esc(short(src)) + "</b>" + (d.source && d.source.apiConnected ? " · API connectée" : "") +
@@ -587,33 +586,20 @@
     });
   }
 
-  /* ---------- ambiance 3D (three.js) — UNIQUEMENT décor derrière le héro ----------
-     Choix produit : pas de 3D sur les data-viz (illisible). Le three.js sert
-     d'ambiance premium discrète derrière le héro ; les chiffres restent en 2D
-     classique. Construit UNE fois (pas de recréation de contexte WebGL). */
-  var _ambBuilt = false;
-  function render3D(d, rows, pMonth) {
-    if (!window.CET3D || !window.CET3D.supported) {
-      document.body.classList.remove("amb-on");
-      var tb = $("toggle-3d"); if (tb) tb.style.display = "none";
-      return;
+  /* ---------- partage (navigator.share + repli presse-papier) ---------- */
+  function shareApp() {
+    var url = (window.CLAUDE_EATS_TOKENS_SHARE_URL) || location.href.split("#")[0];
+    var data = { title: "Claude Eats Tokens", text: "Mon suivi de conso de tokens Claude Code", url: url };
+    if (navigator.share) {
+      navigator.share(data).catch(function () {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function () {
+        setStatus("Lien copié dans le presse-papier ✓", null);
+        setTimeout(function () { if (DATA) render(); }, 1800);
+      }).catch(function () {});
     }
-    var C = window.CET3D;
-    var on = C.prefOn();
-    document.body.classList.toggle("amb-on", on);
-    var btn = $("toggle-3d"); if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
-    if (!on) { if (_ambBuilt) { C.clearAll(); _ambBuilt = false; } return; }
-    var tone = { pct: pMonth, warn: settings.warnPct };
-    if (_ambBuilt) { C.updateAll({ ambiance: tone }); return; }
-    if (C.scenes && C.scenes.ambiance) { C.scenes.ambiance($("hero-3d"), tone); _ambBuilt = true; }
   }
-
-  if ($("toggle-3d")) $("toggle-3d").addEventListener("click", function () {
-    if (!window.CET3D) return;
-    var next = !window.CET3D.prefOn();
-    window.CET3D.setPref(next);
-    if (DATA) render();
-  });
+  if ($("share-app")) $("share-app").addEventListener("click", shareApp);
 
   /* ---------- chargement ---------- */
   // fetch avec timeout (corrige REL-001 : Render endormi ne fige plus l'app)
@@ -652,9 +638,20 @@
       var src = sources[i];
       return fetchTimeout(src.url, src.remote ? 12000 : 8000)
         .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
-        .then(function (d) { if (!d || !d.totals || !d.totals.total) throw new Error("empty"); DATA = d; render(); checkThresholds(d); })
+        .then(function (d) {
+          if (!d || !d.totals || !d.totals.total) throw new Error("empty");
+          // garde de schéma : un format inconnu (futur v3) ne doit pas crasher
+          // le front en silence -> on le signale et on garde la dernière vue.
+          var sc = d.schema || 1;
+          if (sc > SUPPORTED_SCHEMA) {
+            setStatus("Format de données plus récent (" + sc + ") — mets l'app à jour.", "err");
+            throw new Error("schema-too-new");
+          }
+          DATA = d; render(); checkThresholds(d);
+        })
         .catch(function (e) {
           if (src.remote && e && e.name === "AbortError") sawRemoteTimeout = true;
+          if (e && e.message === "schema-too-new") return;  // message déjà posé
           return tryAt(i + 1);
         });
     }
@@ -860,7 +857,7 @@
   ensureNotifPermission();
   load();
   startLive();
-  var SW_FILE = "sw.v7.js";
+  var SW_FILE = "sw.v8.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
