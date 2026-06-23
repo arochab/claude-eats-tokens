@@ -46,7 +46,7 @@ body{font-family:var(--sans);background:var(--cream);color:var(--slate);line-hei
 .alert b{font-weight:600}
 
 /* primary ring hero */
-.hero{background:var(--slate);color:var(--cream);border-radius:var(--r-xl);padding:22px 22px 20px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;gap:20px;align-items:center}
+.hero{position:relative;overflow:hidden;background:var(--slate);color:var(--cream);border-radius:var(--r-xl);padding:22px 22px 20px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;gap:20px;align-items:center}
 .ring{position:relative;width:118px;height:118px;flex:0 0 auto}
 .ring svg{transform:rotate(-90deg)}
 .ring .pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -143,25 +143,15 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .sessrow .sv{color:var(--muted);flex:0 0 auto;font-size:12px}
 
 /* ===========================================================================
-   Visualisations 3D (three.js) — overlays pilotés par les vrais chiffres
+   Ambiance 3D (three.js) — DÉCOR discret derrière le héro uniquement.
+   Pas de 3D sur les data-viz : les chiffres restent en 2D classique, lisibles.
    =========================================================================== */
-/* le héro : 2D et 3D superposés dans .ring */
 .ring{position:relative}
 .ring .ring-2d{position:absolute;inset:0}
-.ring .three-mount{position:absolute;inset:0;z-index:1}
-/* dans les cartes : bloc 3D au-dessus de la version 2D */
-.three-mount{width:100%;height:170px;position:relative}
-.three-mount.tall{height:220px}
-.three-mount canvas{border-radius:12px}
-/* par défaut (3D actif) : héro, courbe et heatmap horaire passent en 3D.
-   Modèles & projets gardent leur liste 2D (cliquable/drill-down) SOUS le 3D. */
-body:not(.viz-2d) #hero-ring-2d{opacity:0;pointer-events:none}
-body:not(.viz-2d) #trend{opacity:0}
-body:not(.viz-2d) #hourheat{display:none}
-/* mode 2D : on cache tous les canvas 3D, on rend le 2D */
-body.viz-2d .three-mount{display:none!important}
-body.viz-2d #hero-ring-2d{opacity:1}
-body.viz-2d #trend{opacity:1}
+/* le canvas d'ambiance remplit le héro, derrière tout le contenu */
+.hero-ambiance{position:absolute;inset:0;z-index:0;border-radius:var(--r-xl);overflow:hidden;pointer-events:none}
+.hero-ambiance canvas{width:100%;height:100%;display:block}
+.hero > .ring,.hero > .info{position:relative;z-index:1}
 #toggle-3d[aria-pressed="false"]{color:var(--muted)}
 
 /* heatmap horaire (jour × heure) */

@@ -587,39 +587,25 @@
     });
   }
 
-  /* ---------- visualisations 3D (three.js) ----------
-     IMPORTANT : on ne recrée PAS les contextes WebGL à chaque render (le
-     navigateur en limite ~16). On construit chaque scène UNE fois, puis on met
-     à jour ses données. clearAll() seulement quand on coupe la 3D. */
-  var _3dBuilt = false;
+  /* ---------- ambiance 3D (three.js) — UNIQUEMENT décor derrière le héro ----------
+     Choix produit : pas de 3D sur les data-viz (illisible). Le three.js sert
+     d'ambiance premium discrète derrière le héro ; les chiffres restent en 2D
+     classique. Construit UNE fois (pas de recréation de contexte WebGL). */
+  var _ambBuilt = false;
   function render3D(d, rows, pMonth) {
-    if (!window.CET3D) { document.body.classList.add("viz-2d"); return; }
-    var C = window.CET3D;
-    if (!C.supported) {
-      document.body.classList.add("viz-2d");
+    if (!window.CET3D || !window.CET3D.supported) {
+      document.body.classList.remove("amb-on");
       var tb = $("toggle-3d"); if (tb) tb.style.display = "none";
       return;
     }
+    var C = window.CET3D;
     var on = C.prefOn();
-    document.body.classList.toggle("viz-2d", !on);
+    document.body.classList.toggle("amb-on", on);
     var btn = $("toggle-3d"); if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
-    if (!on) { if (_3dBuilt) { C.clearAll(); _3dBuilt = false; } return; }
-
-    var payload = {
-      hero: { pct: pMonth, warn: settings.warnPct },
-      trend: rows,
-      models: d.models || [],
-      hourly: (d.hourly && d.hourly.weekdayHour) || null,
-      projects: DATA.projects || [],
-    };
-    if (_3dBuilt) { C.updateAll(payload); return; }   // maj sans recréer les contextes
-    var S = C.scenes;
-    S.hero($("hero-3d"), payload.hero);
-    S.trend($("trend-3d"), payload.trend);
-    S.models($("models-3d"), payload.models);
-    if (payload.hourly) S.hourly($("hourly-3d"), payload.hourly);
-    S.projects($("projects-3d"), payload.projects);
-    _3dBuilt = true;
+    if (!on) { if (_ambBuilt) { C.clearAll(); _ambBuilt = false; } return; }
+    var tone = { pct: pMonth, warn: settings.warnPct };
+    if (_ambBuilt) { C.updateAll({ ambiance: tone }); return; }
+    if (C.scenes && C.scenes.ambiance) { C.scenes.ambiance($("hero-3d"), tone); _ambBuilt = true; }
   }
 
   if ($("toggle-3d")) $("toggle-3d").addEventListener("click", function () {
