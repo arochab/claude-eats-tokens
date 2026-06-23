@@ -142,7 +142,7 @@
 
     /* héro = budget mensuel */
     $("hero-lab").textContent = "Budget mensuel";
-    $("hero-ring").innerHTML = ringSVG(pMonth, 118, 11, "rgba(240,238,230,.14)", ringColor(pMonth),
+    $("hero-ring-2d").innerHTML = ringSVG(pMonth, 118, 11, "rgba(240,238,230,.14)", ringColor(pMonth),
       '<div class="pct"><b>' + pMonth + '%</b><small>utilisé</small></div>');
     $("hero-used").classList.remove("sk");
     $("hero-used").textContent = fmt(month) + " / " + fmt(settings.month);
@@ -193,6 +193,9 @@
     drawWeekCmp(DATA.weekly);
     /* complexité projets en cours vs budget restant */
     renderComplexity(rest);
+
+    /* visualisations 3D (three.js) — pilotées par les VRAIS chiffres */
+    render3D(d, rows, pMonth);
 
     var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
     $("foot").innerHTML = "Source : <b>" + esc(short(src)) + "</b>" + (d.source && d.source.apiConnected ? " · API connectée" : "") +
@@ -584,6 +587,48 @@
     });
   }
 
+  /* ---------- visualisations 3D (three.js) ----------
+     IMPORTANT : on ne recrée PAS les contextes WebGL à chaque render (le
+     navigateur en limite ~16). On construit chaque scène UNE fois, puis on met
+     à jour ses données. clearAll() seulement quand on coupe la 3D. */
+  var _3dBuilt = false;
+  function render3D(d, rows, pMonth) {
+    if (!window.CET3D) { document.body.classList.add("viz-2d"); return; }
+    var C = window.CET3D;
+    if (!C.supported) {
+      document.body.classList.add("viz-2d");
+      var tb = $("toggle-3d"); if (tb) tb.style.display = "none";
+      return;
+    }
+    var on = C.prefOn();
+    document.body.classList.toggle("viz-2d", !on);
+    var btn = $("toggle-3d"); if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
+    if (!on) { if (_3dBuilt) { C.clearAll(); _3dBuilt = false; } return; }
+
+    var payload = {
+      hero: { pct: pMonth, warn: settings.warnPct },
+      trend: rows,
+      models: d.models || [],
+      hourly: (d.hourly && d.hourly.weekdayHour) || null,
+      projects: DATA.projects || [],
+    };
+    if (_3dBuilt) { C.updateAll(payload); return; }   // maj sans recréer les contextes
+    var S = C.scenes;
+    S.hero($("hero-3d"), payload.hero);
+    S.trend($("trend-3d"), payload.trend);
+    S.models($("models-3d"), payload.models);
+    if (payload.hourly) S.hourly($("hourly-3d"), payload.hourly);
+    S.projects($("projects-3d"), payload.projects);
+    _3dBuilt = true;
+  }
+
+  if ($("toggle-3d")) $("toggle-3d").addEventListener("click", function () {
+    if (!window.CET3D) return;
+    var next = !window.CET3D.prefOn();
+    window.CET3D.setPref(next);
+    if (DATA) render();
+  });
+
   /* ---------- chargement ---------- */
   // fetch avec timeout (corrige REL-001 : Render endormi ne fige plus l'app)
   function fetchTimeout(url, ms) {
@@ -829,7 +874,7 @@
   ensureNotifPermission();
   load();
   startLive();
-  var SW_FILE = "sw.v6.js";
+  var SW_FILE = "sw.v7.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
