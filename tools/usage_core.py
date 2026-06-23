@@ -334,6 +334,63 @@ def month_ratio(current_month, previous_months):
     return round(current_month / med * 100)
 
 
+def mad(values):
+    """MAD normalisé (×1.4826) = écart-type ROBUSTE, insensible aux pics.
+    Sur un usage très irrégulier (ratio 13×), bien plus fiable que stdev."""
+    xs = [v for v in values if v is not None]
+    if len(xs) < 2:
+        return 0.0
+    med = median(xs)
+    return 1.4826 * median([abs(x - med) for x in xs])
+
+
+def daily_peak_5h(hour_buckets):
+    """Pour CHAQUE jour, le plus gros total sur 5h consécutives, à partir des
+    VRAIS buckets horaires. Retourne {date: peak5h}. Exact (pas reconstruit)."""
+    # regroupe les heures par jour : {date: {hour_int: total}}
+    by_day_hours = {}
+    for hk, v in hour_buckets.items():
+        day, hh = hk[:10], int(hk[11:13])
+        by_day_hours.setdefault(day, {})[hh] = total_of(v)
+    peaks = {}
+    for day, hours in by_day_hours.items():
+        best = 0
+        for start in range(24):
+            s = sum(hours.get((start + k) % 24, 0) for k in range(5))
+            if s > best:
+                best = s
+        if best > 0:
+            peaks[day] = best
+    return peaks
+
+
+def baseline_5h(hour_buckets, min_days=5):
+    """Charge 5h HABITUELLE (robuste) + bornes, en échelle log (la dispersion
+    d'Adam est multiplicative). Retourne {base, high, medianLog, madLog, nDays}
+    ou None si pas assez d'historique. `high` = médiane + 3·MAD (zone inhabituelle).
+    """
+    import math
+    peaks = list(daily_peak_5h(hour_buckets).values())
+    if len(peaks) < min_days:
+        return None
+    logs = [math.log1p(p) for p in peaks]
+    med_l = median(logs)
+    mad_l = mad(logs)
+    return {
+        "base": round(math.expm1(med_l)),               # charge 5h médiane
+        "high": round(math.expm1(med_l + 3 * mad_l)),    # zone inhabituelle (~99e)
+        "medianLog": med_l, "madLog": mad_l, "nDays": len(peaks),
+    }
+
+
+def robust_z_log(value, median_log, mad_log):
+    """Score robuste de `value` (en log) vs une référence log. ~99e percentile à 3."""
+    import math
+    if not mad_log:
+        return 0.0
+    return (math.log1p(value) - median_log) / mad_log
+
+
 def iso_week(date_str):
     iso = datetime.fromisoformat(date_str).isocalendar()
     return f"{iso[0]}-S{iso[1]:02d}"

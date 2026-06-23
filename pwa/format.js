@@ -77,10 +77,94 @@
       (centerHTML || "");
   }
 
+  // ---------- stats robustes (pour l'assistant) ----------
+  function median(a) { var s = a.filter(function (v) { return v != null; }).sort(function (x, y) { return x - y; }); var n = s.length; if (!n) return 0; var m = n >> 1; return n % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+
+  /* ---------- ASSISTANT TOKEN INTELLIGENT ----------
+     Conçu par une équipe d'experts (séries temporelles, rate-limits Max, UX).
+     Compare Adam à LUI-MÊME (stats robustes), jamais à un quota inventé.
+     Retourne un tableau ordonné de signaux {id, level, title, msg, why}.
+     100% pur : nowMs injectable, lecture défensive, [] si données insuffisantes. */
+  function assistant(d, nowMs) {
+    var out = [];
+    if (!d) return out;
+    var now = nowMs == null ? Date.now() : nowMs;
+    var pace = d.pace || {};
+    var win = d.windows || {};
+    var base5h = pace.baseline5h || null;       // {base, high, medianLog, madLog, nDays}
+    var w5h = win.w5h ? win.w5h.total : 0;
+
+    // --- 1) Saturation de la fenêtre 5h (la vraie limite Max) ---
+    if (base5h && base5h.base > 0 && win.w5hResetAt) {
+      var ratioFen = w5h / base5h.base;
+      var resetMs = Date.parse(win.w5hResetAt);
+      var hoursLeft = isFinite(resetMs) ? Math.max(0, (resetMs - now) / 3600000) : 0;
+      // débit récent : on approxime par w5h / heures écoulées dans la fenêtre (5 - hoursLeft)
+      var hoursElapsed = Math.max(0.2, 5 - hoursLeft);
+      var burn = w5h / hoursElapsed;                       // tokens/h
+      var proj = w5h + burn * hoursLeft;                   // valeur au reset si le rythme tient
+      var marge = base5h.high - w5h;
+      var etaH = burn > 0 ? marge / burn : Infinity;       // ETA avant zone inhabituelle
+      if (hoursLeft >= 0.5 && ratioFen >= 2) {
+        var bad = (proj >= base5h.high && etaH < hoursLeft);
+        out.push({
+          id: "w5h", level: bad ? "bad" : "warn",
+          title: bad ? "Fenêtre 5 h : tu approches de ta zone inhabituelle" : "Fenêtre 5 h soutenue",
+          msg: "Fenêtre 5 h : " + fmt(w5h) + " consommés, soit " + ratioFen.toFixed(1) + "× ta charge 5 h habituelle (" + fmt(base5h.base) + "). "
+            + (bad ? "À ce rythme (~" + fmt(burn) + "/h), tu entres en zone inhabituelle dans ~" + hms(etaH) + ", avant le reset à " + clock(resetMs) + ". Garde l'Opus lourd pour après."
+                   : "Reset prévu à " + clock(resetMs) + "."),
+          why: "Sur Max, c'est la fenêtre 5 h glissante qui te ralentit (pas un quota mensuel) — on te prévient avant qu'elle ne sature.",
+        });
+      }
+    }
+
+    // --- 2) Journée anormale vs ton habitude (percentile robuste) ---
+    var rank = pace.todayRank, med = pace.medianPerDay || pace.medianDay || 0;
+    var hourLocal = new Date(now).getHours();
+    if (typeof rank === "number" && rank >= 90 && hourLocal < 18) {
+      var ratioMed = med ? (pace.todayTotal || 0) / med : 0;
+      out.push({
+        id: "bigday", level: rank >= 97 ? "warn" : "info",
+        title: "Grosse journée",
+        msg: "Tu es déjà plus chargé que " + rank + "% de tes jours, et il n'est que " + hourLocal + " h"
+          + (ratioMed ? " — environ " + ratioMed.toFixed(1) + "× ta journée médiane." : "."),
+        why: "On classe ta journée parmi tes jours actifs passés ; rien ne saute sur Max, c'est une info de rythme.",
+      });
+    }
+
+    // --- 3) Garde-fou Opus hebdo (la 2e vraie contrainte Max) ---
+    var w7d = win.w7d ? win.w7d.total : 0;
+    var models = d.models || [];
+    var totalTok = models.reduce(function (a, m) { return a + (m.total || 0); }, 0) || 1;
+    var opus = models.filter(function (m) { return (m.model || "").indexOf("opus") >= 0; })
+                     .reduce(function (a, m) { return a + (m.total || 0); }, 0);
+    var partOpus = Math.round(opus / totalTok * 100);
+    var weeks = (d.weekly && d.weekly.weeks) ? d.weekly.weeks.map(function (w) { return w.total; }) : [];
+    if (weeks.length >= 3 && w7d > 0 && partOpus >= 80) {
+      var medW = median(weeks.slice(0, -1));
+      var ratioSem = medW ? w7d / medW : 0;
+      if (ratioSem >= 2) {
+        out.push({
+          id: "opusweek", level: "info", title: "Semaine Opus chargée",
+          msg: "Semaine glissante ~" + ratioSem.toFixed(1) + "× au-dessus de ton habitude, surtout sur Opus (" + partOpus + "% de ton usage).",
+          why: "Sur Max, le quota hebdomadaire le plus serré est sur Opus — un œil dessus si grosse fin de semaine prévue.",
+        });
+      }
+    }
+
+    // tri par gravité (bad > warn > info), max 3
+    var order = { bad: 0, warn: 1, info: 2 };
+    out.sort(function (a, b) { return order[a.level] - order[b.level]; });
+    return out.slice(0, 3);
+  }
+  function hms(h) { if (!isFinite(h)) return "—"; if (h < 1) return Math.round(h * 60) + " min"; return Math.floor(h) + " h " + Math.round((h % 1) * 60) + " min"; }
+  function clock(ms) { var dt = new Date(ms); return dt.getHours() + " h" + (dt.getMinutes() ? String(dt.getMinutes()).padStart(2, "0") : ""); }
+
   var api = {
     COLORS: COLORS, modelColor: modelColor, fmt: fmt, fmtFull: fmtFull,
     pct: pct, esc: esc, ringColor: ringColor, toneOf: toneOf, ago: ago,
     until: until, dayLabel: dayLabel, ringSVG: ringSVG,
+    median: median, assistant: assistant,
   };
 
   root.CET = api;

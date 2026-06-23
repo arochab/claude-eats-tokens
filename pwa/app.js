@@ -271,22 +271,35 @@
   }
 
   function renderAlerts(d, _unused, dayU, weekU) {
-    // Alertes UNIQUEMENT sur des seuils que TU as saisis (sinon aucun budget
-    // inventé). Un seuil = un nombre > 0 dans les réglages.
-    var a = [], warn = settings.warnPct || 80;
+    // ASSISTANT INTELLIGENT : signaux dérivés de TON historique (fenêtre 5h,
+    // journée anormale, garde-fou Opus hebdo). Zéro budget inventé.
+    var html = "";
+    var signals = (CET.assistant ? CET.assistant(d, Date.now()) : []) || [];
+    signals.forEach(function (s) {
+      html += '<div class="alert ' + s.level + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        (s.level === "bad" ? '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' :
+         s.level === "warn" ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>' :
+         '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>') + '</svg>' +
+        '<div><b>' + esc(s.title) + '</b><br/>' + esc(s.msg) +
+        '<span class="why">' + esc(s.why) + '</span></div></div>';
+    });
+    // seuils perso opt-in (clairement séparés : "tes repères perso, pas une limite Claude")
+    var perso = [], warn = settings.warnPct || 80;
     function check(name, used, threshold) {
-      if (!threshold || threshold <= 0) return;  // pas de seuil saisi -> rien
+      if (!threshold || threshold <= 0) return;
       var p = pct(used, threshold);
-      if (p >= 100) a.push({ t: "bad", m: "<b>" + name + "</b> : seuil dépassé (" + p + "% de " + fmt(threshold) + ")." });
-      else if (p >= warn) a.push({ t: "warn", m: "<b>" + name + "</b> : " + p + "% de ton seuil (" + fmt(threshold) + ")." });
+      if (p >= 100) perso.push({ t: "bad", m: "<b>" + name + "</b> : ton repère dépassé (" + p + "%)." });
+      else if (p >= warn) perso.push({ t: "warn", m: "<b>" + name + "</b> : " + p + "% de ton repère perso." });
     }
     check("Aujourd'hui", dayU, settings.day);
-    check("Cette semaine", weekU, settings.week);
     check("Ce mois", d.month ? d.month.currentMonth : 0, settings.month);
-    if (d.windows) { check("Fenêtre 5 h", d.windows.w5h.total, settings.w5h); }
-    var html = "";
-    if (a.length) a.slice(0, 3).forEach(function (x) { html += banner(x.t, x.m); });
-    // pas de seuil et pas d'alerte -> on n'affiche rien (la div reste vide)
+    if (perso.length) {
+      html += '<p class="alerts-sub">Tes repères perso (pas une limite Claude)</p>';
+      perso.slice(0, 2).forEach(function (x) { html += banner(x.t, x.m); });
+    }
+    // rien à signaler -> message calme et honnête
+    if (!html) html = banner("ok", "Tout est calme — rien à signaler côté rythme.");
     $("alerts").innerHTML = html;
   }
   function banner(t, m) {

@@ -331,6 +331,9 @@ def build(verbose=False):
     # on compare aux jours PASSÉS (hors aujourd'hui) pour un rang honnête
     past_days = daily_vals[:-1] if len(daily_vals) > 1 else daily_vals
     today_rank = uc.percentile_rank(today_total, past_days) if past_days else None
+    # Charge 5h habituelle (robuste, depuis les vrais buckets horaires) —
+    # référence honnête de l'assistant intelligent (pas un quota inventé).
+    baseline5h = uc.baseline_5h(by_hour)
 
     # ---- Heatmap horaire (jour de semaine x heure) — corrige MISSING-PEAK-HOURS ----
     hourly = {}  # "HH" -> total, ET grille weekday x hour
@@ -372,7 +375,7 @@ def build(verbose=False):
                   "dayOfMonth": dom, "daysInMonth": dim},
         "pace": {"avgPerDay": avg, "medianPerDay": median_per_day, "nDays": n_days,
                  "todayRank": today_rank, "todayTotal": today_total,
-                 "medianDay": median_per_day},
+                 "medianDay": median_per_day, "baseline5h": baseline5h},
         "timeline": timeline, "models": models, "projects": projects_out,
         "hourly": {"byHour": [{"hour": h, "total": hourly[h]} for h in sorted(hourly)],
                    "weekdayHour": weekday_hour},

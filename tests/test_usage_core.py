@@ -252,5 +252,53 @@ class TestHonestStats(unittest.TestCase):
         self.assertIsNone(uc.month_ratio(50, [0, 0]))  # médiane nulle -> None
 
 
+class TestAssistantStats(unittest.TestCase):
+    """Assistant intelligent — stats robustes (médiane+MAD log, fenêtre 5h)."""
+
+    def test_mad(self):
+        self.assertEqual(uc.mad([5, 5, 5]), 0.0)
+        # série symétrique : MAD normalisé proche de l'écart-type
+        self.assertGreater(uc.mad([1, 2, 3, 4, 5, 100]), 0)  # robuste au pic 100
+        self.assertEqual(uc.mad([7]), 0.0)
+
+    def _buckets(self, day, hours):
+        # hours = {hour_int: total} -> {"YYYY-MM-DDTHH": accumulateur}
+        b = {}
+        for h, tot in hours.items():
+            b[day + "T%02d" % h] = {"input": tot, "output": 0, "cacheCreate": 0, "cacheRead": 0}
+        return b
+
+    def test_daily_peak_5h(self):
+        # un jour avec 100 à 10h,11h,12h = pic 5h de 300 (3 heures dans la fenêtre)
+        b = self._buckets("2026-06-01", {10: 100, 11: 100, 12: 100})
+        peaks = uc.daily_peak_5h(b)
+        self.assertEqual(peaks["2026-06-01"], 300)
+
+    def test_baseline_5h_divides_correctly(self):
+        # 6 jours, chacun pic 5h = 50M (pas de cumul -> base ~50M, PAS 300M)
+        bk = {}
+        for d in range(1, 7):
+            day = "2026-06-%02d" % d
+            bk.update(self._buckets(day, {10: 50_000_000}))
+        base = uc.baseline_5h(bk)
+        self.assertIsNotNone(base)
+        self.assertEqual(base["nDays"], 6)
+        # base 5h ~ 50M (à l'arrondi log près), surtout PAS un multiple des jours
+        self.assertLess(abs(base["base"] - 50_000_000), 1_000_000)
+
+    def test_baseline_5h_insufficient(self):
+        bk = self._buckets("2026-06-01", {10: 100})
+        self.assertIsNone(uc.baseline_5h(bk, min_days=5))  # 1 jour < 5
+
+    def test_robust_z_log(self):
+        import math
+        # value très au-dessus de la médiane log -> z élevé
+        med_l = math.log1p(50_000_000)
+        mad_l = 0.3
+        z_high = uc.robust_z_log(200_000_000, med_l, mad_l)
+        self.assertGreater(z_high, 3)  # 4× la base -> hors zone normale
+        self.assertEqual(uc.robust_z_log(1, med_l, 0), 0.0)  # mad nul -> 0
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
