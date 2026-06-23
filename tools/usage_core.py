@@ -14,10 +14,12 @@ import calendar
 import re
 from datetime import datetime, timezone, timedelta
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Tarif API (USD / million de tokens). Sur Max c'est un forfait : ces chiffres
 # servent à estimer une *valeur théorique*, pas une facture.
+# Date de validité des tarifs (à mettre à jour si Anthropic change ses prix).
+PRICING_AS_OF = "2026-01"
 PRICING = {
     "opus":    {"in": 15.0, "cw": 18.75, "cr": 1.5,  "out": 75.0},
     "sonnet":  {"in": 3.0,  "cw": 3.75,  "cr": 0.3,  "out": 15.0},
@@ -246,11 +248,90 @@ def w5h_reset_at(hour_buckets, now):
 
 
 def month_projection(current_month, day_of_month, days_in_month):
-    """Projection linéaire fin de mois. `days_in_month` vient de
-    calendar.monthrange (gère les bissextiles)."""
+    """[Déprécié — projection linéaire naïve] Conservé pour rétrocompat.
+    Préférer projection_from_slope (pente récente + fourchette)."""
     if not day_of_month:
         return 0
     return round(current_month / day_of_month * days_in_month)
+
+
+# --------------------------------------------------------------------------
+# Statistiques HONNÊTES (schéma v3) — tout est dérivé des vraies données.
+# Principe validé par le jury : zéro chiffre inventé, tout sourçable.
+# --------------------------------------------------------------------------
+def median(values):
+    """Médiane (résiste aux pics, contrairement à la moyenne)."""
+    xs = sorted(v for v in values if v is not None)
+    n = len(xs)
+    if n == 0:
+        return 0
+    mid = n // 2
+    if n % 2:
+        return xs[mid]
+    return (xs[mid - 1] + xs[mid]) / 2
+
+
+def stdev(values):
+    """Écart-type (population). Sert à la fourchette de projection."""
+    xs = [v for v in values if v is not None]
+    n = len(xs)
+    if n < 2:
+        return 0.0
+    m = sum(xs) / n
+    return (sum((x - m) ** 2 for x in xs) / n) ** 0.5
+
+
+def percentile_rank(value, history):
+    """Rang percentile de `value` dans `history` : % des éléments STRICTEMENT
+    inférieurs. Ex. 'plus chargé que 72% de tes journées'. 0..100.
+    `history` = la timeline réelle (totaux/jour), value inclus ou non."""
+    xs = [v for v in history if v is not None]
+    if not xs:
+        return 0
+    below = sum(1 for x in xs if x < value)
+    return round(below / len(xs) * 100)
+
+
+def projection_from_slope(daily_totals, day_of_month, days_in_month):
+    """Projection fin de mois basée sur la PENTE des 7 derniers jours (et non
+    la moyenne depuis le 1er), avec une fourchette = écart-type * jours restants.
+
+    `daily_totals` : liste des totaux/jour du MOIS EN COURS (ordre chronologique).
+    Retourne {projection, marginLow, marginHigh, slope, basis} ou None si trop peu
+    d'historique. Honnête : la fourchette dit l'incertitude, pas un faux plafond.
+    """
+    cur = sum(daily_totals)
+    days_left = max(0, days_in_month - day_of_month)
+    if days_left == 0:
+        return {"projection": round(cur), "marginLow": round(cur),
+                "marginHigh": round(cur), "slope": 0, "basis": 0}
+    recent = daily_totals[-7:]
+    if len(recent) < 2:
+        return None  # pas assez d'historique pour une pente fiable
+    slope = sum(recent) / len(recent)        # moyenne /jour des derniers jours
+    sigma = stdev(recent)
+    proj = cur + slope * days_left
+    margin = sigma * days_left
+    return {
+        "projection": round(proj),
+        "marginLow": round(max(cur, proj - margin)),
+        "marginHigh": round(proj + margin),
+        "slope": round(slope),
+        "basis": len(recent),
+    }
+
+
+def month_ratio(current_month, previous_months):
+    """Ratio du mois courant à la MÉDIANE des mois précédents complets (%).
+    `previous_months` : liste des totaux des mois civils précédents (complets).
+    None si < 1 mois d'historique (on n'invente pas de comparaison)."""
+    prev = [m for m in previous_months if m]
+    if not prev:
+        return None
+    med = median(prev)
+    if not med:
+        return None
+    return round(current_month / med * 100)
 
 
 def iso_week(date_str):

@@ -308,8 +308,29 @@ def build(verbose=False):
     dom = now.day
     import calendar
     dim = calendar.monthrange(now.year, now.month)[1]
-    projection = uc.month_projection(current_month, dom, dim)
-    avg = round(srange(30)["total"] / min(30, max(1, len(timeline)))) if timeline else 0
+
+    # ---- Stats HONNÊTES (schéma v3) : tout dérivé des vraies données ----
+    # Projection sur la pente des 7 derniers jours, avec fourchette.
+    month_daily = [r["total"] for r in month_rows]
+    projection = uc.month_projection(current_month, dom, dim)  # rétrocompat
+    proj_slope = uc.projection_from_slope(month_daily, dom, dim)
+    # Totaux des mois civils PRÉCÉDENTS complets (pour la médiane de comparaison).
+    by_month = {}
+    for r in timeline:
+        by_month[r["date"][:7]] = by_month.get(r["date"][:7], 0) + r["total"]
+    prev_months = [v for k, v in sorted(by_month.items()) if k < month_prefix]
+    m_ratio = uc.month_ratio(current_month, prev_months[-3:])  # vs médiane 3 derniers
+    m_median3 = round(uc.median(prev_months[-3:])) if prev_months else None
+    # Moyenne + médiane /jour (transparence sur le dénominateur).
+    daily_vals = [r["total"] for r in timeline]
+    n_days = min(30, max(1, len(timeline)))
+    avg = round(srange(30)["total"] / n_days) if timeline else 0
+    median_per_day = round(uc.median(daily_vals[-30:])) if daily_vals else 0
+    # Percentile du jour : où se situe aujourd'hui dans ton historique.
+    today_total = today["total"] if today else 0
+    # on compare aux jours PASSÉS (hors aujourd'hui) pour un rang honnête
+    past_days = daily_vals[:-1] if len(daily_vals) > 1 else daily_vals
+    today_rank = uc.percentile_rank(today_total, past_days) if past_days else None
 
     # ---- Heatmap horaire (jour de semaine x heure) — corrige MISSING-PEAK-HOURS ----
     hourly = {}  # "HH" -> total, ET grille weekday x hour
@@ -338,7 +359,7 @@ def build(verbose=False):
         "source": {"claudeCodeDir": source_dir, "fileCount": len(files),
                    "messages": messages, "skippedLines": skipped_lines,
                    "firstActivity": first_ts, "lastActivity": last_ts,
-                   "apiConnected": False},
+                   "apiConnected": False, "pricingAsOf": uc.PRICING_AS_OF},
         "totals": {**grand, "total": gtotal, "cost": round(gcost, 2)},
         "today": {"total": today["total"] if today else 0,
                   "cost": round(uc.cost_of(today, "") if today else 0, 2)},
@@ -347,8 +368,11 @@ def build(verbose=False):
         "weekly": {"weeks": [{"week": k, "total": v} for k, v in sorted(week_map.items())],
                    "currentWeek": current_week},
         "month": {"currentMonth": current_month, "projection": projection,
+                  "projSlope": proj_slope, "ratio3m": m_ratio, "median3m": m_median3,
                   "dayOfMonth": dom, "daysInMonth": dim},
-        "pace": {"avgPerDay": avg},
+        "pace": {"avgPerDay": avg, "medianPerDay": median_per_day, "nDays": n_days,
+                 "todayRank": today_rank, "todayTotal": today_total,
+                 "medianDay": median_per_day},
         "timeline": timeline, "models": models, "projects": projects_out,
         "hourly": {"byHour": [{"hour": h, "total": hourly[h]} for h in sorted(hourly)],
                    "weekdayHour": weekday_hour},

@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "generatedAt": "2026-06-22T18:00:00+00:00",
   "demo": true,
   "source": {
@@ -86,11 +86,25 @@
   "month": {
     "currentMonth": 38682413,
     "projection": 52748745,
+    "projSlope": {
+      "projection": 53626116,
+      "marginLow": 47785899,
+      "marginHigh": 59466332,
+      "slope": 1867963,
+      "basis": 7
+    },
+    "ratio3m": 108,
+    "median3m": 35974644,
     "dayOfMonth": 22,
     "daysInMonth": 30
   },
   "pace": {
-    "avgPerDay": 1656862
+    "avgPerDay": 1656862,
+    "medianPerDay": 1891208,
+    "nDays": 30,
+    "todayRank": 64,
+    "todayTotal": 2303378,
+    "medianDay": 1891208
   },
   "timeline": [
     {

@@ -202,5 +202,55 @@ class TestProjection(unittest.TestCase):
         self.assertEqual(uc.month_projection(5, 0, 30), 0)
 
 
+class TestHonestStats(unittest.TestCase):
+    """Schéma v3 — métriques honnêtes dérivées des vraies données."""
+
+    def test_median(self):
+        self.assertEqual(uc.median([3, 1, 2]), 2)
+        self.assertEqual(uc.median([1, 2, 3, 4]), 2.5)
+        self.assertEqual(uc.median([]), 0)
+        self.assertEqual(uc.median([5]), 5)
+
+    def test_stdev(self):
+        self.assertEqual(uc.stdev([2, 2, 2]), 0.0)
+        self.assertAlmostEqual(uc.stdev([2, 4, 4, 4, 5, 5, 7, 9]), 2.0, places=3)
+        self.assertEqual(uc.stdev([7]), 0.0)  # 1 point -> pas de variance
+
+    def test_percentile_rank(self):
+        hist = [10, 20, 30, 40, 50]
+        # 35 est > 10,20,30 = 3/5 = 60%
+        self.assertEqual(uc.percentile_rank(35, hist), 60)
+        self.assertEqual(uc.percentile_rank(5, hist), 0)     # plus bas que tous
+        self.assertEqual(uc.percentile_rank(100, hist), 100)  # plus haut que tous
+        self.assertEqual(uc.percentile_rank(10, []), 0)       # pas d'historique
+
+    def test_projection_from_slope_flat(self):
+        # rythme PLAT : 10/jour pendant 7 jours, jour 10 sur 30 -> marge ~0
+        daily = [10] * 10
+        r = uc.projection_from_slope(daily, 10, 30)
+        self.assertEqual(r["slope"], 10)
+        self.assertEqual(r["projection"], 100 + 10 * 20)  # cur=100 + 10*20j restants
+        self.assertEqual(r["marginLow"], r["marginHigh"])  # plat -> fourchette nulle
+
+    def test_projection_from_slope_volatile(self):
+        # rythme VOLATIL -> fourchette large
+        daily = [0, 20, 0, 20, 0, 20, 0]  # jour 7
+        r = uc.projection_from_slope(daily, 7, 30)
+        self.assertGreater(r["marginHigh"] - r["marginLow"], 0)  # vraie incertitude
+
+    def test_projection_too_little_history(self):
+        self.assertIsNone(uc.projection_from_slope([5], 1, 30))  # 1 jour -> None
+
+    def test_projection_end_of_month(self):
+        r = uc.projection_from_slope([10, 10, 10], 30, 30)  # dernier jour
+        self.assertEqual(r["projection"], 30)  # plus de jours restants
+
+    def test_month_ratio(self):
+        # mois courant 120, médiane des précédents [100,80,120] = 100 -> 120%
+        self.assertEqual(uc.month_ratio(120, [100, 80, 120]), 120)
+        self.assertIsNone(uc.month_ratio(50, []))      # pas d'historique -> None
+        self.assertIsNone(uc.month_ratio(50, [0, 0]))  # médiane nulle -> None
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

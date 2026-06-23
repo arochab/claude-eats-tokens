@@ -7,53 +7,28 @@
   var PUSH_SERVER = window.CLAUDE_EATS_TOKENS_SERVER || ""; // ex: "https://claude-eats-tokens.onrender.com"
 
   /* ---------- Réglages (localStorage) ---------- */
+  // Seuils d'alerte OPTIONNELS (0 = pas de seuil = pas d'alerte inventée).
+  // Plus aucun budget auto-calibré : le jury scientifique l'a supprimé.
   var DEFAULTS = {
-    day: 2000000, week: 12000000, month: 45000000,
-    w5h: 3000000, w7d: 15000000,
-    apiCredits: 5, eurRate: 0.92, warnPct: 80, auto: true,
-    projects: [{ name: "Projet en cours", weight: 3000000 }]
+    day: 0, week: 0, month: 0, w5h: 0, w7d: 0,
+    apiCredits: 5, eurRate: 0, warnPct: 80,
+    projects: []
   };
-  var KEY = "tokenTracker.settings.v3";
+  var KEY = "tokenTracker.settings.v4";   // v4 : seuils opt-in, plus d'auto
   function loadSettings() {
     try {
       var saved = JSON.parse(localStorage.getItem(KEY) || "null");
       if (saved) return Object.assign({}, DEFAULTS, saved);
     } catch (e) {}
-    // pas de réglages sauvés -> mode auto-calibrage
-    return Object.assign({}, DEFAULTS, { auto: true });
+    return Object.assign({}, DEFAULTS);
   }
   function saveSettings(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
   var settings = loadSettings();
 
 
-  /* ---------- auto-calibrage des budgets ---------- */
-  function autoCalibrate(d) {
-    if (!settings.auto) return; // l'utilisateur a fixé ses propres budgets
-    var avg = (d.pace && d.pace.avgPerDay) ? d.pace.avgPerDay : 0;
-    var month = d.month ? d.month.currentMonth : (d.last30Days ? d.last30Days.total : 0);
-    var week = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
-    var day = d.today ? d.today.total : avg;
-    var w5h = d.windows ? d.windows.w5h.total : 0;
-    var w7d = d.windows ? d.windows.w7d.total : week;
-    // pic journalier réel observé sur l'historique (base plus robuste que la moyenne)
-    var peakDay = 0;
-    if (d.timeline && d.timeline.length) {
-      for (var i = 0; i < d.timeline.length; i++) if (d.timeline[i].total > peakDay) peakDay = d.timeline[i].total;
-    }
-    function head(n){ // arrondi "joli" au-dessus
-      if (n<=0) return 1000000;
-      var p=Math.pow(10, Math.floor(Math.log10(n)));
-      return Math.ceil(n/p)*p;
-    }
-    // --- Calibrage palier Max 20x : repères larges (tu es au plafond le plus haut),
-    //     basés sur ton PIC réel pour ne pas alerter en usage intense normal,
-    //     mais qui virent à l'ambre/rouge si pic vraiment anormal. ---
-    settings.day   = head(Math.max(peakDay, avg) * 1.5);          // ~1,5x ton plus gros jour
-    settings.week  = head(Math.max(week, avg*7) * 1.6);           // marge hebdo confortable
-    settings.month = head(Math.max(month, avg*30) * 1.6);         // marge mensuelle confortable
-    settings.w5h   = head(Math.max(w5h, peakDay*0.5) * 1.5);      // fenêtre 5h calée sur un demi-pic
-    settings.w7d   = head(Math.max(w7d, avg*7) * 1.6);
-  }
+  /* L'auto-calibrage des budgets a été SUPPRIMÉ (jury scientifique) : il
+     inventait des plafonds avec des multiplicateurs arbitraires ×1,5/×1,6.
+     Désormais : aucun budget par défaut, seuils d'alerte 100% opt-in. */
 
   /* ---------- utilitaires ----------
      Les helpers PURS vivent dans pwa/format.js (window.CET, testé sous Node).
@@ -62,7 +37,43 @@
   var TONE = { input: "#6A8CAF", output: "#CC785C", cacheCreate: "#D4A27F", cacheRead: "#7E9E6D" };
   var modelColor = CET.modelColor, fmt = CET.fmt, fmtFull = CET.fmtFull,
       pct = CET.pct, esc = CET.esc, dayLabel = CET.dayLabel, ringSVG = CET.ringSVG;
-  function eur(usd) { return (usd * settings.eurRate).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"; }
+  /* ----- taux €/$ LIVE (API gratuite, cache 24h) — fini le 0,92 figé ----- */
+  var RATE_KEY = "tokenTracker.eurRate.v1";
+  var eurState = { rate: 0, fetchedAt: 0, stale: false };
+  (function initRate() {
+    try { var c = JSON.parse(localStorage.getItem(RATE_KEY) || "null"); if (c && c.rate) { eurState = c; } } catch (e) {}
+    // override manuel prioritaire si l'utilisateur a saisi un taux
+    if (settings.eurRate && settings.eurRate > 0) eurState = { rate: settings.eurRate, fetchedAt: Date.now(), manual: true };
+  })();
+  function loadEurRate() {
+    // override manuel : on ne touche pas au réseau
+    if (settings.eurRate && settings.eurRate > 0) { eurState = { rate: settings.eurRate, fetchedAt: Date.now(), manual: true }; return Promise.resolve(); }
+    var fresh = eurState.rate && (Date.now() - eurState.fetchedAt < 86400000);
+    if (fresh) return Promise.resolve();
+    return fetch("https://api.exchangerate-api.com/v4/latest/USD", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var rate = j && j.rates && j.rates.EUR;
+        if (rate) { eurState = { rate: rate, fetchedAt: Date.now(), stale: false };
+          try { localStorage.setItem(RATE_KEY, JSON.stringify(eurState)); } catch (e) {}
+          if (DATA) render();
+        }
+      })
+      .catch(function () { eurState.stale = true; });  // garde le cache, signalera ⚠
+  }
+  function rateValue() { return (eurState.rate && eurState.rate > 0) ? eurState.rate : 0; }
+  function rateFreshness() {
+    if (!eurState.rate) return "taux indisponible";
+    if (eurState.manual) return "taux manuel " + eurState.rate.toFixed(3);
+    var age = Date.now() - eurState.fetchedAt;
+    var old = age > 86400000;
+    return "taux " + eurState.rate.toFixed(3) + " · " + (old ? "⚠ en cache, " : "") + "maj " + ago(new Date(eurState.fetchedAt).toISOString());
+  }
+  function eur(usd) {
+    var rate = rateValue();
+    if (!rate) return "≈ $" + (usd || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 });  // pas de taux -> on reste en $
+    return (usd * rate).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  }
   function money(usd) { return "≈ " + eur(usd); }
   function ago(iso) { return CET.ago(iso); }
   function until(iso) { return CET.until(iso); }
@@ -71,7 +82,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null, weekCmpChart = null;
-  var SUPPORTED_SCHEMA = 2;  // version max de usage.json comprise par ce front
+  var SUPPORTED_SCHEMA = 3;  // version max de usage.json comprise par ce front
 
   /* ---------- filtre projet : recompose une vue DATA-compatible ----------
      Quand un projet est sélectionné, on recalcule timeline / totals / today /
@@ -126,7 +137,6 @@
   function render() {
     VIEW = filteredData();
     var d = VIEW;
-    autoCalibrate(d);
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var fr = $("firstrun"); if (fr) fr.hidden = !demo;
     if (demo) {
@@ -140,24 +150,34 @@
     }
 
     var month = d.month ? d.month.currentMonth : (d.last30Days ? d.last30Days.total : 0);
-    var pMonth = pct(month, settings.month);
-
     var dayU = d.today ? d.today.total : 0;
     var weekU = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
-    var rest = Math.max(0, settings.month - month);
 
-    /* héro = budget mensuel (condensé : anneau + 1 ligne) */
-    $("hero-lab").textContent = "Budget mensuel";
-    $("hero-ring-2d").innerHTML = ringSVG(pMonth, 120, 11, "rgba(240,238,230,.14)", ringColor(pMonth),
-      '<div class="pct"><b>' + pMonth + '%</b><small>du mois</small></div>');
+    /* héro HONNÊTE (v3) : ce mois-ci en chiffres bruts + ratio à ta médiane
+       3 mois (PAS un budget inventé). L'anneau = ce ratio, plafonné à 100% du
+       tour pour rester lisible. */
+    var ratio3m = (d.month && typeof d.month.ratio3m === "number") ? d.month.ratio3m : null;
+    var median3m = d.month ? d.month.median3m : null;
+    $("hero-lab").textContent = "Ce mois-ci";
+    if (ratio3m != null) {
+      var ringPct = Math.min(100, ratio3m);  // remplissage visuel borné
+      var col = ratio3m >= 150 ? "#B5563A" : ratio3m >= 100 ? "#C8923D" : "#7E9E6D";
+      $("hero-ring-2d").innerHTML = ringSVG(ringPct, 120, 11, "rgba(240,238,230,.14)", col,
+        '<div class="pct"><b>' + ratio3m + '%</b><small>vs médiane</small></div>');
+      $("hero-rest").textContent = "Médiane 3 mois : " + fmt(median3m || 0);
+    } else {
+      // pas assez d'historique -> on n'invente pas de comparaison
+      $("hero-ring-2d").innerHTML = ringSVG(0, 120, 11, "rgba(240,238,230,.14)", "#7E9E6D",
+        '<div class="pct"><b>' + fmt(month).replace(/ .*/, '') + '</b><small>ce mois</small></div>');
+      $("hero-rest").textContent = "Pas encore de mois précédent pour comparer";
+    }
     $("hero-used").classList.remove("sk");
-    $("hero-used").textContent = fmt(month) + " / " + fmt(settings.month);
-    $("hero-rest").textContent = "Reste " + fmt(rest);
+    $("hero-used").textContent = fmt(month) + " tokens";
     if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> Jour ' + d.month.dayOfMonth + " / " + d.month.daysInMonth;
 
     /* verdict (panneau d'alarme) + alertes */
     renderVerdict(d, dayU, weekU);
-    renderAlerts(d, pMonth, dayU, weekU);
+    renderAlerts(d, 0, dayU, weekU);
 
     /* mini-stats : aujourd'hui · semaine · rythme/projection */
     $("s-today").textContent = fmt(dayU);
@@ -173,18 +193,21 @@
     renderProjects(DATA);
 
     var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
+    var asOf = (d.source && d.source.pricingAsOf) ? (" (tarifs " + d.source.pricingAsOf + ")") : "";
+    var rateInfo = rateValue() ? (" · " + rateFreshness()) : " · coût en $ (taux €/$ indisponible)";
     $("foot").innerHTML = "Source : <b>" + esc(short(src)) + "</b>" + (d.source && d.source.apiConnected ? " · API connectée" : "") +
-      "<br/>Coût estimé au tarif API, converti à " + settings.eurRate + " €/$. Données locales.";
+      "<br/>Valeur théorique au tarif API" + asOf + " — sur Max tu paies un forfait fixe" + rateInfo + ".";
 
-    updateChartA11y(d, month, pMonth);
+    updateChartA11y(d, month);
   }
 
   // descriptions accessibles dynamiques des graphes/jauges (A3-4/A3-11)
-  function updateChartA11y(d, month, pMonth) {
+  function updateChartA11y(d, month) {
     function setLabel(id, txt) { var el = $(id); if (el) el.setAttribute("aria-label", txt); }
     var rows = periodRows();
     var sum = sumRows(rows);
-    setLabel("hero-ring", "Budget mensuel : " + pMonth + "% utilisé, " + fmt(month) + " sur " + fmt(settings.month) + " tokens.");
+    var ratio = (d.month && d.month.ratio3m != null) ? (d.month.ratio3m + "% de ta médiane 3 mois") : "pas de comparaison";
+    setLabel("hero-ring", "Ce mois : " + fmt(month) + " tokens, " + ratio + ".");
     setLabel("trend", "Évolution : " + fmt(sum.total) + " tokens sur la période sélectionnée (" + rows.length + " jours).");
     var tot = sum.total || 1;
     setLabel("donut", "Répartition : entrée " + Math.round(sum.input / tot * 100) + "%, sortie " +
@@ -205,24 +228,28 @@
   }
 
   function renderVerdict(d, dayU, weekU) {
-    // pire pourcentage parmi les budgets Max (hors crédits API)
-    var checks = [
-      pct(d.month ? d.month.currentMonth : 0, settings.month),
-      pct(dayU, settings.day),
-      pct(weekU, settings.week)
-    ];
-    if (d.windows) { checks.push(pct(d.windows.w5h.total, settings.w5h)); checks.push(pct(d.windows.w7d.total, settings.w7d)); }
-    var worst = Math.max.apply(null, checks.concat([0]));
-    // score santé = 100 - worst (borné), pénalise surtout au-delà du seuil
-    var score = Math.max(0, Math.min(100, Math.round(100 - worst)));
-    var tone = worst >= 100 ? "bad" : worst >= settings.warnPct ? "bad" : (worst >= 50 ? "warn" : "ok");
-    var state = worst >= 100 ? "Stop — plafond atteint" : worst >= settings.warnPct ? "Attention" : (worst >= 50 ? "Ça monte" : "Tout va bien");
-    var sub = worst >= 100 ? "Au moins un budget est dépassé. Lève le pied."
-            : worst >= settings.warnPct ? "Tu approches d'un plafond (" + worst + "%). Garde un œil."
-            : (worst >= 50 ? "Consommation modérée (pic à " + worst + "%). RAS." : "Tu es large sur tous tes budgets. 🍃");
+    // VERDICT HONNÊTE (schéma v3) : rang percentile du jour dans TON historique.
+    // Zéro budget inventé. Le "score" = "plus chargé que X% de tes journées".
+    var pace = d.pace || {};
+    var rank = (typeof pace.todayRank === "number") ? pace.todayRank : null;
     var v = $("verdict");
+    if (rank == null) {
+      // pas assez d'historique : on n'invente rien
+      v.className = "verdict ok";
+      $("vscore-n").textContent = "—";
+      $("vstate").textContent = "Démarrage";
+      $("vsub").textContent = "Pas encore assez d'historique pour te situer.";
+      return;
+    }
+    // ton = position relative à TA médiane (pas un plafond) : >85e = pic, <50e = calme
+    var tone = rank >= 90 ? "bad" : rank >= 70 ? "warn" : "ok";
+    var state = rank >= 90 ? "Grosse journée" : rank >= 70 ? "Ça monte" : (rank >= 40 ? "Journée normale" : "Journée calme");
+    var med = pace.medianPerDay || 0;
+    var todayT = pace.todayTotal != null ? pace.todayTotal : dayU;
+    var sub = "Aujourd'hui " + fmt(todayT) + " — plus chargée que " + rank +
+              "% de tes journées passées (médiane : " + fmt(med) + "/j).";
     v.className = "verdict " + tone;
-    $("vscore-n").textContent = score;
+    $("vscore-n").textContent = rank;
     $("vstate").textContent = state;
     $("vsub").textContent = sub;
   }
@@ -239,20 +266,23 @@
       '<p class="s" style="margin:3px 0 0">Sur Max tu paies un forfait fixe : tu ne paies <b>rien de plus</b>. Equivalent au tarif API, a titre indicatif.</p></div></div>';
   }
 
-  function renderAlerts(d, pMonth, dayU, weekU) {
-    var a = [], warn = settings.warnPct;
-    function check(name, used, budget) {
-      var p = pct(used, budget);
-      if (p >= 100) a.push({ t: "bad", m: "<b>" + name + "</b> : plafond atteint (" + p + "%)." });
-      else if (p >= warn) a.push({ t: "warn", m: "<b>" + name + "</b> : " + p + "% du budget consommé." });
+  function renderAlerts(d, _unused, dayU, weekU) {
+    // Alertes UNIQUEMENT sur des seuils que TU as saisis (sinon aucun budget
+    // inventé). Un seuil = un nombre > 0 dans les réglages.
+    var a = [], warn = settings.warnPct || 80;
+    function check(name, used, threshold) {
+      if (!threshold || threshold <= 0) return;  // pas de seuil saisi -> rien
+      var p = pct(used, threshold);
+      if (p >= 100) a.push({ t: "bad", m: "<b>" + name + "</b> : seuil dépassé (" + p + "% de " + fmt(threshold) + ")." });
+      else if (p >= warn) a.push({ t: "warn", m: "<b>" + name + "</b> : " + p + "% de ton seuil (" + fmt(threshold) + ")." });
     }
     check("Aujourd'hui", dayU, settings.day);
     check("Cette semaine", weekU, settings.week);
     check("Ce mois", d.month ? d.month.currentMonth : 0, settings.month);
-    if (d.windows) { check("Fenêtre 5 h", d.windows.w5h.total, settings.w5h); check("Fenêtre 7 j", d.windows.w7d.total, settings.w7d); }
+    if (d.windows) { check("Fenêtre 5 h", d.windows.w5h.total, settings.w5h); }
     var html = "";
-    if (!a.length) html = banner("ok", "Tout est dans les clous. Aucun seuil dépassé.");
-    else a.slice(0, 3).forEach(function (x) { html += banner(x.t, x.m); });
+    if (a.length) a.slice(0, 3).forEach(function (x) { html += banner(x.t, x.m); });
+    // pas de seuil et pas d'alerte -> on n'affiche rien (la div reste vide)
     $("alerts").innerHTML = html;
   }
   function banner(t, m) {
@@ -282,37 +312,25 @@
 
   function renderPace(d, month) {
     var paceBox = $("pace-banner");
-    if (!d.pace || !d.month) {
-      if ($("s-pace")) $("s-pace").textContent = "—";
+    var ps = (d.month && d.month.projSlope) ? d.month.projSlope : null;
+    if (!ps) {
+      // pas assez d'historique pour projeter -> chiffre brut, zéro invention
+      if ($("s-pace")) $("s-pace").textContent = fmt(month);
+      var tp0 = $("t-pace"); if (tp0) { tp0.className = "trend"; tp0.textContent = "ce mois"; }
       if (paceBox) paceBox.innerHTML = "";
       return;
     }
-    var proj = d.month.projection, budget = settings.month;
-    var projPct = pct(proj, budget);
-    var avg = d.pace.avgPerDay;
-    // mini-stat "au rythme actuel" : projection fin de mois en % + tendance
-    var tone = projPct >= 100 ? "bad" : projPct >= settings.warnPct ? "warn" : "ok";
-    if ($("s-pace")) $("s-pace").textContent = fmt(proj);
+    // mini-stat "au rythme actuel" = projection fin de mois (pente 7 derniers j)
+    if ($("s-pace")) $("s-pace").textContent = fmt(ps.projection);
     var tp = $("t-pace");
-    if (tp) { tp.className = "trend " + (projPct >= 100 ? "up" : "down"); tp.textContent = "→ " + projPct + "% du mois"; }
-    // bandeau : la DATE d'épuisement en clair (plus parlant qu'un %)
-    var daysLeft = avg ? Math.floor(Math.max(0, budget - month) / avg) : 999;
-    var verdict;
-    if (projPct >= 100) {
-      var exDate = avg ? exhaustDate(month, budget, avg) : null;
-      verdict = "Au rythme actuel, tu dépasseras ton budget" + (exDate ? " — épuisé vers le <b>" + exDate + "</b>." : ".");
-    } else if (projPct >= settings.warnPct) {
-      verdict = "Au rythme actuel, tu <b>frôleras</b> ton plafond (proj. " + projPct + "%).";
-    } else {
-      verdict = "Au rythme actuel, tu restes <b>sous</b> ton budget (proj. " + projPct + "%, ~" + (daysLeft > 365 ? "365+" : daysLeft) + " j de marge).";
-    }
-    if (paceBox) paceBox.innerHTML = banner(tone, verdict);
-  }
-  // date approximative d'épuisement du budget mensuel au rythme avg
-  function exhaustDate(usedSoFar, budget, avgPerDay) {
-    var daysLeft = Math.max(0, (budget - usedSoFar) / avgPerDay);
-    var dt = new Date(Date.now() + daysLeft * 86400000);
-    return dt.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    if (tp) { tp.className = "trend"; tp.textContent = "±" + fmt(ps.marginHigh - ps.projection) + " selon régularité"; }
+    // bandeau honnête : fourchette + comparaison au mois précédent RÉEL
+    var prevMonth = d.month.median3m;  // médiane des mois précédents (réelle)
+    var cmp = prevMonth ? (" Mois précédents (médiane) : <b>" + fmt(prevMonth) + "</b>.") : "";
+    var verdict = "Au rythme des 7 derniers jours (" + fmt(ps.slope) + "/j) : " +
+      "<b>~" + fmt(ps.projection) + "</b> fin de mois (entre " + fmt(ps.marginLow) + " et " + fmt(ps.marginHigh) + ")." + cmp;
+    if (paceBox) paceBox.innerHTML = banner("ok", verdict +
+      " <span style='opacity:.75'>Valable si le rythme reste constant ; Max = fenêtres 5 h, pas de plafond mensuel officiel.</span>");
   }
 
   function renderModels(d) {
@@ -791,8 +809,8 @@
   $("save-settings").addEventListener("click", function () {
     settings.day = +$("b-day").value || 0; settings.week = +$("b-week").value || 0; settings.month = +$("b-month").value || 0;
     settings.w5h = +$("b-w5h").value || 0; settings.w7d = +$("b-w7d").value || 0; settings.apiCredits = +$("b-api").value || 0;
-    settings.eurRate = +$("b-eur").value || 0.92; settings.warnPct = +$("b-warn").value || 80;
-    settings.auto = false; collectProjects(); saveSettings(settings); closeSettings(); if (DATA) render();
+    settings.eurRate = +$("b-eur").value || 0; settings.warnPct = +$("b-warn").value || 80;
+    collectProjects(); saveSettings(settings); closeSettings(); if (DATA) render();
   });
   $("reset-settings").addEventListener("click", function () { settings = Object.assign({}, DEFAULTS, { projects: DEFAULTS.projects.slice(), auto: true }); saveSettings(settings); fillSettings(); if (DATA) render(); });
 
@@ -873,6 +891,7 @@
   });
 
   ensureNotifPermission();
+  loadEurRate();
   load();
   startLive();
   var SW_FILE = "sw.v9.js";
