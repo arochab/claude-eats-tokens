@@ -94,7 +94,7 @@ test("assistant — fenêtre 5h soutenue -> signal warn/bad", () => {
   const w5 = sigs.find(s => s.id === "w5h");
   assert.ok(w5, "doit produire un signal fenêtre 5h");
   assert.ok(["warn","bad"].includes(w5.level));
-  assert.match(w5.msg, /Fenêtre 5 h/);
+  assert.match(w5.msg, /Claude/);
   assert.match(w5.why, /Max/);
 });
 
@@ -106,7 +106,7 @@ test("assistant — grosse journée tôt -> signal info/warn", () => {
   const sigs = CET.assistant(d, tenAM.getTime());
   const bd = sigs.find(s => s.id === "bigday");
   assert.ok(bd, "doit signaler la grosse journée avant 18h");
-  assert.match(bd.msg, /95%/);
+  assert.match(bd.msg, /Aujourd.hui/);
 });
 
 test("assistant — grosse journée en soirée -> silencieux", () => {
@@ -146,7 +146,7 @@ test("status — tout calme -> VERT", () => {
   d.month = { ratio3m: 100, currentMonth: 5_000_000 };      // mois calme
   const s = CET.status(d, Date.now());
   assert.equal(s.level, "green");
-  assert.match(s.title, /Fonce/);
+  assert.match(s.title, /Tout va bien/);
 });
 
 test("status — fenêtre 5h au max -> ROUGE", () => {
@@ -154,7 +154,7 @@ test("status — fenêtre 5h au max -> ROUGE", () => {
   d.windows.w5h.total = 1_300_000_000;  // ~93% de high (1.4Md) -> rouge
   const s = CET.status(d, Date.now());
   assert.equal(s.level, "red");
-  assert.match(s.title, /Pause/);
+  assert.match(s.title, /Lève le pied/);
   assert.match(s.msg, /ralentir/);
 });
 

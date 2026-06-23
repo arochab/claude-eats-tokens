@@ -109,16 +109,16 @@
         var bad = (proj >= base5h.high && etaH < hoursLeft);
         out.push({
           id: "w5h", level: bad ? "bad" : "warn",
-          title: bad ? "Fenêtre 5 h : tu approches de ta zone inhabituelle" : "Fenêtre 5 h soutenue",
-          msg: "Fenêtre 5 h : " + fmt(w5h) + " consommés, soit " + ratioFen.toFixed(1) + "× ta charge 5 h habituelle (" + fmt(base5h.base) + "). "
-            + (bad ? "À ce rythme (~" + fmt(burn) + "/h), tu entres en zone inhabituelle dans ~" + hms(etaH) + ", avant le reset à " + clock(resetMs) + ". Garde l'Opus lourd pour après."
-                   : "Reset prévu à " + clock(resetMs) + "."),
-          why: "Sur Max, c'est la fenêtre 5 h glissante qui te ralentit (pas un quota mensuel) — on te prévient avant qu'elle ne sature.",
+          title: bad ? "Tu vas peut-être être ralenti" : "Tu utilises beaucoup Claude là",
+          msg: "Ces 5 dernières heures, tu utilises Claude " + xtimes(ratioFen) + ". "
+            + (bad ? "Si tu continues à ce rythme, Claude pourrait te ralentir dans ~" + hms(etaH) + " (avant que ça se remette à zéro à " + clock(resetMs) + "). Pour les grosses tâches, attends ce moment-là."
+                   : "Ça se remet à zéro à " + clock(resetMs) + "."),
+          why: "Sur Claude Max, c'est ça qui peut te ralentir : trop d'usage en 5 h. On te prévient avant.",
         });
       }
     }
 
-    // --- 2) Journée anormale vs ton habitude (percentile robuste) ---
+    // --- 2) Grosse journée vs ton habitude ---
     var rank = pace.todayRank, med = pace.medianPerDay || pace.medianDay || 0;
     var hourLocal = new Date(now).getHours();
     if (typeof rank === "number" && rank >= 90 && hourLocal < 18) {
@@ -126,13 +126,12 @@
       out.push({
         id: "bigday", level: rank >= 97 ? "warn" : "info",
         title: "Grosse journée",
-        msg: "Tu es déjà plus chargé que " + rank + "% de tes jours, et il n'est que " + hourLocal + " h"
-          + (ratioMed ? " — environ " + ratioMed.toFixed(1) + "× ta journée médiane." : "."),
-        why: "On classe ta journée parmi tes jours actifs passés ; rien ne saute sur Max, c'est une info de rythme.",
+        msg: "Aujourd'hui tu utilises Claude " + (ratioMed ? xtimes(ratioMed) : "beaucoup") + ", et il n'est que " + hourLocal + " h.",
+        why: "Juste pour info — rien ne te bloque, c'est ton rythme du jour.",
       });
     }
 
-    // --- 3) Garde-fou Opus hebdo (la 2e vraie contrainte Max) ---
+    // --- 3) Beaucoup d'Opus cette semaine (modèle au quota le plus serré) ---
     var w7d = win.w7d ? win.w7d.total : 0;
     var models = d.models || [];
     var totalTok = models.reduce(function (a, m) { return a + (m.total || 0); }, 0) || 1;
@@ -145,9 +144,9 @@
       var ratioSem = medW ? w7d / medW : 0;
       if (ratioSem >= 2) {
         out.push({
-          id: "opusweek", level: "info", title: "Semaine Opus chargée",
-          msg: "Semaine glissante ~" + ratioSem.toFixed(1) + "× au-dessus de ton habitude, surtout sur Opus (" + partOpus + "% de ton usage).",
-          why: "Sur Max, le quota hebdomadaire le plus serré est sur Opus — un œil dessus si grosse fin de semaine prévue.",
+          id: "opusweek", level: "info", title: "Beaucoup d'Opus cette semaine",
+          msg: "Cette semaine tu utilises Claude " + xtimes(ratioSem) + ", surtout le modèle Opus (le plus puissant).",
+          why: "Opus a la limite hebdomadaire la plus serrée sur Max — bon à savoir si grosse fin de semaine.",
         });
       }
     }
@@ -157,8 +156,20 @@
     out.sort(function (a, b) { return order[a.level] - order[b.level]; });
     return out.slice(0, 3);
   }
-  function hms(h) { if (!isFinite(h)) return "—"; if (h < 1) return Math.round(h * 60) + " min"; return Math.floor(h) + " h " + Math.round((h % 1) * 60) + " min"; }
+  function hms(h) { if (!isFinite(h)) return "—"; if (h <= 0) return "à l'instant"; if (h < 1) return Math.round(h * 60) + " min"; return Math.floor(h) + " h " + Math.round((h % 1) * 60) + " min"; }
   function clock(ms) { var dt = new Date(ms); return dt.getHours() + " h" + (dt.getMinutes() ? String(dt.getMinutes()).padStart(2, "0") : ""); }
+  // multiple en langage HUMAIN : "comme d'habitude" / "2 fois plus que d'habitude"
+  function xtimes(ratio) {
+    if (ratio < 1.25) return "comme d'habitude";
+    if (ratio < 1.75) return "un peu plus que d'habitude";
+    var r = ratio < 10 ? Math.round(ratio * 10) / 10 : Math.round(ratio);
+    return String(r).replace(".", ",") + " fois plus que d'habitude";
+  }
+  function xtimesShort(ratio) {
+    if (ratio < 1.25) return "comme d'habitude";
+    var r = ratio < 10 ? Math.round(ratio * 10) / 10 : Math.round(ratio);
+    return "×" + String(r).replace(".", ",") + " vs d'habitude";
+  }
 
   /* ---------- FEU TRICOLORE UNIFIÉ (user-first) ----------
      UNE réponse : "je peux continuer ?" = le PIRE risque parmi tes 3 horizons
@@ -173,60 +184,58 @@
     var LV = { green: 0, orange: 1, red: 2 };
     function bump(level, sig) { if (LV[level] > LV[worst]) { worst = level; worstSignal = sig; } }
 
-    // --- Fenêtre 5 h : la SEULE qui peut te ralentir réellement (rouge possible) ---
+    // --- "Là, maintenant" (5 dernières heures) : la SEULE qui peut te ralentir ---
     var base5h = pace.baseline5h;
     if (base5h && base5h.base > 0) {
       var w5 = win.w5h ? win.w5h.total : 0;
       var ratio5 = w5 / base5h.base;
       var resetMs = win.w5hResetAt ? Date.parse(win.w5hResetAt) : NaN;
       var hoursLeft = isFinite(resetMs) ? Math.max(0, (resetMs - now) / 3600000) : null;
+      var resetTxt = hoursLeft != null ? (hoursLeft <= 0.02 ? " Ça se remet à zéro maintenant." : " Ça se remet à zéro dans " + hms(hoursLeft) + ".") : "";
       var lvl, msg, pctFill = Math.min(100, Math.round((w5 / base5h.high) * 100));
-      // proche de TA zone inhabituelle (base5h.high) = vrai risque de ralentissement
       if (w5 >= base5h.high * 0.85) {
-        lvl = "red"; msg = "Tu es au max de ta fenêtre 5 h — Claude risque de te ralentir." +
-          (hoursLeft != null ? " Reset dans " + hms(hoursLeft) + "." : "");
+        lvl = "red"; msg = "Tu as beaucoup utilisé Claude ces 5 dernières heures — il pourrait te ralentir bientôt." + resetTxt;
       } else if (ratio5 >= 4 || (w5 >= base5h.high * 0.6)) {
-        lvl = "orange"; msg = "Fenêtre 5 h bien remplie (" + ratio5.toFixed(1) + "× ton habitude). Finis ta tâche en cours." +
-          (hoursLeft != null ? " Reset dans " + hms(hoursLeft) + "." : "");
+        lvl = "orange"; msg = "Tu utilises Claude " + xtimes(ratio5) + " ces 5 dernières heures. Finis ce que tu fais, puis souffle un peu." + resetTxt;
       } else {
-        lvl = "green"; msg = "Fenêtre 5 h tranquille.";
+        lvl = "green"; msg = "Rien à signaler : tu peux continuer tranquille.";
       }
-      gauges.push({ key: "5h", label: "Fenêtre 5 h", fill: pctFill, level: lvl,
-        sub: hoursLeft != null ? "reset dans " + hms(hoursLeft) : "", value: fmt(w5) });
+      gauges.push({ key: "5h", label: "Là, maintenant", fill: pctFill, level: lvl,
+        sub: hoursLeft != null ? (hoursLeft <= 0.02 ? "se remet à zéro" : "se remet à zéro dans " + hms(hoursLeft)) : "", value: fmt(w5) });
       bump(lvl, msg);
     }
 
-    // --- Semaine glissante (7 j) : info (orange max, jamais rouge : pas un mur dur ici) ---
+    // --- Cette semaine : info (orange max, jamais rouge : pas un mur dur ici) ---
     var weeks = (d && d.weekly && d.weekly.weeks) ? d.weekly.weeks.map(function (w) { return w.total; }) : [];
     if (weeks.length >= 3 && win.w7d) {
       var w7 = win.w7d.total, medW = median(weeks.slice(0, -1));
       if (medW > 0) {
         var rW = w7 / medW;
         var lvlW = rW >= 2.5 ? "orange" : "green";
-        gauges.push({ key: "7d", label: "Semaine", fill: Math.min(100, Math.round(rW / 3 * 100)),
-          level: lvlW, sub: rW.toFixed(1) + "× ton habitude", value: fmt(w7) });
-        if (lvlW === "orange") bump("orange", "Semaine glissante chargée (" + rW.toFixed(1) + "× ton habitude).");
+        gauges.push({ key: "7d", label: "Cette semaine", fill: Math.min(100, Math.round(rW / 3 * 100)),
+          level: lvlW, sub: xtimesShort(rW), value: fmt(w7) });
+        if (lvlW === "orange") bump("orange", "Cette semaine, tu utilises Claude " + xtimes(rW) + ".");
       }
     }
 
-    // --- Mois : info (orange max) ---
+    // --- Ce mois : info (orange max) ---
     if (d && d.month && typeof d.month.ratio3m === "number") {
-      var rM = d.month.ratio3m;  // % vs médiane 3 mois
-      var lvlM = rM >= 250 ? "orange" : "green";
-      gauges.push({ key: "month", label: "Ce mois", fill: Math.min(100, Math.round(rM / 3)),
-        level: lvlM, sub: rM + "% de ta médiane 3 mois", value: fmt(d.month.currentMonth || 0) });
-      if (lvlM === "orange") bump("orange", "Mois bien au-dessus de ton habitude (" + rM + "% de ta médiane).");
+      var rM = d.month.ratio3m / 100;  // ratio (1 = comme d'habitude)
+      var lvlM = rM >= 2.5 ? "orange" : "green";
+      gauges.push({ key: "month", label: "Ce mois", fill: Math.min(100, Math.round(rM / 3 * 100)),
+        level: lvlM, sub: xtimesShort(rM), value: fmt(d.month.currentMonth || 0) });
+      if (lvlM === "orange") bump("orange", "Ce mois, tu utilises Claude " + xtimes(rM) + ".");
     }
 
     var titles = {
-      green: "Fonce, tu es large",
-      orange: "Ça chauffe — garde un œil",
-      red: "Pause conseillée",
+      green: "Tout va bien, continue",
+      orange: "Tu y vas fort — garde un œil",
+      red: "Lève le pied un moment",
     };
     return {
       level: worst,
       title: titles[worst],
-      msg: worstSignal || (gauges.length ? "Tout est tranquille sur tes 3 horizons." : "Pas encore assez d'historique pour évaluer."),
+      msg: worstSignal || (gauges.length ? "Tu utilises Claude normalement, rien à signaler." : "Pas encore assez d'historique pour évaluer."),
       gauges: gauges,
     };
   }

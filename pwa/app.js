@@ -153,18 +153,20 @@
     var dayU = d.today ? d.today.total : 0;
     var weekU = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
 
-    /* héro HONNÊTE (v3) : ce mois-ci en chiffres bruts + ratio à ta médiane
-       3 mois (PAS un budget inventé). L'anneau = ce ratio, plafonné à 100% du
-       tour pour rester lisible. */
+    /* héro HONNÊTE & HUMAIN : ce mois-ci en chiffres bruts + "X fois plus que
+       d'habitude" (PAS de "médiane" ni de "%"). */
     var ratio3m = (d.month && typeof d.month.ratio3m === "number") ? d.month.ratio3m : null;
     var median3m = d.month ? d.month.median3m : null;
     $("hero-lab").textContent = "Ce mois-ci";
     if (ratio3m != null) {
-      var ringPct = Math.min(100, ratio3m);  // remplissage visuel borné
-      var col = ratio3m >= 150 ? "#B5563A" : ratio3m >= 100 ? "#C8923D" : "#7E9E6D";
+      var rMx = ratio3m / 100;  // 1 = comme d'habitude
+      var ringPct = Math.min(100, Math.round(rMx / 3 * 100));  // remplissage visuel
+      var col = rMx >= 2.5 ? "#B5563A" : rMx >= 1.5 ? "#C8923D" : "#7E9E6D";
+      // "×3" ou "normal" au centre de l'anneau
+      var center = rMx < 1.25 ? "normal" : "×" + (rMx < 10 ? (Math.round(rMx * 10) / 10).toString().replace(".", ",") : Math.round(rMx));
       $("hero-ring-2d").innerHTML = ringSVG(ringPct, 120, 11, "rgba(240,238,230,.14)", col,
-        '<div class="pct"><b>' + ratio3m + '%</b><small>vs médiane</small></div>');
-      $("hero-rest").textContent = "Médiane 3 mois : " + fmt(median3m || 0);
+        '<div class="pct"><b>' + center + '</b><small>vs d\'habitude</small></div>');
+      $("hero-rest").textContent = "D'habitude tu fais : " + fmt(median3m || 0);
     } else {
       // pas assez d'historique -> on n'invente pas de comparaison
       $("hero-ring-2d").innerHTML = ringSVG(0, 120, 11, "rgba(240,238,230,.14)", "#7E9E6D",
@@ -919,7 +921,7 @@
   loadEurRate();
   load();
   startLive();
-  var SW_FILE = "sw.v12.js";
+  var SW_FILE = "sw.v13.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
