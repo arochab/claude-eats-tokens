@@ -40,13 +40,12 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GIST_ID = os.environ.get("GIST_ID", "")
 GIST_FILE = "usage.json"
 
-# Lecture publique (la PWA est sur GitHub Pages, autre origine). On restreint
-# quand même aux origines connues ; /push n'est de toute façon pas appelé depuis
-# un navigateur (c'est le PC en Python), donc on ne lui ouvre pas le CORS.
-_default_origins = "https://*.github.io,https://claude-eats-tokens.onrender.com"
-ALLOWED_ORIGINS = [o.strip() for o in
-                   os.environ.get("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()]
-CORS(app, resources={r"/usage.json": {"origins": ALLOWED_ORIGINS, "methods": ["GET"]}})
+# Lecture publique (la PWA est sur GitHub Pages, autre origine). /usage.json ne
+# contient que des compteurs de tokens : aucun secret, aucun risque. On autorise
+# donc TOUTES les origines en GET (un wildcard *.github.io flask-cors ne matche
+# pas fiablement le sous-domaine et bloquait le téléphone). /push reste protégé
+# par le secret (hmac) et n'est pas appelé depuis un navigateur.
+CORS(app, resources={r"/usage.json": {"origins": "*", "methods": ["GET"]}})
 
 # Cache mémoire (rapide) + Gist (durable).
 _cache = {"data": None, "ts": 0, "lastGistOk": None}
