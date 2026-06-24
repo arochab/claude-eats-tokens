@@ -146,7 +146,7 @@ test("status — tout calme -> VERT", () => {
   d.month = { ratio3m: 100, currentMonth: 5_000_000 };      // mois calme
   const s = CET.status(d, Date.now());
   assert.equal(s.level, "green");
-  assert.match(s.title, /Tout va bien/);
+  assert.match(s.title, /Tout roule/);
 });
 
 test("status — fenêtre 5h au max -> ROUGE", () => {
@@ -158,12 +158,22 @@ test("status — fenêtre 5h au max -> ROUGE", () => {
   assert.match(s.msg, /ralentir/);
 });
 
-test("status — le feu prend le PIRE des 3 horizons", () => {
+test("status — semaine intense + 5h calme -> VERT 'montée en puissance' (jamais orange)", () => {
   const d = baseD();
-  d.windows.w5h.total = 40_000_000;       // 5h vert
-  d.windows.w7d.total = 300;              // semaine: 6x la médiane(50) -> orange
+  d.windows.w5h.total = 40_000_000;       // 5h calme -> rien ne ralentit
+  d.windows.w7d.total = 300;              // semaine: 6x la médiane(50)
   const s = CET.status(d, Date.now());
-  assert.equal(s.level, "orange");        // le pire (semaine) gagne
+  assert.equal(s.level, "green");         // une grosse semaine n'est PAS une alerte
+  assert.match(s.title, /montes en puissance/);
+});
+
+test("status — seule la fenêtre 5h peut faire chauffer le feu", () => {
+  const d = baseD();
+  d.windows.w5h.total = 600_000_000;      // 12x la base -> orange
+  d.windows.w7d.total = 50;               // semaine calme
+  const s = CET.status(d, Date.now());
+  assert.equal(s.level, "orange");        // c'est bien la 5h qui décide
+  assert.match(s.title, /5 dernières heures/);
 });
 
 test("status — gauges couvrent 5h/semaine/mois", () => {
@@ -174,4 +184,81 @@ test("status — gauges couvrent 5h/semaine/mois", () => {
   assert.ok(keys.includes("5h"));
   assert.ok(keys.includes("7d"));
   assert.ok(keys.includes("month"));
+});
+
+// ---------- Où je me situe (position) ----------
+// helper : construit un d avec une semaine effective ciblée (tout en cache lu,
+// pondéré ×0.1 -> effWeek = cacheRead*0.1)
+const dWeek = (effTarget, extra) => Object.assign({
+  windows: { w7d: { input: 0, output: 0, cacheCreate: 0, cacheRead: effTarget / 0.1 },
+             w5h: { input: 0, output: 0, cacheCreate: 0, cacheRead: 0 } },
+  weekly: { weeks: [{ total: 100 }, { total: 100 }, { total: effTarget }] },
+}, extra || {});
+
+test("position — données insuffisantes -> null", () => {
+  assert.equal(CET.position({}, null, Date.now()), null);
+  assert.equal(CET.position(null, null, Date.now()), null);
+});
+
+test("position — petite semaine -> Découverte", () => {
+  const p = CET.position(dWeek(0.1e9), null, Date.now());
+  assert.equal(p.tierIndex, 0);
+  assert.equal(p.tierLabel, "Découverte");
+});
+
+test("position — semaine moyenne -> Régulier", () => {
+  const p = CET.position(dWeek(1e9), null, Date.now());
+  assert.equal(p.tierIndex, 1);
+  assert.equal(p.tierLabel, "Régulier");
+});
+
+test("position — grosse semaine -> Intensif", () => {
+  const p = CET.position(dWeek(3e9), null, Date.now());
+  assert.equal(p.tierIndex, 2);
+  assert.equal(p.tierLabel, "Intensif");
+});
+
+test("position — le pic 5h qui frôle la limite force Power-user", () => {
+  // semaine modeste MAIS pic 5h à 90% de la limite -> power-user (vrai signal Max)
+  const d = dWeek(1e9);
+  d.windows.w5h = { input: 0, output: 0, cacheCreate: 0, cacheRead: (600e6 * 0.9) / 0.1 };
+  const p = CET.position(d, null, Date.now());
+  assert.equal(p.brushes5h, true);
+  assert.equal(p.tierIndex, 3);
+  assert.equal(p.tierLabel, "Power-user");
+});
+
+test("position — marqueur borné 2..100 et % enveloppe cohérent", () => {
+  const p = CET.position(dWeek(2e9), null, Date.now());
+  assert.ok(p.markerPct >= 2 && p.markerPct <= 100);
+  assert.equal(p.pctEnveloppe, Math.round(2e9 / 9500e6 * 100));  // ~21%
+});
+
+// ---------- Utilisation du forfait ----------
+test("effectiveTokens — pondère le cache lu", () => {
+  const acc = { input: 0, output: 0, cacheCreate: 0, cacheRead: 1000 };
+  assert.equal(CET.effectiveTokens(acc, 0.1), 100);   // cache lu * 0.1
+  assert.equal(CET.effectiveTokens(acc, 1), 1000);    // kCache=1 -> brut
+  assert.equal(CET.effectiveTokens({ input: 50, output: 50, cacheCreate: 0, cacheRead: 0 }, 0.1), 100);
+  assert.equal(CET.effectiveTokens(null), 0);
+});
+
+test("nextWeeklyReset — prochain lundi 00:00", () => {
+  // un mardi -> lundi suivant (6 jours après)
+  const tue = new Date(2026, 5, 23, 15, 0, 0).getTime(); // mar 23 juin 2026 15h
+  const reset = new Date(CET.nextWeeklyReset(tue));
+  assert.equal(reset.getDay(), 1);          // lundi
+  assert.equal(reset.getHours(), 0);
+  assert.ok(reset.getTime() > tue);
+  // un lundi 00:00 pile -> +7j (pas aujourd'hui)
+  const mon = new Date(2026, 5, 22, 0, 0, 0).getTime(); // lun 22 juin 00:00
+  const r2 = new Date(CET.nextWeeklyReset(mon + 1000)); // juste après minuit
+  assert.equal(r2.getDay(), 1);
+  assert.ok(r2.getTime() > mon);
+});
+
+test("weeklyResetLabel — format français court", () => {
+  const label = CET.weeklyResetLabel(new Date(2026, 5, 29).getTime()); // lun 29 juin
+  assert.match(label, /lun/);
+  assert.match(label, /29/);
 });

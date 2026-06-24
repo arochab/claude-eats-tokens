@@ -12,9 +12,17 @@
   var DEFAULTS = {
     day: 0, week: 0, month: 0, w5h: 0, w7d: 0,
     apiCredits: 5, eurRate: 0, warnPct: 80,
-    projects: []
+    projects: [],
+    // "Utilisation du forfait" : limites EFFECTIVES (cache lu pondéré). Presets Max 20x.
+    plan: "20x", kCache: 0.1,
+    lim: { w5h: 600e6, weekAll: 9500e6, weekOpus: 900e6 },
   };
-  var KEY = "tokenTracker.settings.v4";   // v4 : seuils opt-in, plus d'auto
+  // presets de limites par plan (tokens effectifs) — issus des vrais chiffres Max officiels
+  var PLAN_PRESETS = {
+    "20x": { w5h: 600e6, weekAll: 9500e6, weekOpus: 900e6 },
+    "5x":  { w5h: 150e6, weekAll: 5500e6, weekOpus: 600e6 },
+  };
+  var KEY = "tokenTracker.settings.v5";   // v5 : limites forfait
   function loadSettings() {
     try {
       var saved = JSON.parse(localStorage.getItem(KEY) || "null");
@@ -177,9 +185,11 @@
     $("hero-used").textContent = fmt(month) + " tokens";
     if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> Jour ' + d.month.dayOfMonth + " / " + d.month.daysInMonth;
 
-    /* verdict (panneau d'alarme) + alertes */
+    /* forfait d'abord (calcule les %), puis le feu qui les reflète + alertes */
+    renderForfait(d);
     renderVerdict(d, dayU, weekU);
     renderAlerts(d, 0, dayU, weekU);
+    renderPosition(d);
 
     /* mini-stats : aujourd'hui · semaine · rythme/projection */
     $("s-today").textContent = fmt(dayU);
@@ -233,12 +243,161 @@
       '<div class="mt"><p class="k">' + esc(label) + '</p><p class="v">' + eur(usedUsd) + '</p><p class="s">/ ' + eur(budgetUsd) + '</p></div></div>';
   }
 
+  /* ---------- "Utilisation du forfait" (style page Claude) ----------
+     3 barres : limite 5h / cette semaine (tous) / cette semaine (Opus), avec le
+     % d'une vraie limite Max + reset clair + UN conseil smart. Honnête :
+     estimation maison (Anthropic ne partage pas ces % avec les applis). */
+  var FORFAIT_LAST = { p5h: 0, pAll: 0, pOpus: 0 };  // exposé au verdict
+  function renderForfait(d) {
+    var card = $("forfait-card"); if (!card) return;
+    var win = d.windows;
+    // vue filtrée projet : pas de fenêtres -> on masque la carte forfait
+    if (!win) { card.style.display = "none"; return; }
+    card.style.display = "";
+    var k = settings.kCache != null ? settings.kCache : 0.1;
+    var lim = settings.lim || {};
+
+    var eff5h = CET.effectiveTokens(win.w5h, k);
+    var effWeek = CET.effectiveTokens(win.w7d, k);
+    // part Opus (proxy sur l'historique global, en attendant un champ serveur)
+    var models = d.models || [];
+    var totM = models.reduce(function (a, m) { return a + (m.total || 0); }, 0) || 1;
+    var opusTot = models.filter(function (m) { return (m.model || "").indexOf("opus") >= 0; })
+                        .reduce(function (a, m) { return a + (m.total || 0); }, 0);
+    var opusShare = opusTot / totM;
+    var effOpusWeek = effWeek * opusShare;
+
+    function barPct(eff, limit) { return (limit && limit > 0) ? Math.min(100, Math.round(eff / limit * 100)) : null; }
+    var p5h = barPct(eff5h, lim.w5h), pAll = barPct(effWeek, lim.weekAll), pOpus = barPct(effOpusWeek, lim.weekOpus);
+    FORFAIT_LAST = { p5h: p5h || 0, pAll: pAll || 0, pOpus: pOpus || 0 };
+
+    // reset hebdo (prochain lundi par défaut) + reset 5h
+    var weekReset = CET.weeklyResetLabel(CET.nextWeeklyReset(Date.now(), settings.weekResetDay, settings.weekResetHour));
+    // reset 5h en clair (until() renvoie "réinitialisée"/"reset dans X" -> on humanise)
+    var reset5h;
+    if (win.w5hResetAt) {
+      var u = until(win.w5hResetAt);
+      reset5h = /réinitialis/i.test(u) ? "vient de se remettre à zéro"
+              : "se remet à zéro " + u.replace(/^reset /, "");
+    } else { reset5h = "se remet à zéro à la fin de la fenêtre"; }
+
+    function bar(label, p, resetTxt, accent) {
+      if (p == null) {
+        return '<div class="fbar"><div class="fbar-top"><span class="fbar-lab">' + esc(label) +
+          '</span><button class="fbar-set" type="button">définir ma limite</button></div>' +
+          '<div class="fbar-track"><span style="width:0"></span></div></div>';
+      }
+      var col = p >= 100 ? "#B5563A" : p >= (settings.warnPct || 80) ? "#C8923D" : (accent || "#7E9E6D");
+      return '<div class="fbar"><div class="fbar-top"><span class="fbar-lab">' + esc(label) +
+        '</span><span class="fbar-pct" style="color:' + col + '">' + p + '%</span></div>' +
+        '<div class="fbar-sub">' + esc(resetTxt) + '</div>' +
+        '<div class="fbar-track"><span style="width:' + Math.max(2, p) + '%;background:' + col + '"></span></div></div>';
+    }
+    $("forfait-bars").innerHTML =
+      bar("Limite de 5 heures", p5h, reset5h) +
+      bar("Cette semaine · tous les modèles", pAll, "se remet à zéro " + weekReset) +
+      bar("Cette semaine · Opus", pOpus, "se remet à zéro " + weekReset, "#CC785C");
+
+    // mention d'honnêteté
+    $("forfait-note").innerHTML = "Estimation d'après ce que tu as déjà consommé — pas le chiffre exact d'Anthropic (ils ne le partagent pas avec les applis), mais un bon repère.";
+
+    // UN conseil smart selon la barre la plus haute
+    $("forfait-advice").innerHTML = forfaitAdvice(p5h, pAll, pOpus, reset5h, weekReset);
+
+    // bouton "définir ma limite" -> réglages
+    var setBtn = $("forfait-bars").querySelector(".fbar-set");
+    if (setBtn) setBtn.addEventListener("click", openSettings);
+  }
+  function forfaitAdvice(p5h, pAll, pOpus, reset5h, weekReset) {
+    var warn = settings.warnPct || 80;
+    var worst = Math.max(p5h || 0, pAll || 0, pOpus || 0);
+    var tone, msg;
+    if (worst >= 100) {
+      tone = "bad";
+      msg = "Tu as atteint une de tes limites. Pas de panique : ça se débloque tout seul. En attendant, lève le pied ou passe sur un modèle plus léger (Sonnet) pour avancer.";
+    } else if ((pOpus || 0) >= 95 && (p5h || 0) < warn) {
+      tone = "bad";
+      msg = "Attendre ta limite courte ne changera rien cette fois : c'est ta limite de la semaine sur Opus qui est au bout. Elle repart " + weekReset + ". D'ici là, Sonnet reste dispo si tu veux continuer.";
+    } else if ((pOpus || 0) === worst && (pOpus || 0) >= 70) {
+      tone = "warn";
+      msg = "C'est Opus qui chauffe cette semaine — ta ressource la plus rare. Pour le débroussaillage et les tâches carrées, Sonnet fait pareil et te garde Opus pour quand ça compte vraiment.";
+    } else if ((p5h || 0) === worst && (p5h || 0) >= warn) {
+      tone = "warn";
+      msg = "Tu pousses fort depuis un moment. Pas de panique : ta limite courte " + reset5h + ". Si ce n'est pas urgent, une petite pause et tu repars à neuf.";
+    } else if (worst >= 50) {
+      tone = "warn";
+      msg = "Ça monte tranquillement, tu es encore loin du plafond. Rien à changer — juste un œil de temps en temps si tu enchaînes les grosses sessions.";
+    } else {
+      tone = "ok";
+      msg = "Tu es large partout. Aucune limite proche, Opus tranquille. Rien à surveiller — vas-y franchement.";
+    }
+    return banner(tone, msg);
+  }
+
+  // "Où je me situe" : place Adam sur le spectre Découverte→Power-user, à partir
+  // des estimations publiques (réutilise ses limites de forfait pour cohérence).
+  function renderPosition(d) {
+    var card = $("position-card"); if (!card) return;
+    var lim = settings.lim || {};
+    var bench = {
+      lim5h: lim.w5h || 600e6,
+      enveloppeHebdo: lim.weekAll || 9500e6,
+      kCache: settings.kCache != null ? settings.kCache : 0.1,
+    };
+    var p = CET.position ? CET.position(d, bench, Date.now()) : null;
+    if (!p) { card.hidden = true; return; }
+    card.hidden = false;
+
+    var tiers = CET.POSITION_TIERS;  // ["Découverte","Régulier","Intensif","Power-user"]
+    // spectre : 4 segments + un marqueur positionné à markerPct
+    var segs = tiers.map(function (t, i) {
+      var on = i === p.tierIndex;
+      return '<div class="pos-seg' + (on ? " on" : "") + '"><span>' + esc(t) + '</span></div>';
+    }).join("");
+    $("pos-spectrum").innerHTML =
+      '<div class="pos-track">' + segs +
+      '<div class="pos-marker" style="left:' + p.markerPct + '%">' +
+        '<span class="pos-dot"></span><span class="pos-mlabel">Toi · ' + fmt(p.effWeek) + '</span>' +
+      '</div></div>';
+
+    // verdict : honnête et POSITIF (intensif = bonne nouvelle)
+    var verdict;
+    if (p.tierIndex >= 2) {       // Intensif / Power-user
+      verdict = "Tu es dans les utilisateurs <b>" + esc(p.tierLabel.toLowerCase()) + "s</b> de Claude Max — tu sors vraiment la valeur de ton forfait. "
+        + "C'est une bonne nouvelle, pas une alerte : tu utilises à plein ce que tu paies déjà. Rien ne se bloque tant que la fenêtre de 5 h ne sature pas.";
+    } else {                      // Découverte / Régulier
+      verdict = "Tu utilises Claude tranquillement, dans la norme. De la marge partout — tu peux y aller plus franchement si tu veux.";
+    }
+    $("pos-verdict").innerHTML = verdict;
+
+    // repères concrets (réutilise les vrais chiffres)
+    var rep = [];
+    if (p.ratioMedian >= 1.5) {
+      var rr = p.ratioMedian < 10 ? Math.round(p.ratioMedian * 10) / 10 : Math.round(p.ratioMedian);
+      rep.push("≈ " + String(rr).replace(".", ",") + "× ta semaine habituelle — tu montes en puissance");
+    }
+    if (p.brushes5h) rep.push("Ton pic sur 5 h frôle la limite Max estimée : c'est le seul moment où Claude peut te ralentir un peu.");
+    rep.push("≈ " + p.pctEnveloppe + " % de l'enveloppe hebdo estimée « tous modèles » d'un forfait Max — il te reste de la marge.");
+    $("pos-reperes").innerHTML = rep.map(function (r) { return "<li>" + r + "</li>"; }).join("");
+  }
+
   function renderVerdict(d, dayU, weekU) {
     // FEU TRICOLORE UNIFIÉ : "je peux continuer ?" = pire risque parmi
     // fenêtre 5h / semaine / mois. Calculé dans CET.status (pur, testé).
     var st = CET.status ? CET.status(d, Date.now()) : null;
     var v = $("verdict");
     if (!st) { v.className = "verdict ok"; return; }
+    // Les vraies limites Max (forfait) priment : si une barre est au plafond,
+    // le feu passe au rouge ; si elle chauffe, au moins orange.
+    var f = FORFAIT_LAST, fWorst = Math.max(f.p5h, f.pAll, f.pOpus);
+    var warn = settings.warnPct || 80;
+    if (fWorst >= 100 && st.level !== "red") {
+      st = { level: "red", title: "Lève le pied un moment",
+        msg: "Tu as atteint une de tes limites Max. Ça se débloque tout seul — en attendant, lève le pied ou passe sur un modèle plus léger.", gauges: st.gauges };
+    } else if (fWorst >= warn && st.level === "green") {
+      st = { level: "orange", title: "Tu y vas fort — garde un œil",
+        msg: "Tu approches d'une de tes limites Max. Regarde la section « Utilisation du forfait » juste en dessous.", gauges: st.gauges };
+    }
     // mapping feu -> tons du design system
     var toneMap = { green: "ok", orange: "warn", red: "bad" };
     var iconMap = {
@@ -493,8 +652,11 @@
       data: { labels: rows.map(function (r) { return dayLabel(r.date); }), datasets: [{ data: rows.map(function (r) { return r.total; }), borderColor: "#CC785C", borderWidth: 2.5, backgroundColor: g, fill: true, tension: .38, pointRadius: rows.length <= 2 ? 5 : 0, pointBackgroundColor: "#CC785C", pointHoverRadius: 5, pointHoverBackgroundColor: "#CC785C", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", padding: 10, displayColors: false, callbacks: { label: function (c) { return fmtFull(c.parsed.y) + " tokens"; } } } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } }, y: { grid: { color: "rgba(128,128,128,.12)" }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return fmt(v); } } } } }
     };
-    // mémoïsation : on met à jour en place plutôt que détruire/recréer (A2-2)
-    if (trendChart) {
+    // mémoïsation : on met à jour en place plutôt que détruire/recréer (A2-2).
+    // MAIS si le graphe a été créé alors que sa carte n'était pas encore mise
+    // en page (largeur 0, bug Chart.js connu), update() ne récupère jamais la
+    // taille -> on le recrée proprement une fois la carte visible.
+    if (trendChart && $("trend").width > 0) {
       trendChart.data.labels = cfg.data.labels;
       trendChart.data.datasets[0].data = cfg.data.datasets[0].data;
       trendChart.data.datasets[0].backgroundColor = g;
@@ -502,6 +664,7 @@
       trendChart.update("none");
       return;
     }
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
     trendChart = new Chart(ctx, cfg);
   }
   function drawDonut(t) {
@@ -815,8 +978,24 @@
     $("b-day").value = settings.day; $("b-week").value = settings.week; $("b-month").value = settings.month;
     $("b-w5h").value = settings.w5h; $("b-w7d").value = settings.w7d; $("b-api").value = settings.apiCredits;
     $("b-eur").value = settings.eurRate; $("b-warn").value = settings.warnPct;
+    $("b-calib").value = "";
+    markPlanSeg(settings.plan || "20x");
     renderProjEditor();
   }
+  // toggle de plan (Max 5x / 20x) -> pré-remplit les limites du forfait
+  function markPlanSeg(plan) {
+    [].forEach.call($("plan-seg").querySelectorAll("button"), function (b) {
+      b.classList.toggle("on", b.getAttribute("data-plan") === plan);
+    });
+  }
+  [].forEach.call(document.querySelectorAll("#plan-seg button"), function (b) {
+    b.addEventListener("click", function () {
+      var plan = b.getAttribute("data-plan");
+      settings.plan = plan;
+      settings.lim = Object.assign({}, PLAN_PRESETS[plan] || PLAN_PRESETS["20x"]);
+      markPlanSeg(plan);
+    });
+  });
   function renderProjEditor() {
     var box = $("proj-editor"); box.innerHTML = "";
     (settings.projects || []).forEach(function (p, i) {
@@ -837,6 +1016,13 @@
     settings.day = +$("b-day").value || 0; settings.week = +$("b-week").value || 0; settings.month = +$("b-month").value || 0;
     settings.w5h = +$("b-w5h").value || 0; settings.w7d = +$("b-w7d").value || 0; settings.apiCredits = +$("b-api").value || 0;
     settings.eurRate = +$("b-eur").value || 0; settings.warnPct = +$("b-warn").value || 80;
+    // calage sur la vraie barre 5h d'Anthropic : si Claude affiche X%, alors
+    // ma limite = ce que je consomme là / (X/100). Recale tout sur sa réalité.
+    var calib = +$("b-calib").value;
+    if (calib > 0 && calib <= 100 && DATA && DATA.windows && DATA.windows.w5h) {
+      var eff = CET.effectiveTokens(DATA.windows.w5h, settings.kCache != null ? settings.kCache : 0.1);
+      if (eff > 0) { settings.lim = settings.lim || {}; settings.lim.w5h = Math.round(eff / (calib / 100)); }
+    }
     collectProjects(); saveSettings(settings); closeSettings(); if (DATA) render();
   });
   $("reset-settings").addEventListener("click", function () { settings = Object.assign({}, DEFAULTS, { projects: DEFAULTS.projects.slice(), auto: true }); saveSettings(settings); fillSettings(); if (DATA) render(); });
@@ -921,7 +1107,7 @@
   loadEurRate();
   load();
   startLive();
-  var SW_FILE = "sw.v13.js";
+  var SW_FILE = "sw.v14.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)

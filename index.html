@@ -45,13 +45,6 @@
     </div>
   </div>
 
-  <div class="seg" id="period" role="group" aria-label="Période d'affichage">
-    <button type="button" data-p="today" aria-pressed="false">Aujourd'hui</button>
-    <button type="button" data-p="7" class="on" aria-pressed="true">7 jours</button>
-    <button type="button" data-p="30" aria-pressed="false">30 jours</button>
-    <button type="button" data-p="all" aria-pressed="false">Tout</button>
-  </div>
-
   <div class="projfilter" id="projfilter" hidden>
     <span>Filtré : <b id="projfilter-name"></b></span>
     <button id="projfilter-clear" aria-label="Retirer le filtre projet">Tout voir ✕</button>
@@ -66,6 +59,22 @@
   </section>
 
   <div id="alerts"></div>
+
+  <section class="card" id="forfait-card">
+    <h2>Utilisation du forfait <span class="hint">estimation</span></h2>
+    <p class="forfait-note" id="forfait-note"></p>
+    <div id="forfait-bars"></div>
+    <div id="forfait-advice"></div>
+  </section>
+
+  <section class="card" id="position-card">
+    <h2>Où je me situe <span class="hint">repère</span></h2>
+    <p class="pos-sub" id="pos-sub">Ta semaine comparée à l'usage typique d'un abonné Claude Max.</p>
+    <div class="pos-spectrum" id="pos-spectrum" role="img" aria-label="Position de ton usage sur le spectre des abonnés Max"></div>
+    <p class="pos-verdict" id="pos-verdict"></p>
+    <ul class="pos-reperes" id="pos-reperes"></ul>
+    <p class="pos-caveat" id="pos-caveat">Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.</p>
+  </section>
 
   <section class="hero">
     <div class="ring" id="hero-ring"><div class="ring-2d" id="hero-ring-2d"></div></div>
@@ -100,6 +109,12 @@
 
   <section class="card">
     <h2>Évolution <span class="hint" id="chart-hint">tokens / jour</span></h2>
+    <div class="seg" id="period" role="group" aria-label="Période d'affichage">
+      <button type="button" data-p="today" aria-pressed="false">Aujourd'hui</button>
+      <button type="button" data-p="7" class="on" aria-pressed="true">7 jours</button>
+      <button type="button" data-p="30" aria-pressed="false">30 jours</button>
+      <button type="button" data-p="all" aria-pressed="false">Tout</button>
+    </div>
     <div class="chart-wrap"><canvas id="trend" role="img" aria-label="Courbe de consommation de tokens par jour"></canvas></div>
   </section>
 
@@ -123,6 +138,17 @@
       <button class="iconbtn" id="close-settings" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
     <p class="lead">Tes plafonds restent sur cet appareil. Modifie-les quand tu veux.</p>
+
+    <div class="grouplabel">Mon forfait Claude Max</div>
+    <div class="fieldgroup">
+      <div class="field"><label>Mon plan<small>règle les limites estimées</small></label>
+        <div class="seg" id="plan-seg" role="group" aria-label="Plan Max">
+          <button type="button" data-plan="5x">Max 5×</button>
+          <button type="button" data-plan="20x">Max 20×</button>
+        </div>
+      </div>
+      <div class="field"><label>Caler sur ma vraie barre 5 h<small>le % que Claude t'affiche, là, maintenant</small></label><input type="number" id="b-calib" inputmode="numeric" placeholder="ex. 11" min="1" max="100" /></div>
+    </div>
 
     <div class="grouplabel">Budgets de tokens</div>
     <div class="fieldgroup">

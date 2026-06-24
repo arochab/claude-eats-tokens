@@ -70,6 +70,36 @@ body{font-family:var(--sans);background:
 .alert .why{display:block;margin-top:5px;font-size:11.5px;opacity:.78;line-height:1.4}
 .alerts-sub{font-size:11px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);margin:4px 4px 8px}
 
+/* Utilisation du forfait (style page Claude) */
+.forfait-note{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0 0 16px}
+.fbar{margin-bottom:15px}.fbar:last-of-type{margin-bottom:4px}
+.fbar-top{display:flex;justify-content:space-between;align-items:baseline}
+.fbar-lab{font-size:13.5px;color:var(--slate);font-weight:500}
+.fbar-pct{font-family:var(--serif);font-size:16px;font-variant-numeric:tabular-nums}
+.fbar-sub{font-size:11px;color:var(--muted);margin:2px 0 6px}
+.fbar-track{height:8px;background:var(--cream-2);border-radius:99px;overflow:hidden}
+.fbar-track>span{display:block;height:100%;border-radius:99px;transition:width .5s var(--ease)}
+.fbar-set{border:none;background:none;color:var(--terracotta-d);font-size:11.5px;font-weight:500;cursor:pointer;padding:0}
+#forfait-advice{margin-top:16px}#forfait-advice .alert{margin-bottom:0}
+
+/* "Où je me situe" — spectre de positionnement (Découverte → Power-user) */
+.pos-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 18px}
+.pos-spectrum{margin:0 0 16px}
+.pos-track{position:relative;display:flex;gap:3px;height:38px}
+.pos-seg{flex:1;background:var(--cream-2);border-radius:7px;display:grid;place-items:center;transition:.25s}
+.pos-seg span{font-size:10.5px;color:var(--muted);font-weight:500;letter-spacing:.01em;text-align:center;line-height:1.1}
+.pos-seg.on{background:linear-gradient(135deg,var(--clay),var(--terracotta))}
+.pos-seg.on span{color:#fff;font-weight:600}
+.pos-marker{position:absolute;top:-7px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.pos-dot{width:13px;height:13px;border-radius:50%;background:var(--slate);border:3px solid var(--paper);box-shadow:0 1px 4px rgba(26,25,21,.3)}
+.pos-mlabel{margin-top:53px;position:absolute;top:0;white-space:nowrap;font-size:10.5px;font-weight:600;color:var(--slate);font-variant-numeric:tabular-nums}
+.pos-verdict{font-size:14px;line-height:1.55;color:var(--slate);margin:26px 0 14px}
+.pos-verdict b{color:var(--terracotta-d)}
+.pos-reperes{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:7px}
+.pos-reperes li{font-size:12.5px;color:var(--slate-soft);line-height:1.45;padding-left:16px;position:relative}
+.pos-reperes li::before{content:"·";position:absolute;left:4px;color:var(--terracotta);font-weight:700}
+.pos-caveat{font-size:11px;color:var(--muted);line-height:1.5;margin:0;padding-top:12px;border-top:1px solid var(--line)}
+
 /* primary ring hero — pièce maîtresse éditoriale */
 /* le héro est TOUJOURS sombre -> texte clair fixe (pas la variable thémée). */
 .hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#211F1A 0%,#1A1915 55%,#15140F 100%);color:#F0EEE6;border-radius:var(--r-xl);padding:24px 24px 22px;margin-bottom:16px;box-shadow:var(--shadow-lg);display:flex;gap:22px;align-items:center}

@@ -80,6 +80,32 @@
   // ---------- stats robustes (pour l'assistant) ----------
   function median(a) { var s = a.filter(function (v) { return v != null; }).sort(function (x, y) { return x - y; }); var n = s.length; if (!n) return 0; var m = n >> 1; return n % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 
+  /* ---------- "Utilisation du forfait" (style page Claude) ----------
+     Tokens EFFECTIFS : le cache lu est quasi gratuit -> pondéré (kCache=0.1).
+     Sinon on afficherait 300% là où Claude affiche 11%. */
+  function effectiveTokens(acc, kCache) {
+    if (!acc) return 0;
+    var k = (kCache == null) ? 0.1 : kCache;
+    return (acc.input || 0) + (acc.cacheCreate || 0) + (acc.output || 0) + k * (acc.cacheRead || 0);
+  }
+  // prochain reset hebdo (par défaut lundi 00:00 local). nowMs injectable (testable).
+  function nextWeeklyReset(nowMs, resetDay, resetHour) {
+    var now = nowMs == null ? Date.now() : nowMs;
+    var rd = (resetDay == null) ? 1 : resetDay;   // 1 = lundi
+    var rh = (resetHour == null) ? 0 : resetHour;
+    var dt = new Date(now);
+    dt.setHours(rh, 0, 0, 0);
+    // jours jusqu'au prochain resetDay (JS: 0=dim..6=sam ; on veut 1=lun)
+    var cur = dt.getDay() === 0 ? 7 : dt.getDay();
+    var delta = ((rd - cur) + 7) % 7;
+    if (delta === 0 && dt.getTime() <= now) delta = 7;  // si on est pile dessus/passé -> +7j
+    dt.setDate(dt.getDate() + delta);
+    return dt.getTime();
+  }
+  function weeklyResetLabel(ms) {
+    return new Date(ms).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+  }
+
   /* ---------- ASSISTANT TOKEN INTELLIGENT ----------
      Conçu par une équipe d'experts (séries temporelles, rate-limits Max, UX).
      Compare Adam à LUI-MÊME (stats robustes), jamais à un quota inventé.
@@ -118,20 +144,20 @@
       }
     }
 
-    // --- 2) Grosse journée vs ton habitude ---
+    // --- 2) Grosse journée vs ton habitude : POSITIF (tu avances bien) ---
     var rank = pace.todayRank, med = pace.medianPerDay || pace.medianDay || 0;
     var hourLocal = new Date(now).getHours();
     if (typeof rank === "number" && rank >= 90 && hourLocal < 18) {
       var ratioMed = med ? (pace.todayTotal || 0) / med : 0;
       out.push({
-        id: "bigday", level: rank >= 97 ? "warn" : "info",
-        title: "Grosse journée",
-        msg: "Aujourd'hui tu utilises Claude " + (ratioMed ? xtimes(ratioMed) : "beaucoup") + ", et il n'est que " + hourLocal + " h.",
-        why: "Juste pour info — rien ne te bloque, c'est ton rythme du jour.",
+        id: "bigday", level: "info",
+        title: "Belle journée de travail",
+        msg: "Aujourd'hui tu utilises Claude " + (ratioMed ? xtimes(ratioMed) : "beaucoup") + ", et il n'est que " + hourLocal + " h. Tu avances bien.",
+        why: "C'est ton rythme du jour — rien ne te bloque.",
       });
     }
 
-    // --- 3) Beaucoup d'Opus cette semaine (modèle au quota le plus serré) ---
+    // --- 3) Beaucoup d'Opus cette semaine : POSITIF (tu sors le grand jeu) ---
     var w7d = win.w7d ? win.w7d.total : 0;
     var models = d.models || [];
     var totalTok = models.reduce(function (a, m) { return a + (m.total || 0); }, 0) || 1;
@@ -144,9 +170,9 @@
       var ratioSem = medW ? w7d / medW : 0;
       if (ratioSem >= 2) {
         out.push({
-          id: "opusweek", level: "info", title: "Beaucoup d'Opus cette semaine",
-          msg: "Cette semaine tu utilises Claude " + xtimes(ratioSem) + ", surtout le modèle Opus (le plus puissant).",
-          why: "Opus a la limite hebdomadaire la plus serrée sur Max — bon à savoir si grosse fin de semaine.",
+          id: "opusweek", level: "info", title: "Tu montes en puissance avec Opus",
+          msg: "Cette semaine tu utilises Claude " + xtimes(ratioSem) + ", surtout Opus, le modèle le plus puissant. Tu prends de l'élan.",
+          why: "Bon à savoir : Opus est le modèle premium. Le seul moment où il peut te ralentir, c'est si tu satures la fenêtre de 5 h.",
         });
       }
     }
@@ -205,38 +231,112 @@
       bump(lvl, msg);
     }
 
-    // --- Cette semaine : info (orange max, jamais rouge : pas un mur dur ici) ---
+    // --- Cette semaine : INFO seulement. Sur Max, la semaine n'est pas un mur
+    //     dur : une semaine intense = tu montes en puissance, pas une alerte.
+    //     Elle ne fait JAMAIS virer le feu -> on note juste si ça grimpe fort. ---
     var weeks = (d && d.weekly && d.weekly.weeks) ? d.weekly.weeks.map(function (w) { return w.total; }) : [];
+    var growing = false, growRatio = 0;
     if (weeks.length >= 3 && win.w7d) {
       var w7 = win.w7d.total, medW = median(weeks.slice(0, -1));
       if (medW > 0) {
         var rW = w7 / medW;
-        var lvlW = rW >= 2.5 ? "orange" : "green";
+        growing = rW >= 2.5; growRatio = rW;
         gauges.push({ key: "7d", label: "Cette semaine", fill: Math.min(100, Math.round(rW / 3 * 100)),
-          level: lvlW, sub: xtimesShort(rW), value: fmt(w7) });
-        if (lvlW === "orange") bump("orange", "Cette semaine, tu utilises Claude " + xtimes(rW) + ".");
+          level: "green", sub: xtimesShort(rW), value: fmt(w7) });
       }
     }
 
-    // --- Ce mois : info (orange max) ---
+    // --- Ce mois : INFO seulement (jamais d'alerte non plus) ---
     if (d && d.month && typeof d.month.ratio3m === "number") {
       var rM = d.month.ratio3m / 100;  // ratio (1 = comme d'habitude)
-      var lvlM = rM >= 2.5 ? "orange" : "green";
+      if (rM >= 2.5) { growing = true; growRatio = Math.max(growRatio, rM); }
       gauges.push({ key: "month", label: "Ce mois", fill: Math.min(100, Math.round(rM / 3 * 100)),
-        level: lvlM, sub: xtimesShort(rM), value: fmt(d.month.currentMonth || 0) });
-      if (lvlM === "orange") bump("orange", "Ce mois, tu utilises Claude " + xtimes(rM) + ".");
+        level: "green", sub: xtimesShort(rM), value: fmt(d.month.currentMonth || 0) });
+    }
+
+    // Vert "montée en puissance" : seulement si le feu reste vert (5 h calme)
+    // mais que la semaine/mois grimpe fort. C'est une bonne nouvelle, pas une alerte.
+    if (worst === "green" && growing) {
+      return {
+        level: "green",
+        title: "Belle semaine — tu montes en puissance",
+        msg: "Tu utilises Claude " + xtimes(growRatio) + " en ce moment. C'est normal : tu prends de l'élan. Rien ne te bloque.",
+        gauges: gauges,
+      };
     }
 
     var titles = {
-      green: "Tout va bien, continue",
-      orange: "Tu y vas fort — garde un œil",
+      green: "Tout roule",
+      orange: "Ça chauffe sur les 5 dernières heures",
       red: "Lève le pied un moment",
     };
     return {
       level: worst,
       title: titles[worst],
-      msg: worstSignal || (gauges.length ? "Tu utilises Claude normalement, rien à signaler." : "Pas encore assez d'historique pour évaluer."),
+      msg: worstSignal || (gauges.length ? "Tu peux continuer tranquille, rien ne te freine." : "Pas encore assez d'historique pour évaluer."),
       gauges: gauges,
+    };
+  }
+
+  /* ---------- "OÙ JE ME SITUE" (positionnement vs autres abonnés Max) ----------
+     Place l'utilisateur sur un spectre Découverte → Régulier → Intensif →
+     Power-user, à partir de sa SEMAINE EFFECTIVE (cache lu pondéré, comme la
+     carte "Utilisation du forfait"). IMPORTANT : les seuils sont des ESTIMATIONS
+     PUBLIQUES, pas des chiffres officiels Anthropic (qui ne publie aucun quota
+     chiffré). Le vrai signal "Max" reste le pic 5 h vs la limite de fenêtre.
+     Pur, testable sous Node. bench = {decouverte, regulier, intensif, lim5h,
+     enveloppeHebdo, kCache}. */
+  var POSITION_BENCH = {
+    // tokens EFFECTIFS / semaine — repères de FAIBLE confiance, à recalibrer
+    decouverte: 0.3e9,   // en-dessous : on essaie, quelques sessions
+    regulier: 2e9,       // usage quotidien installé
+    intensif: 6e9,       // au-delà : power-user
+    // réutilisés depuis le forfait (Max 20x par défaut), pas dupliqués côté front
+    lim5h: 600e6,
+    enveloppeHebdo: 9500e6,
+    kCache: 0.1,
+  };
+  var POSITION_TIERS = ["Découverte", "Régulier", "Intensif", "Power-user"];
+
+  function position(d, bench, nowMs) {
+    var b = Object.assign({}, POSITION_BENCH, bench || {});
+    var win = (d && d.windows) || {};
+    if (!win.w7d) return null;                       // pas assez de données
+    var effWeek = effectiveTokens(win.w7d, b.kCache);
+    var eff5h = win.w5h ? effectiveTokens(win.w5h, b.kCache) : 0;
+
+    // palier de base d'après la semaine effective
+    var tierIndex = effWeek < b.decouverte ? 0
+                  : effWeek < b.regulier ? 1
+                  : effWeek < b.intensif ? 2 : 3;
+    // le pic 5 h est le VRAI signal Max : s'il frôle/dépasse la limite -> power-user
+    var brushes5h = b.lim5h > 0 && eff5h >= b.lim5h * 0.8;
+    if (brushes5h || effWeek >= b.intensif) tierIndex = Math.max(tierIndex, 3);
+
+    // position du marqueur sur le spectre (échelle LOG, ~2 ordres de grandeur)
+    var lo = Math.log10(Math.max(1, b.decouverte));
+    var hi = Math.log10(Math.max(b.decouverte * 10, b.intensif * 1.6));
+    var lv = Math.log10(Math.max(1, effWeek));
+    var markerPct = Math.max(2, Math.min(100, Math.round((lv - lo) / (hi - lo) * 100)));
+
+    // ratio vs la semaine médiane (réutilise la même médiane que status())
+    var weeks = (d && d.weekly && d.weekly.weeks) ? d.weekly.weeks.map(function (w) { return w.total; }) : [];
+    var medW = weeks.length >= 2 ? median(weeks.slice(0, -1)) : 0;
+    var ratioMedian = medW > 0 ? win.w7d.total / medW : 0;
+
+    var pctEnveloppe = b.enveloppeHebdo > 0 ? Math.round(effWeek / b.enveloppeHebdo * 100) : 0;
+    var pct5h = b.lim5h > 0 ? Math.round(eff5h / b.lim5h * 100) : 0;
+
+    return {
+      tierIndex: tierIndex,
+      tierLabel: POSITION_TIERS[tierIndex],
+      markerPct: markerPct,
+      effWeek: effWeek,
+      eff5h: eff5h,
+      ratioMedian: ratioMedian,
+      pctEnveloppe: pctEnveloppe,
+      pct5h: pct5h,
+      brushes5h: brushes5h,
     };
   }
 
@@ -245,6 +345,9 @@
     pct: pct, esc: esc, ringColor: ringColor, toneOf: toneOf, ago: ago,
     until: until, dayLabel: dayLabel, ringSVG: ringSVG,
     median: median, assistant: assistant, status: status,
+    effectiveTokens: effectiveTokens, nextWeeklyReset: nextWeeklyReset, weeklyResetLabel: weeklyResetLabel,
+    position: position, POSITION_BENCH: POSITION_BENCH, POSITION_TIERS: POSITION_TIERS,
+    xtimes: xtimes, xtimesShort: xtimesShort,
   };
 
   root.CET = api;
