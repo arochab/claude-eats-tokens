@@ -14,6 +14,11 @@ self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
+// le front peut demander l'activation immédiate d'une nouvelle version
+self.addEventListener("message", (e) => {
+  if (e.data === "skipWaiting") self.skipWaiting();
+});
+
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()

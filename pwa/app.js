@@ -1202,20 +1202,33 @@
   var SW_FILE = "sw.v19.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
+      var refreshed = false;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (refreshed) return; refreshed = true; window.location.reload();
+      });
+      // 1) purge tout SW fantôme (autre que la version courante)
       navigator.serviceWorker.getRegistrations().then(function (regs) {
         regs.forEach(function (r) {
           var u = (r.active && r.active.scriptURL) || "";
           if (u.indexOf(SW_FILE) < 0) { r.unregister(); }
         });
-        // 2) enregistre la version courante (nom de fichier neuf = jamais en cache)
-        navigator.serviceWorker.register(SW_FILE, { scope: "./" }).catch(function () {});
+        // 2) enregistre la version courante + force la recherche de MAJ
+        navigator.serviceWorker.register(SW_FILE, { scope: "./" }).then(function (reg) {
+          reg.update();  // vérifie tout de suite s'il y a du neuf côté serveur
+          // si une nouvelle version s'installe, on l'active et on recharge auto
+          reg.addEventListener("updatefound", function () {
+            var sw = reg.installing;
+            if (!sw) return;
+            sw.addEventListener("statechange", function () {
+              if (sw.state === "installed" && navigator.serviceWorker.controller) {
+                // nouvelle version prête derrière l'ancienne -> on la prend
+                if (reg.waiting) reg.waiting.postMessage("skipWaiting");
+              }
+            });
+          });
+        }).catch(function () {});
       }).catch(function () {
         navigator.serviceWorker.register(SW_FILE, { scope: "./" }).catch(function () {});
-      });
-      var refreshed = false;
-      navigator.serviceWorker.addEventListener("controllerchange", function () {
-        if (refreshed) return; refreshed = true; window.location.reload();
       });
     });
   }
