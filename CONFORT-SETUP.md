@@ -7,40 +7,32 @@ Deux réglages, une seule fois. Après ça, tu n'as plus rien à faire.
 ## A) Démarrage automatique du moteur (PC allumé = chiffres frais)
 
 Le « moteur » lit tes logs Claude Code et pousse tes chiffres. On le fait
-démarrer tout seul, en arrière-plan (sans fenêtre noire).
+démarrer tout seul, en arrière-plan (sans fenêtre noire), via une **tâche
+planifiée Windows** — la méthode robuste : elle relance le moteur s'il plante et
+n'a pas de limite de durée.
 
-**1 seul double-clic :** lance **`installer-demarrage-auto.bat`**
+**Une seule fois, dans un PowerShell ADMIN** (clic droit → « Exécuter en tant
+qu'administrateur »), lance :
 
-Ça crée un raccourci dans le dossier Démarrage de Windows ET lance le moteur
-tout de suite pour cette session. Désormais, à chaque allumage du PC, le moteur
-tourne en fond automatiquement.
+```powershell
+& "<dossier-du-projet>\installer-demarrage-auto.ps1"
+```
+
+Ça crée la tâche `ClaudeEatsTokens-Moteur` qui :
+- démarre le moteur **au boot du PC ET à chaque login**,
+- le **relance automatiquement** s'il s'arrête,
+- tourne **sans limite de durée**, en **fenêtre cachée**,
+- et le lance tout de suite pour cette session.
 
 - Pour vérifier qu'il tourne : Gestionnaire des tâches → onglet Détails →
   tu verras un `python.exe`.
-- Pour tout arrêter / annuler : double-clic sur **`desinstaller-demarrage-auto.bat`**.
+- Pour tout retirer : double-clic sur **`desinstaller-demarrage-auto.bat`**.
 
 > Note : ça ne marche que quand ton PC est allumé (c'est lui qui lit les logs).
-
----
-
-
-## A-bis) Méthode ROBUSTE recommandée (tâche planifiée)
-
-Le simple raccourci "Démarrage" peut ne pas relancer le moteur si le PC reste
-allumé plusieurs jours sans redémarrer. Pour un fonctionnement fiable :
-
-**Double-clic sur `installer-tache-planifiee.bat`**
-
-Ça crée une vraie tâche planifiée Windows qui :
-- lance le moteur à chaque ouverture de session,
-- le lance aussi immédiatement,
-- et remplace l'ancien raccourci Démarrage (supprimé automatiquement).
-
-Pour désactiver : `desinstaller-tache-planifiee.bat`.
-
-> Si tes chiffres semblent vieux un jour : ouvre PowerShell et lance
-> `cmd /c "call secret.local.bat && python tools\push_usage.py"` pour forcer
-> un rafraîchissement immédiat (laisse la fenêtre ouverte).
+>
+> Si tes chiffres semblent vieux un jour, force un envoi : dans PowerShell, va
+> dans le dossier du projet et lance
+> `cmd /c ".\secret.local.bat && python tools\push_usage.py --once"`.
 
 ## B) Persistance Gist (l'app s'ouvre toujours, même PC éteint)
 

@@ -2,151 +2,190 @@
   <img src="assets/hero.png" alt="Claude Eats Tokens" width="100%">
 </p>
 
-<h1 align="center">Claude Eats Tokens — how hungry is Claude today?</h1>
+<h1 align="center">Claude Eats Tokens</h1>
 
 <p align="center">
-  <b>Claude has a serious appetite. This is the kitchen scale.</b><br>
-  Claude Code logs every token it devours; a tiny push server beams the numbers to an installable PWA<br>with budgets, live gauges and alerts — before Claude eats your whole plan.
+  <b>Le pèse-personne de Claude. Combien Claude a-t-il dévoré aujourd'hui — et puis-je continuer ?</b>
 </p>
 
 <p align="center">
-  <img alt="PWA" src="https://img.shields.io/badge/PWA-installable-CC785C">
-  <img alt="GitHub Pages" src="https://img.shields.io/badge/front-GitHub%20Pages-1A1915">
-  <img alt="Render" src="https://img.shields.io/badge/server-Render-7E9E6D">
-  <img alt="No backend bill" src="https://img.shields.io/badge/cost-%240-7E9E6D">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-D4A27F">
-  <img alt="Built with Claude Code" src="https://img.shields.io/badge/built%20with-Claude%20Code-CC785C">
+  Claude Code écrit chaque token qu'il consomme dans des logs locaux. Un petit moteur sur le PC les lit,<br>
+  les totalise et les pousse vers un serveur gratuit ; une <b>web app installable</b> affiche, depuis le téléphone,<br>
+  où vous en êtes — fenêtres glissantes, budgets, projections — dans la charte graphique d'Anthropic.
 </p>
 
 <p align="center">
-  <a href="https://arochab.github.io/claude-eats-tokens/"><b>→ Open the live app</b></a> ·
-  <a href="https://github.com/arochab/claude-eats-tokens">Source</a>
+  <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-CC785C">
+  <img alt="No build step" src="https://img.shields.io/badge/build-no%20build%20step-1A1915">
+  <img alt="Coût d'infra" src="https://img.shields.io/badge/infra-100%25%20gratuite-7E9E6D">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-75%20%E2%9C%93-7E9E6D">
+  <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-D4A27F">
 </p>
 
 <p align="center">
-  <img src="demo.gif" alt="Claude Eats Tokens demo" width="320">
+  <img src="demo.gif" alt="Démo de Claude Eats Tokens" width="320">
 </p>
-
-The joke writes itself — Claude Code is a hungry beast, and you can't see, from your phone, how much it's eaten today. That's not laziness on Anthropic's part: the Max plan genuinely ships **no usage API**, so there's no number to fetch. But Claude Code already writes every token count to local JSONL logs. So this app does the only honest thing: a small script on your PC reads those logs, totals the damage, and pushes it to a free server; an installable web app then shows where you stand — budgets, rolling windows, projections — and pings you before Claude licks the plate clean. Built in the Anthropic design language, free end to end.
 
 ---
 
-## What you get
+## En deux phrases
 
-<table>
-<tr>
-<td width="50%" valign="top">
+Sur l'abonnement **Claude Max**, il n'existe **aucune API d'usage** : impossible de récupérer un « il vous reste X ». Mais Claude Code journalise déjà chaque échange dans des fichiers `~/.claude/projects/**/*.jsonl`. **Claude Eats Tokens** fait donc la seule chose honnête possible : un moteur Python lit ces logs, agrège la consommation, et la pousse vers une PWA mobile-first qui répond à la seule question qui compte — **« je peux continuer ou pas ? »**.
 
-- **At-a-glance verdict** — a health score out of 100 and a colour that turns the whole screen green / amber / red, so you know where you stand *before* reading a single number.
-- **Self-calibrating budgets** — no scary "999%". The app sizes day / week / month / 5h-window / 7d-window ceilings from your real average; you can override them in settings.
-- **Rolling windows** — tracks the *actual* Max limit (≈5h usage windows that reset), with a live countdown.
-- **Honest cost** — a small "theoretical" euro figure, clearly flagged: on Max you pay a flat fee, so it's *value consumed at API rates*, not a bill.
+C'est à la fois mon outil perso de tous les jours et une pièce de portfolio : pipeline de données local, backend durable à coût nul, design system soigné et suite de tests complète.
 
-</td>
-<td width="50%" valign="top">
+---
 
-- **Real projects, grouped** — every session is traced back to its real project via its working directory (all the `.claude/worktrees/*` of one repo collapse into a single entry), with per-project cost weighted by the *actual* model mix, a drill-down into its sessions, and a one-tap filter that recomputes the whole dashboard.
-- **Visual breakdown** — daily calendar heatmap, **peak-hours heatmap** (day × hour), input/output/cache donut, per-model split, week-vs-week comparison.
-- **Export** — one click to CSV (raw timeline + projects) or PNG (the trend chart).
-- **Live & accessible** — silent 60s push, Windows autostart, private-Gist persistence; keyboard navigation, focus states, screen-reader chart descriptions, reduced-motion, installable PWA with offline shell.
+## Architecture
 
-</td>
-</tr>
-</table>
-
-<p align="center">
-  <img src="assets/shot-verdict.png" alt="Verdict and gauges" width="300">
-  &nbsp;&nbsp;
-  <img src="assets/shot-models.png" alt="Models and projects" width="300">
-</p>
-
-## How it works
-
-A static PWA + a tiny push server, glued by Claude's own eating habits:
+Une PWA statique + un mini-serveur de push, reliés par les propres habitudes alimentaires de Claude :
 
 ```
-   PC reads ~/.claude/projects   ─►  POST /push  ─►  Render (Flask)  ─►  private Gist (durable store)
-        │  (tools/push_usage.py, silent + autostart)        │
-        ▼                                                    │ GET /usage.json
-   tallies tokens by                                         ▼
-   day · week · 5h / 7d window                       PWA on GitHub Pages
-   model family · project                            (server → Pages → demo fallback)
+  PC d'Adam (lit ~/.claude/projects)
+        │  tools/push_usage.py  — streaming, dédup, agrégation
+        │  (silencieux + démarrage auto Windows)
+        ▼
+     POST /push  ──►  Render (Flask)  ──►  Gist privée (store durable)
+                          │
+   PWA (GitHub Pages)  ◄── GET /usage.json
+   data/usage.json (repli si le serveur Render dort)
 ```
 
-1. **The PC is the source of truth.** `tools/push_usage.py` reads Claude Code's local JSONL logs, deduplicates streaming entries, merges models by family, cleans project names, and aggregates by day, model, project and rolling windows — there is no cloud API for Max usage, so the logs *are* the data.
-2. **A free server holds the latest numbers.** A Flask app on **Render** receives the push (shared-secret guarded) and mirrors it into a **private GitHub Gist**, so the numbers survive the free tier going to sleep.
-3. **The PWA shows you where you stand.** Installable from **GitHub Pages**, it reads the freshest source available (Render → Pages → bundled demo) and renders the verdict, rings, heatmap, donut and trends.
+1. **Le PC est la seule source de vérité.** `tools/push_usage.py` lit les logs JSONL de Claude Code en streaming ligne à ligne (robuste aux gros volumes et aux lignes corrompues, qui sont comptées et non avalées en silence), déduplique les entrées, fusionne les modèles par famille, et agrège par jour, modèle, projet et fenêtres glissantes. **Il n'y a pas d'API cloud pour l'usage Max — les logs *sont* la donnée.**
+2. **Un serveur gratuit garde les derniers chiffres.** Une app **Flask sur Render** reçoit le push (protégé par secret partagé, comparaison à temps constant) et le recopie dans une **Gist GitHub privée**, pour que les chiffres survivent à la mise en veille du plan gratuit.
+3. **La PWA affiche où vous en êtes.** Installable depuis **GitHub Pages**, elle lit la source la plus fraîche disponible (Render → `data/usage.json` → dataset de démo embarqué) et rend le verdict, les jauges, la heatmap et les tendances. En `localhost`, le front ignore Render et lit directement le fichier local (dev sans serveur).
 
-## Design system
+Le calcul vit dans `tools/usage_core.py` — **logique pure et testée** ; `push_usage.py` n'est qu'une coquille d'I/O. Le format d'échange est documenté dans [`SCHEMA.md`](SCHEMA.md) (schéma `usage.json` v3).
 
-Built in the Anthropic design language — not bolted on:
+---
 
-- **Palette** — Cream `#F0EEE6` · Slate `#1A1915` · Terracotta `#CC785C` · Clay `#D4A27F` · Sky `#6A8CAF` · Sage `#7E9E6D`
-- **Type** — editorial serif for headline numbers, clean sans-serif for UI, generous whitespace
-- **Semantics** — gauges shift green → amber → terracotta as you approach a limit; never colour-for-colour's-sake
-- **Tone** — calm, precise, mobile-first. Everything lives in `pwa/styles.css`.
+## Fonctionnalités
 
-## Run it locally
+### Le feu tricolore unifié — « je peux continuer ? »
+
+Le cœur de l'app. Une seule réponse, calculée à partir du **pire** de trois horizons (fenêtre 5 h · semaine glissante · mois). La philosophie est délibérée :
+
+- **Seule la fenêtre glissante de 5 h peut passer le feu à l'orange ou au rouge.** C'est le *vrai* mécanisme de throttling sur Max : trop d'usage en 5 h, et Claude vous ralentit. L'app le suit avec un compte à rebours jusqu'au reset.
+- **La semaine et le mois sont purement informatifs.** Une grosse semaine ne déclenche **jamais** d'alerte — au contraire, le feu reste **vert** et affiche « Belle semaine — tu montes en puissance ». On compare l'utilisateur à *lui-même* (médiane robuste sur l'historique), jamais à un quota inventé.
+
+### Carte « Utilisation du forfait »
+
+Un pourcentage des limites réelles du forfait Max, dans l'esprit de la page d'usage de Claude. Les tokens sont pondérés (`effectiveTokens`, cache lu × 0,1) pour refléter ce qui compte vraiment — sinon on afficherait 300 % là où Claude affiche 11 %. **Ce sont des estimations** (voir « Honnêteté des chiffres »).
+
+### Carte « Où je me situe »
+
+Place l'utilisateur sur un spectre **Découverte → Régulier → Intensif → Power-user**, à partir de sa semaine effective et de son pic 5 h. Les seuils sont des **estimations publiques de tiers** — explicitement **pas** des chiffres officiels Anthropic, qui ne publie aucun quota chiffré.
+
+### Et aussi
+
+- **Vrais projets, regroupés.** Chaque session est rattachée à son projet réel via son `cwd` (tous les `.claude/worktrees/*` d'un même dépôt fusionnent en une seule entrée), avec un coût pondéré par le vrai mix de modèles, un drill-down dans les sessions, et un filtre projet qui recalcule tout le tableau de bord.
+- **Coût en € live.** Une estimation théorique au tarif API, taux $→€ réglable, clairement étiquetée « estimation » (sur Max, le coût réel est un forfait fixe).
+- **Visualisations.** Timeline, heatmap heure × jour, répartition entrée / sortie / cache, split par modèle, comparaison semaine vs semaine.
+- **PWA complète.** Service worker à la racine (network-first sur l'app-shell, network-only sur la donnée, purge de cache versionnée), shell hors-ligne, notifications de seuil. Tous les budgets et réglages vivent dans le `localStorage` du téléphone (écran ⚙️) — rien côté serveur.
+
+---
+
+## Installation & usage
+
+### La web app — rien à installer
+
+Ouvrez l'URL GitHub Pages depuis le téléphone, puis **Ajouter à l'écran d'accueil**. C'est tout. Sans moteur ni serveur configuré, l'app retombe sur `data/usage.json` puis sur un jeu de démo embarqué : elle est toujours fonctionnelle.
+
+### Le moteur local (PC) — la source des chiffres
+
+Le moteur lit vos logs Claude Code et pousse les totaux vers le serveur.
 
 ```bash
-git clone https://github.com/arochab/claude-eats-tokens.git
-cd claude-eats-tokens
-
-# Front end — just open the static site
-python -m http.server 8000          # → http://localhost:8000
-
-# Push server (optional)
-pip install -r server/requirements.txt
-export PUSH_SECRET="a-long-secret"
-python server/app.py                # → http://localhost:5000
-
-# Push your real numbers from this PC
-export PUSH_URL="http://localhost:5000"
+# Lancer une fois, à la main
+set PUSH_URL=https://votre-serveur.onrender.com
+set PUSH_SECRET=un-secret-long
 python tools/push_usage.py --once
 
-# Run the tests (Python + Node, no extra deps beyond Flask for the server tests)
-pip install -r server/requirements.txt
+# Ou en boucle (push silencieux régulier)
+python tools/push_usage.py --interval 60
+```
+
+Le secret de push se met dans `secret.local.bat` (modèle fourni : `secret.local.example.bat`).
+
+Sous **Windows**, pas besoin de garder un terminal ouvert :
+
+| Script | Rôle |
+|---|---|
+| **`DEMARRER.bat`** | Lancer le moteur à la main (double-clic, boucle de push visible). |
+| **`installer-demarrage-auto.ps1`** | Démarrage auto (PowerShell admin) : crée une **tâche planifiée** qui lance le moteur au boot **et** au login, le relance s'il plante, sans limite de durée, fenêtre cachée. |
+| **`desinstaller-demarrage-auto.bat`** | Retire cette tâche planifiée. |
+
+En interne, la tâche lance `demarrer-silencieux.vbs` → `moteur.bat` (la boucle de push). Vous n'avez pas à y toucher.
+
+### Déploiement (gratuit de bout en bout)
+
+1. **Front → GitHub Pages.** Le workflow GitHub Actions publie le site statique à chaque push sur `main`.
+2. **Serveur → Render.** Déployer `server/` via `render.yaml` (`gunicorn app:app`, rootDir `server/`) ; régler `PUSH_SECRET`, plus `GITHUB_TOKEN` (scope `gist`) et `GIST_ID` pour la persistance durable.
+3. **Câblage.** Mettre l'URL Render dans `pwa/config.js`.
+
+Pas à pas complet dans [`DEPLOIEMENT.md`](DEPLOIEMENT.md) et [`CONFORT-SETUP.md`](CONFORT-SETUP.md).
+
+---
+
+## Honnêteté des chiffres
+
+Ce projet assume ses limites — c'est ce qui le rend digne de confiance :
+
+- **Anthropic ne publie aucun quota chiffré** pour Max. La seule limite *dure* connue est la **fenêtre glissante de 5 h**. C'est la seule chose qui peut réellement vous ralentir, et donc la seule qui fait virer le feu.
+- **Tous les chiffres de limites** (forfait, positionnement « Où je me situe ») sont des **estimations de tiers**, à recalibrer. Ce ne sont pas des données officielles.
+- **Le coût en $/€ est une estimation** au tarif API. Sur Max vous payez un **forfait fixe** : c'est de la « valeur consommée au prix API », pas une facture.
+- **Render free s'endort** : la toute première requête après une période d'inactivité peut prendre ~50 s. Le repli `data/usage.json` couvre ce cas.
+
+---
+
+## Stack technique
+
+| Brique | Choix |
+|---|---|
+| **Front** | HTML/CSS/JS vanilla — **aucun build**, Chart.js pour les graphes |
+| **PWA** | Service worker à la racine (`sw.vN.js`), manifest, notifications de seuil, shell hors-ligne |
+| **Moteur** | Python pur (`usage_core.py` logique testable + `push_usage.py` coquille I/O streaming) |
+| **Serveur** | Flask sur Render, `gunicorn`, auth à temps constant |
+| **Store** | Gist GitHub privée (contourne le disque éphémère du plan gratuit) |
+| **CI/CD** | GitHub Actions → déploiement Pages à chaque push |
+| **Design** | Charte Anthropic en CSS pur — crème `#F0EEE6`, slate `#1A1915`, terracotta `#CC785C`, clay `#D4A27F` ; serif éditoriale pour les chiffres clés, sans-serif pour l'UI |
+
+---
+
+## Tests
+
+Chaque formule est couverte : inférence de projet depuis le `cwd`, coût pondéré par modèle, fenêtre 5 h, projections, fusion de projets, feu tricolore, positionnement, et helpers de formatage front.
+
+```bash
 python tests/run_all.py
 ```
 
-Without a server the app falls back to `data/usage.json`, then to a bundled demo dataset. On `localhost` the front skips Render and reads the local file directly.
+**75 tests** au total — **46 Python** (`test_usage_core.py`, `test_server.py`, via `unittest`) et **29 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
 
-## Deploy (free, end to end)
+---
 
-1. **Front → GitHub Pages.** Push to `main`; `.github/workflows/pages.yml` publishes the static site.
-2. **Server → Render.** Deploy `server/` via the `render.yaml` blueprint; set `PUSH_SECRET` (+ `GITHUB_TOKEN` and `GIST_ID` for durable storage).
-3. **Wire it up.** Put your Render URL in `pwa/config.js`.
-4. **Always-fresh PC engine.** Double-click `installer-demarrage-auto.bat` — the pusher runs silently and starts with Windows.
-5. **Install on your phone.** Open the Pages URL → *Add to Home Screen* → enable notifications in ⚙️.
-
-Full step-by-step in [`DEPLOIEMENT.md`](DEPLOIEMENT.md) and [`CONFORT-SETUP.md`](CONFORT-SETUP.md).
-
-## Tech & skills demonstrated
-
-- **PWA** — installable manifest, root-scope service worker (network-only data, self-updating), offline shell, threshold Web Notifications.
-- **Local-data pipeline** — parsing Claude Code JSONL, dedup, model-family merging, rolling-window aggregation, cost estimation.
-- **Zero-cost durable backend** — Flask on Render + a private GitHub Gist as the database, sidestepping ephemeral disk.
-- **CI deployment** — GitHub Actions publishes the PWA to Pages on every push.
-- **Data visualization** — verdict score, budget rings, calendar heatmap, donut and trend deltas in vanilla JS + Chart.js.
-- **Design systems** — the Anthropic palette and editorial type reproduced in pure HTML/CSS.
-
-## Repo map
+## Carte du dépôt
 
 ```
-index.html                 landing + dashboard (front root, for Pages scope)
-pwa/                       app.js · format.js (pure helpers) · styles.css · config.js · manifest · icons
-sw.v6.js                   service worker at root (network-first shell, network-only data, cache-purge)
-data/usage.json            latest numbers (pushed, schema v2) · usage.demo.json (sample)
-server/app.py              Flask push server (Render) + Gist persistence (timing-safe auth, retry)
-tools/usage_core.py        pure logic (cwd→project, model cost, windows) — fully unit-tested
-tools/push_usage.py        PC-side: stream logs → aggregate → POST /push
-tools/make_demo.py         regenerate the demo dataset
-tests/                     41 tests · run with `python tests/run_all.py` (Python + Node)
-installer-demarrage-auto.bat   silent Windows autostart for the engine
-.github/workflows/         pages.yml — deploy PWA on push
-assets/                    hero, demo.gif, screenshots
+index.html                       landing + dashboard (racine, pour le scope Pages)
+pwa/                             app.js · format.js (helpers purs) · styles.css · config.js · manifest · icônes
+sw.vN.js                         service worker à la racine (network-first shell, network-only data, purge)
+data/usage.json                  derniers chiffres (poussés, schéma v3) · usage.demo.json (échantillon)
+server/app.py                    serveur de push Flask (Render) + persistance Gist
+tools/usage_core.py              logique pure (cwd→projet, coût/modèle, fenêtres) — entièrement testée
+tools/push_usage.py              côté PC : stream logs → agrège → POST /push
+tools/make_demo.py               régénère le dataset de démo
+tests/                           75 tests · python tests/run_all.py (Python + Node)
+DEMARRER.bat                     lance le moteur à la main (double-clic)
+installer-demarrage-auto.ps1     crée la tâche planifiée (démarrage auto du moteur)
+desinstaller-demarrage-auto.bat  retire la tâche planifiée
+render.yaml                      blueprint de déploiement Render
+.github/workflows/               déploiement de la PWA sur Pages
+assets/                          hero, demo.gif, captures
 ```
 
-## License
+---
 
-[MIT](LICENSE) · Built by [Adam Chabbi](https://github.com/arochab) · [☕ Buy me a coffee](https://buymeacoffee.com/arochab)
+## Licence
+
+[MIT](LICENSE) · Construit par **Adam Chabbi**.

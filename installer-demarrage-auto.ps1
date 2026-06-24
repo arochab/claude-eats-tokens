@@ -1,9 +1,11 @@
-# Repare la tache planifiee du moteur Claude Eats Tokens.
+# Installe (ou repare) le demarrage automatique du moteur Claude Eats Tokens.
+# Cree une tache planifiee : demarre au boot + au login, se relance si plantage,
+# sans limite de duree, fenetre cachee.
 # A LANCER DANS UN POWERSHELL ADMIN (clic droit > Executer en tant qu'administrateur).
 # Ne touche a AUCUN secret : configure seulement le declenchement de la tache.
 
 $ErrorActionPreference = "Stop"
-$dir = "C:\Users\adamc_ixt0882\Desktop\Adam CHABBI Pro\claude-eats-tokens"
+$dir = $PSScriptRoot   # le dossier du depot, deduit de l'emplacement du script
 $vbs = Join-Path $dir "demarrer-silencieux.vbs"
 $taskName = "ClaudeEatsTokens-Moteur"
 $user = "$env:USERDOMAIN\$env:USERNAME"
