@@ -911,14 +911,14 @@
         .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
         .then(function (d) {
           if (!d || !d.totals || !d.totals.total) throw new Error("empty");
-          // garde de schéma : un format inconnu (futur v3) ne doit pas crasher
-          // le front en silence -> on le signale et on garde la dernière vue.
+          // Le schéma est ADDITIF : une version plus récente ne fait qu'ajouter
+          // des champs. On AFFICHE quand même (le front ignore ce qu'il ne connaît
+          // pas) au lieu de bloquer l'app — on note juste qu'une MAJ est dispo.
           var sc = d.schema || 1;
-          if (sc > SUPPORTED_SCHEMA) {
-            setStatus("Format de données plus récent (" + sc + ") — mets l'app à jour.", "err");
-            throw new Error("schema-too-new");
-          }
           DATA = d; render(); checkThresholds(d);
+          if (sc > SUPPORTED_SCHEMA) {
+            setStatus("Une mise à jour de l'app est disponible (format " + sc + ").", "warn");
+          }
         })
         .catch(function (e) {
           if (src.remote && e && e.name === "AbortError") sawRemoteTimeout = true;
@@ -1160,7 +1160,7 @@
   // tokens-field.js (defer) s'auto-monte aussi sur #hero-field ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETField) { try { window.CETField.mount(document.getElementById("hero-field")); } catch (e) {} }
-  var SW_FILE = "sw.v17.js";
+  var SW_FILE = "sw.v18.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
