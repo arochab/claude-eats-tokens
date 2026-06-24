@@ -226,8 +226,14 @@
       } else {
         lvl = "green"; msg = "Rien à signaler : tu peux continuer tranquille.";
       }
-      gauges.push({ key: "5h", label: "Là, maintenant", fill: pctFill, level: lvl,
-        sub: hoursLeft != null ? (hoursLeft <= 0.02 ? "se remet à zéro" : "se remet à zéro dans " + hms(hoursLeft)) : "", value: fmt(w5) });
+      // si on a le VRAI % officiel (serveur), on l'affiche tel quel — un % se lit,
+      // pas un nombre de tokens bruts rempli sur un repère maison estimé.
+      var off = d && d.windowsOfficial;
+      var hasOffPct = off && typeof off.w5hPct === "number" && isFinite(off.w5hPct);
+      gauges.push({ key: "5h", label: "Là, maintenant",
+        fill: hasOffPct ? Math.min(100, Math.round(off.w5hPct)) : pctFill, level: lvl,
+        sub: hoursLeft != null ? (hoursLeft <= 0.02 ? "se remet à zéro" : "se remet à zéro dans " + hms(hoursLeft)) : "",
+        value: hasOffPct ? (Math.round(off.w5hPct) + "%") : fmt(w5) });
       bump(lvl, msg);
     }
 

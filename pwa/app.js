@@ -270,7 +270,12 @@
     }
     card.style.display = "";
 
-    if (hint) hint.textContent = w.stale ? "dernière valeur" : "officiel";
+    // badge coloré : la fiabilité du chiffre = la valeur de l'app. Vert = officiel
+    // (ton PC tourne), terracotta = estimation (moteur endormi) -> impossible à rater.
+    if (hint) {
+      hint.textContent = w.stale ? "estimation · moteur endormi" : "officiel";
+      hint.className = w.stale ? "hint hint--est" : "hint hint--off";
+    }
 
     // chaque fenêtre : libellé mono, barre fine, % serif, reset relatif
     var html = w.rows.map(function (r) {
@@ -356,10 +361,15 @@
         '<div class="fbar-sub">' + esc(resetTxt) + '</div>' +
         '<div class="fbar-track"><span style="width:' + Math.max(2, p) + '%;background:' + col + '"></span></div></div>';
     }
+    // la barre Opus ne s'affiche QUE si Opus chauffe vraiment (sinon 3e barre
+    // inutile à lire en régime vert ; le conseil la fait ressortir au bon moment).
+    var warnP = settings.warnPct || 80;
+    var opusBar = (pOpus != null && pOpus >= warnP)
+      ? bar("Cette semaine · Opus", pOpus, "se remet à zéro " + weekReset, "#CC785C") : "";
     $("forfait-bars").innerHTML =
       bar("Limite de 5 heures", p5h, reset5h) +
       bar("Cette semaine · tous les modèles", pAll, "se remet à zéro " + weekReset) +
-      bar("Cette semaine · Opus", pOpus, "se remet à zéro " + weekReset, "#CC785C");
+      opusBar;
 
     // mention d'honnêteté
     $("forfait-note").innerHTML = "Estimation d'après ce que tu as déjà consommé — pas le chiffre exact d'Anthropic (ils ne le partagent pas avec les applis), mais un bon repère.";
@@ -483,7 +493,15 @@
     v.className = "verdict " + (toneMap[st.level] || "ok");
     $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + iconMap[st.level] + '</svg>';
     $("vstate").textContent = st.title;
-    $("vsub").textContent = st.msg;
+    // quand le feu n'est pas vert, la vraie question est "jusqu'à quand ?" :
+    // on colle l'heure de reset 5h direct dans la phrase, sans scroller.
+    var sub = st.msg;
+    if (st.level !== "green" && d.windows && d.windows.w5hResetAt && !/remet à zéro|repart/i.test(sub)) {
+      var u = until(d.windows.w5hResetAt, Date.now());
+      if (/réinitialis/i.test(u)) sub += " Ça repart maintenant.";
+      else sub += " Ça repart " + u.replace(/^reset /, "") + ".";
+    }
+    $("vsub").textContent = sub;
     // 3 jauges : fenêtre 5h / semaine / mois
     var gz = $("vgauges");
     if (gz) {
@@ -1199,7 +1217,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v19.js";
+  var SW_FILE = "sw.v20.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

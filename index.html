@@ -58,17 +58,6 @@
     <div class="vgauges" id="vgauges"></div>
   </section>
 
-  <!-- HÉRO : radar des 3 fenêtres (5 h / semaine / mois), vu immédiatement. -->
-  <section class="hero hero-radar-wrap">
-    <div class="info">
-      <p class="lab" id="hero-lab">Ce mois-ci</p>
-      <p class="v"><span id="hero-used" class="sk">000</span></p>
-      <p class="rest" id="hero-rest">—</p>
-      <p class="reset" id="hero-reset"></p>
-    </div>
-    <div class="hero-radar" id="hero-radar" role="img" aria-label="Radar des fenêtres : 5 heures, semaine, mois"></div>
-  </section>
-
   <section class="card" id="windows-card">
     <h2>Mes fenêtres <span class="hint" id="windows-hint">officiel</span></h2>
     <div id="windows-body"></div>
@@ -79,6 +68,18 @@
     <p class="forfait-note" id="forfait-note"></p>
     <div id="forfait-bars"></div>
     <div id="forfait-advice"></div>
+  </section>
+
+  <!-- HÉRO : radar des 3 fenêtres + repère mensuel. Sous le verdict + fenêtres
+       (la décision d'abord), car il REDIT les fenêtres et n'est pas actionnable. -->
+  <section class="hero hero-radar-wrap">
+    <div class="info">
+      <p class="lab" id="hero-lab">Ce mois-ci</p>
+      <p class="v"><span id="hero-used" class="sk">000</span></p>
+      <p class="rest" id="hero-rest">—</p>
+      <p class="reset" id="hero-reset"></p>
+    </div>
+    <div class="hero-radar" id="hero-radar" role="img" aria-label="Radar des fenêtres : 5 heures, semaine, mois"></div>
   </section>
 
   <div id="alerts"></div>
@@ -106,12 +107,14 @@
 
   <!-- ↓↓↓ longue traîne (secondaire) : repère, évolution, projets ↓↓↓ -->
   <section class="card card-2" id="position-card">
-    <h2>Où je me situe <span class="hint">repère</span></h2>
-    <p class="pos-sub" id="pos-sub">Ta semaine comparée à l'usage typique d'un abonné Claude Max.</p>
-    <div class="pos-spectrum" id="pos-spectrum" role="img" aria-label="Position de ton usage sur le spectre des abonnés Max"></div>
-    <p class="pos-verdict" id="pos-verdict"></p>
-    <ul class="pos-reperes" id="pos-reperes"></ul>
-    <p class="pos-caveat" id="pos-caveat">Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.</p>
+    <details class="pos-details">
+      <summary><h2>Où je me situe <span class="hint">repère</span></h2></summary>
+      <p class="pos-sub" id="pos-sub">Ta semaine comparée à l'usage typique d'un abonné Claude Max.</p>
+      <div class="pos-spectrum" id="pos-spectrum" role="img" aria-label="Position de ton usage sur le spectre des abonnés Max"></div>
+      <p class="pos-verdict" id="pos-verdict"></p>
+      <ul class="pos-reperes" id="pos-reperes"></ul>
+      <p class="pos-caveat" id="pos-caveat">Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.</p>
+    </details>
   </section>
 
   <section class="card card-2">
