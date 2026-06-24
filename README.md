@@ -23,14 +23,15 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" alt="Démo de Claude Eats Tokens sur mobile" width="260">
+  <img src="assets/demo.gif" alt="Démo de Claude Eats Tokens sur mobile" width="280">
+  <br>
+  <sub><a href="assets/demo.mp4">▶︎ voir la démo en HD (vidéo nette)</a></sub>
 </p>
 
 <p align="center">
   <i>Une question, une réponse.</i> <b>« Je peux continuer ? »</b><br>
   🟢 <b>« Tout roule »</b> · 🟠 <b>« Ça chauffe sur les 5 dernières heures »</b> · 🔴 <b>« Lève le pied un moment »</b><br>
-  Le feu ne s'allume que sur le vrai signal Max — la fenêtre de 5 h ; une grosse semaine félicite plutôt qu'elle n'alarme.<br>
-  <sub><a href="assets/demo.mp4">▶︎ voir la démo en HD</a></sub>
+  Le feu ne s'allume que sur le vrai signal Max — la fenêtre de 5 h ; une grosse semaine félicite plutôt qu'elle n'alarme.
 </p>
 
 ---
