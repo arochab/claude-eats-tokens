@@ -340,6 +340,46 @@
     };
   }
 
+  /* ---------- "MES FENÊTRES" (les VRAIS % officiels) ----------
+     Construit les lignes à afficher à partir de d.windowsOfficial (schéma v4) :
+     {w5hPct, w5hResetAt, w7dPct, w7dResetAt, w7dOpusPct?, w7dOpusResetAt?,
+      capturedAt, source, stale}. Les resets sont en SECONDES epoch (capturés
+      par le moteur côté PC) -> convertis en ms ici, une bonne fois.
+     Pur, testable : retourne null si pas de données officielles, sinon
+     { stale, capturedAt(ms), rows:[{key,label,pct,resetAt(ms),level,color}] }.
+     On n'invente JAMAIS de chiffre : une fenêtre absente (pct null/undefined)
+     est simplement omise. Seuils : sage <50, ambre 50–85, brique >85. */
+  function windowsLevel(p) {
+    return p > 85 ? "brick" : (p >= 50 ? "amber" : "sage");
+  }
+  var WINDOWS_COLORS = { sage: "#7E9466", amber: "#C8923D", brick: "#A8432F" };
+  function windowsCard(d, nowMs) {
+    var w = d && d.windowsOfficial;
+    if (!w) return null;                       // pas de capture officielle -> état vide
+    var secToMs = function (s) { return (typeof s === "number" && isFinite(s)) ? s * 1000 : null; };
+    var defs = [
+      { key: "w5h", label: "Fenêtre 5 h", pct: w.w5hPct, resetAt: w.w5hResetAt },
+      { key: "w7d", label: "Cette semaine · tous modèles", pct: w.w7dPct, resetAt: w.w7dResetAt },
+      { key: "w7dOpus", label: "Cette semaine · Opus", pct: w.w7dOpusPct, resetAt: w.w7dOpusResetAt },
+    ];
+    var rows = [];
+    defs.forEach(function (def) {
+      if (typeof def.pct !== "number" || !isFinite(def.pct)) return;  // fenêtre absente -> omise
+      var p = Math.max(0, Math.min(100, Math.round(def.pct)));
+      var level = windowsLevel(p);
+      rows.push({
+        key: def.key, label: def.label, pct: p,
+        resetAt: secToMs(def.resetAt), level: level, color: WINDOWS_COLORS[level],
+      });
+    });
+    return {
+      stale: !!w.stale,
+      source: w.source || null,
+      capturedAt: secToMs(w.capturedAt),
+      rows: rows,
+    };
+  }
+
   var api = {
     COLORS: COLORS, modelColor: modelColor, fmt: fmt, fmtFull: fmtFull,
     pct: pct, esc: esc, ringColor: ringColor, toneOf: toneOf, ago: ago,
@@ -348,6 +388,7 @@
     effectiveTokens: effectiveTokens, nextWeeklyReset: nextWeeklyReset, weeklyResetLabel: weeklyResetLabel,
     position: position, POSITION_BENCH: POSITION_BENCH, POSITION_TIERS: POSITION_TIERS,
     xtimes: xtimes, xtimesShort: xtimesShort,
+    windowsCard: windowsCard, WINDOWS_COLORS: WINDOWS_COLORS,
   };
 
   root.CET = api;

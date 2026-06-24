@@ -90,7 +90,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null, weekCmpChart = null;
-  var SUPPORTED_SCHEMA = 3;  // version max de usage.json comprise par ce front
+  var SUPPORTED_SCHEMA = 4;  // version max de usage.json comprise par ce front (v4 : windowsOfficial)
 
   /* ---------- filtre projet : recompose une vue DATA-compatible ----------
      Quand un projet est sélectionné, on recalcule timeline / totals / today /
@@ -175,18 +175,21 @@
       $("hero-ring-2d").innerHTML = ringSVG(ringPct, 120, 11, "rgba(240,238,230,.14)", col,
         '<div class="pct"><b>' + center + '</b><small>vs d\'habitude</small></div>');
       $("hero-rest").textContent = "D'habitude tu fais : " + fmt(median3m || 0);
-      // l'aurore parle d'une seule voix avec l'anneau (même % + même seuil)
-      if (window.CETAurora) { try { window.CETAurora.setTone(ringPct, settings.warnPct); } catch (e) {} }
+      // le champ de tokens parle d'une seule voix avec l'anneau (même % + seuil)
+      if (window.CETField) { try { window.CETField.setData({ monthPct: ringPct, warn: settings.warnPct }); } catch (e) {} }
     } else {
       // pas assez d'historique -> on n'invente pas de comparaison
       $("hero-ring-2d").innerHTML = ringSVG(0, 120, 11, "rgba(240,238,230,.14)", "#7E9E6D",
         '<div class="pct"><b>' + fmt(month).replace(/ .*/, '') + '</b><small>ce mois</small></div>');
       $("hero-rest").textContent = "Pas encore de mois précédent pour comparer";
-      if (window.CETAurora) { try { window.CETAurora.setTone(0, settings.warnPct); } catch (e) {} }
+      if (window.CETField) { try { window.CETField.setData({ monthPct: 0, warn: settings.warnPct }); } catch (e) {} }
     }
     $("hero-used").classList.remove("sk");
     $("hero-used").textContent = fmt(month) + " tokens";
     if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> Jour ' + d.month.dayOfMonth + " / " + d.month.daysInMonth;
+
+    /* « Mes fenêtres » : les VRAIS % officiels capturés par le moteur (si présents) */
+    renderWindows(d);
 
     /* forfait d'abord (calcule les %), puis le feu qui les reflète + alertes */
     renderForfait(d);
@@ -250,6 +253,49 @@
      3 barres : limite 5h / cette semaine (tous) / cette semaine (Opus), avec le
      % d'une vraie limite Max + reset clair + UN conseil smart. Honnête :
      estimation maison (Anthropic ne partage pas ces % avec les applis). */
+  /* ---------- « Mes fenêtres » (les VRAIS % officiels) ----------
+     Source : d.windowsOfficial (schéma v4), capturé par le moteur quand Claude
+     Code tourne. On n'invente RIEN : pas de capture -> état vide calme. Le calcul
+     des lignes est pur (CET.windowsCard) ; ici on ne fait que peindre. */
+  function renderWindows(d) {
+    var card = $("windows-card"); if (!card) return;
+    var hint = $("windows-hint"), body = $("windows-body");
+    var now = Date.now();
+    var w = CET.windowsCard ? CET.windowsCard(d, now) : null;
+
+    // absente -> état vide, pas de barres, message d'invite calme
+    if (!w || !w.rows.length) {
+      if (hint) hint.textContent = "";
+      body.innerHTML = '<p class="win-empty">Lance Claude Code pour voir tes vraies fenêtres.</p>';
+      return;
+    }
+
+    if (hint) hint.textContent = w.stale ? "dernière valeur" : "officiel";
+
+    // chaque fenêtre : libellé mono, barre fine, % serif, reset relatif
+    var html = w.rows.map(function (r) {
+      var resetTxt = "";
+      if (r.resetAt) {
+        var u = until(new Date(r.resetAt).toISOString(), now);
+        resetTxt = /réinitialis/i.test(u) ? "vient de se remettre à zéro"
+                 : "se remet à zéro " + u.replace(/^reset /, "");
+      }
+      return '<div class="win">' +
+        '<div class="win-top"><span class="win-lab">' + esc(r.label) + '</span>' +
+        '<span class="win-pct" style="color:' + r.color + '">' + r.pct + '%</span></div>' +
+        '<div class="win-track"><span style="width:' + Math.max(2, r.pct) + '%;background:' + r.color + '"></span></div>' +
+        (resetTxt ? '<div class="win-reset">' + esc(resetTxt) + '</div>' : '') +
+        '</div>';
+    }).join("");
+
+    // périmé : on garde les valeurs MAIS on prévient honnêtement
+    if (w.stale) {
+      var capTxt = w.capturedAt ? ago(new Date(w.capturedAt).toISOString(), now) : "il y a un moment";
+      html += '<p class="win-note">estimation — dernière capture ' + esc(capTxt) + '</p>';
+    }
+    body.innerHTML = html;
+  }
+
   var FORFAIT_LAST = { p5h: 0, pAll: 0, pOpus: 0 };  // exposé au verdict
   function renderForfait(d) {
     var card = $("forfait-card"); if (!card) return;
@@ -1110,9 +1156,11 @@
   loadEurRate();
   load();
   startLive();
-  // ambiance « Aurore Liquide » derrière le héro (lazy, dégradation gracieuse)
-  if (window.CETAurora) { try { window.CETAurora.mount(document.getElementById("hero-aurora")); } catch (e) {} }
-  var SW_FILE = "sw.v16.js";
+  // « Champ de tokens » derrière le héro (lazy, dégradation gracieuse). Le script
+  // tokens-field.js (defer) s'auto-monte aussi sur #hero-field ; mount() est
+  // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
+  if (window.CETField) { try { window.CETField.mount(document.getElementById("hero-field")); } catch (e) {} }
+  var SW_FILE = "sw.v17.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)

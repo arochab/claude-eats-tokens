@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="pwa/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="pwa/styles.css" />
 </head>
 <body>
@@ -60,6 +60,11 @@
 
   <div id="alerts"></div>
 
+  <section class="card" id="windows-card">
+    <h2>Mes fenêtres <span class="hint" id="windows-hint">officiel</span></h2>
+    <div id="windows-body"></div>
+  </section>
+
   <section class="card" id="forfait-card">
     <h2>Utilisation du forfait <span class="hint">estimation</span></h2>
     <p class="forfait-note" id="forfait-note"></p>
@@ -76,8 +81,8 @@
     <p class="pos-caveat" id="pos-caveat">Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.</p>
   </section>
 
-  <section class="hero">
-    <div class="hero-aurora" id="hero-aurora" aria-hidden="true"></div>
+  <section class="hero gridbg">
+    <div class="hero-field" id="hero-field" aria-hidden="true"></div>
     <div class="ring" id="hero-ring"><div class="ring-2d" id="hero-ring-2d"></div></div>
     <div class="info">
       <p class="lab" id="hero-lab">Budget mensuel</p>
@@ -206,6 +211,6 @@
 <script src="pwa/config.js"></script>
 <script src="pwa/format.js"></script>
 <script src="pwa/app.js"></script>
-<script src="pwa/aurora.js" defer></script>
+<script src="pwa/tokens-field.js" defer></script>
 </body>
 </html>

@@ -262,3 +262,64 @@ test("weeklyResetLabel — format français court", () => {
   assert.match(label, /lun/);
   assert.match(label, /29/);
 });
+
+// ---------- Mes fenêtres (vraies % officielles) ----------
+const SEC = 1750000000; // un epoch seconds arbitraire (mi-2025)
+const officialD = (extra) => ({
+  windowsOfficial: Object.assign({
+    w5hPct: 23, w5hResetAt: SEC + 3600,
+    w7dPct: 61, w7dResetAt: SEC + 86400,
+    w7dOpusPct: 92, w7dOpusResetAt: SEC + 86400,
+    capturedAt: SEC, source: "claude-code", stale: false,
+  }, extra || {}),
+});
+
+test("windowsCard — absente -> null", () => {
+  assert.equal(CET.windowsCard({}, Date.now()), null);
+  assert.equal(CET.windowsCard(null, Date.now()), null);
+  assert.equal(CET.windowsCard({ windowsOfficial: null }, Date.now()), null);
+});
+
+test("windowsCard — fenêtres présentes -> 3 lignes structurées", () => {
+  const r = CET.windowsCard(officialD(), Date.now());
+  assert.equal(r.stale, false);
+  assert.equal(r.source, "claude-code");
+  assert.equal(r.capturedAt, SEC * 1000);        // secondes -> ms
+  assert.equal(r.rows.length, 3);
+  const keys = r.rows.map(x => x.key);
+  assert.deepEqual(keys, ["w5h", "w7d", "w7dOpus"]);
+  assert.deepEqual(r.rows.map(x => x.label),
+    ["Fenêtre 5 h", "Cette semaine · tous modèles", "Cette semaine · Opus"]);
+  // resets convertis en ms
+  assert.equal(r.rows[0].resetAt, (SEC + 3600) * 1000);
+});
+
+test("windowsCard — fenêtre Opus optionnelle omise si absente", () => {
+  const r = CET.windowsCard(officialD({ w7dOpusPct: undefined, w7dOpusResetAt: undefined }), Date.now());
+  assert.equal(r.rows.length, 2);
+  assert.deepEqual(r.rows.map(x => x.key), ["w5h", "w7d"]);
+});
+
+test("windowsCard — flag stale conservé", () => {
+  const r = CET.windowsCard(officialD({ stale: true }), Date.now());
+  assert.equal(r.stale, true);
+  assert.equal(r.rows.length, 3);                // on garde les valeurs même périmées
+});
+
+test("windowsCard — seuils de couleur sage/ambre/brique", () => {
+  const r = CET.windowsCard(officialD({ w5hPct: 49, w7dPct: 50, w7dOpusPct: 86 }), Date.now());
+  assert.equal(r.rows[0].level, "sage");  assert.equal(r.rows[0].color, "#7E9466"); // 49 < 50
+  assert.equal(r.rows[1].level, "amber"); assert.equal(r.rows[1].color, "#C8923D"); // 50..85
+  assert.equal(r.rows[2].level, "brick"); assert.equal(r.rows[2].color, "#A8432F"); // > 85
+  // bornes hautes : 85 reste ambre, 100 reste brique
+  const r2 = CET.windowsCard(officialD({ w5hPct: 85, w7dPct: 100 }), Date.now());
+  assert.equal(r2.rows[0].level, "amber");
+  assert.equal(r2.rows[1].level, "brick");
+});
+
+test("windowsCard — pct borné 0..100 et arrondi", () => {
+  const r = CET.windowsCard(officialD({ w5hPct: -5, w7dPct: 120.6, w7dOpusPct: 61.4 }), Date.now());
+  assert.equal(r.rows[0].pct, 0);
+  assert.equal(r.rows[1].pct, 100);
+  assert.equal(r.rows[2].pct, 61);
+});
