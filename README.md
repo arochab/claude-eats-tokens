@@ -23,13 +23,14 @@
 </p>
 
 <p align="center">
-  <i>Une question, une réponse.</i><br>
-  <b>« Je peux continuer ? »</b> → un feu tricolore qui ne s'allume que sur le vrai signal Max : la fenêtre glissante de 5 h.
+  <img src="assets/demo.gif" alt="Démo de Claude Eats Tokens sur mobile" width="260">
 </p>
 
 <p align="center">
+  <i>Une question, une réponse.</i> <b>« Je peux continuer ? »</b><br>
   🟢 <b>« Tout roule »</b> · 🟠 <b>« Ça chauffe sur les 5 dernières heures »</b> · 🔴 <b>« Lève le pied un moment »</b><br>
-  Une grosse semaine n'alarme jamais — elle félicite : <i>« Belle semaine — tu montes en puissance. »</i>
+  Le feu ne s'allume que sur le vrai signal Max — la fenêtre de 5 h ; une grosse semaine félicite plutôt qu'elle n'alarme.<br>
+  <sub><a href="assets/demo.mp4">▶︎ voir la démo en HD</a></sub>
 </p>
 
 ---
@@ -228,7 +229,7 @@ installer-demarrage-auto.ps1     crée la tâche planifiée (démarrage auto du 
 desinstaller-demarrage-auto.bat  retire la tâche planifiée
 render.yaml                      blueprint de déploiement Render
 .github/workflows/               déploiement de la PWA sur Pages
-assets/                          hero.png (bannière)
+assets/                          hero.png (bannière) · demo.gif + .mp4 (démo mobile)
 ```
 
 ---
