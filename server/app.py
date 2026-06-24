@@ -2,7 +2,7 @@
 Claude Eats Tokens — push server (Flask).
 
 Rôle minimal et gratuit (Render free tier) : recevoir les chiffres d'usage
-poussés par le PC d'Adam (POST /push, protégé par un secret partagé) et les
+poussés par le poste local (POST /push, protégé par un secret partagé) et les
 resservir à la PWA (GET /usage.json). Les données vivent dans une Gist privée
 GitHub pour survivre au disque éphémère du free tier.
 

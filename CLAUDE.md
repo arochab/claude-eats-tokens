@@ -10,7 +10,7 @@ Audience : usage perso d'Adam + pièce de portfolio. Mobile-first.
 ## Architecture (réglée — ne pas re-dériver)
 
 ```
-PC d'Adam (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  ─►  Gist (store durable)
+Poste local (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  ─►  Gist (store durable)
                                                               │
    PWA (GitHub Pages)  ◄── GET /usage.json ─────────────────┘
    data/usage.json (repli si serveur endormi)
@@ -26,7 +26,7 @@ PC d'Adam (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  
   `data/usage.json` (Pages) → `data/usage.demo.json` (démo). Réglé dans
   `pwa/config.js`, qui en **localhost** ignore Render et lit directement le
   fichier local (dev sans serveur).
-- **Schéma `usage.json` = v2** (champ `schema`). Calcul pur et testable dans
+- **Schéma `usage.json` = v3** (champ `schema`, additif). Calcul pur et testable dans
   `tools/usage_core.py` (couvert par `tests/`). `push_usage.py` n'est qu'une
   coquille I/O (streaming ligne à ligne, robuste aux gros volumes/corruptions).
   Les projets sont déduits du **vrai `cwd`** (segment avant `.claude/.codex

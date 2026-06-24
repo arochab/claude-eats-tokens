@@ -3,11 +3,11 @@
 Le moteur (`tools/push_usage.py`) produit ce JSON ; le front (`pwa/app.js`) le
 consomme ; le serveur (`server/app.py`) le relaie. Champ `schema` = version.
 
-## v2 (courant)
+## v3 (courant)
 
 ```jsonc
 {
-  "schema": 2,
+  "schema": 3,
   "generatedAt": "2026-06-22T18:00:00+00:00",   // ISO UTC, quand le moteur a tourné
   "demo": false,                                  // true uniquement pour le dataset démo
   "source": {
@@ -29,11 +29,22 @@ consomme ; le serveur (`server/app.py`) le relaie. Champ `schema` = version.
     "w7d":  { ... }
   },
   "weekly": { "weeks":[ {"week":"2026-S25","total":N}, ... ], "currentWeek": N },
-  "month":  { "currentMonth", "projection", "dayOfMonth", "daysInMonth" },  // projection = linéaire
-  "pace":   { "avgPerDay": N },
   "models": [ { "model":"opus", "label":"Claude Opus", ...acc..., "total", "cost" }, ... ],
 
-  // —— Nouveautés v2 ——
+  // —— Enrichi en v3 : pace & month robustes (pilotent feu tricolore + assistant) ——
+  "pace": {
+    "avgPerDay": N, "medianPerDay": N, "medianDay": N, "nDays": N,
+    "todayRank": N, "todayTotal": N,         // rang percentile du jour vs l'historique
+    "baseline5h": { "base": N, "high": N,    // seuils robustes fenêtre 5h (base = médiane, high = inhabituel)
+                    "medianLog": N, "madLog": N, "nDays": N }   // médiane + MAD en échelle log
+  },
+  "month": {
+    "currentMonth": N, "projection": N,      // projection = pente robuste sur l'historique
+    "projSlope": N, "ratio3m": N, "median3m": N,
+    "dayOfMonth": N, "daysInMonth": N
+  },
+
+  // —— Nouveautés v2 (toujours présentes) ——
   "projects": [
     {
       "project": "AGENTIC-FIGMA-MCP",   // = name (rétrocompat v1)
@@ -76,9 +87,11 @@ homonymes) ; la **fusion par nom** se fait seulement à l'affichage
 
 ## Rétrocompatibilité
 
-Tous les champs v1 (`project`, `total`, `cost`, `timeline`, `models`, …) sont
-conservés. Un front v1 ignore simplement les nouveaux champs. Le front v2 lit
-`schema` et dégrade proprement si un champ manque.
+Le schéma est **additif** : chaque version ne fait qu'ajouter des champs (v2 a
+ajouté `projects`/`hourly`, v3 a enrichi `pace`/`month` avec les statistiques
+robustes). Tous les champs antérieurs sont conservés ; un front plus ancien
+ignore simplement les nouveaux. Le front lit `schema` (garde `SUPPORTED_SCHEMA`)
+et dégrade proprement si un champ manque.
 
 ## Tests
 

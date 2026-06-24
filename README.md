@@ -23,7 +23,13 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif" alt="Démo de Claude Eats Tokens" width="320">
+  <i>Une question, une réponse.</i><br>
+  <b>« Je peux continuer ? »</b> → un feu tricolore qui ne s'allume que sur le vrai signal Max : la fenêtre glissante de 5 h.
+</p>
+
+<p align="center">
+  🟢 <b>« Tout roule »</b> · 🟠 <b>« Ça chauffe sur les 5 dernières heures »</b> · 🔴 <b>« Lève le pied un moment »</b><br>
+  Une grosse semaine n'alarme jamais — elle félicite : <i>« Belle semaine — tu montes en puissance. »</i>
 </p>
 
 ---
@@ -38,20 +44,34 @@ C'est à la fois mon outil perso de tous les jours et une pièce de portfolio : 
 
 ## Architecture
 
-Une PWA statique + un mini-serveur de push, reliés par les propres habitudes alimentaires de Claude :
+Une PWA statique + un mini-serveur de push, reliés par les propres habitudes alimentaires de Claude. Le poste local reste la seule source de vérité ; tout le reste n'est que transport et affichage.
 
 ```
-  PC d'Adam (lit ~/.claude/projects)
-        │  tools/push_usage.py  — streaming, dédup, agrégation
-        │  (silencieux + démarrage auto Windows)
-        ▼
-     POST /push  ──►  Render (Flask)  ──►  Gist privée (store durable)
-                          │
-   PWA (GitHub Pages)  ◄── GET /usage.json
-   data/usage.json (repli si le serveur Render dort)
+┌─────────────────────────────────────────────────────────────┐
+│  Poste local  ·  lit ~/.claude/projects/**/*.jsonl           │
+│  tools/push_usage.py — streaming, dédup, agrégation          │
+│  (silencieux + démarrage auto Windows)                       │
+└───────────────────────────────┬─────────────────────────────┘
+                                │  POST /push  (secret partagé)
+                                ▼
+                ┌───────────────────────┐      ┌──────────────────────┐
+                │   Render (Flask)      │ ───► │  Gist privée         │
+                │   serveur de push     │      │  (store durable)     │
+                └───────────┬───────────┘      └──────────────────────┘
+                            │  GET /usage.json
+                            ▼
+                ┌───────────────────────┐
+                │  PWA (GitHub Pages)   │
+                │  installable, mobile  │
+                └───────────────────────┘
+                            ▲
+                            │  repli si le serveur Render dort
+                ┌───────────────────────┐
+                │  data/usage.json      │
+                └───────────────────────┘
 ```
 
-1. **Le PC est la seule source de vérité.** `tools/push_usage.py` lit les logs JSONL de Claude Code en streaming ligne à ligne (robuste aux gros volumes et aux lignes corrompues, qui sont comptées et non avalées en silence), déduplique les entrées, fusionne les modèles par famille, et agrège par jour, modèle, projet et fenêtres glissantes. **Il n'y a pas d'API cloud pour l'usage Max — les logs *sont* la donnée.**
+1. **Le poste local est la seule source de vérité.** `tools/push_usage.py` lit les logs JSONL de Claude Code en streaming ligne à ligne (robuste aux gros volumes et aux lignes corrompues, qui sont comptées et non avalées en silence), déduplique les entrées, fusionne les modèles par famille, et agrège par jour, modèle, projet et fenêtres glissantes. **Il n'existe aucune API cloud pour l'usage Max — les logs *sont* la donnée.** Sous Windows, une tâche planifiée pousse les totaux en continu, sans terminal ouvert.
 2. **Un serveur gratuit garde les derniers chiffres.** Une app **Flask sur Render** reçoit le push (protégé par secret partagé, comparaison à temps constant) et le recopie dans une **Gist GitHub privée**, pour que les chiffres survivent à la mise en veille du plan gratuit.
 3. **La PWA affiche où vous en êtes.** Installable depuis **GitHub Pages**, elle lit la source la plus fraîche disponible (Render → `data/usage.json` → dataset de démo embarqué) et rend le verdict, les jauges, la heatmap et les tendances. En `localhost`, le front ignore Render et lit directement le fichier local (dev sans serveur).
 
@@ -59,14 +79,41 @@ Le calcul vit dans `tools/usage_core.py` — **logique pure et testée** ; `push
 
 ---
 
+## L'assistant intelligent
+
+C'est ce qui sépare cette app d'un compteur de tokens. Un compteur affiche un nombre ; ici, le code **raisonne** sur vos données et répond en une phrase à « **je peux continuer ou pas ?** » — sans jamais inventer de quota ni culpabiliser.
+
+Trois partis pris, une ligne chacun :
+
+- **Seule la fenêtre de 5 h peut déclencher une alerte** — c'est le *seul* throttling réel sur Max ; la semaine et le mois n'alarment jamais.
+- **On vous compare à vous-même**, via une médiane robuste de votre propre historique — jamais à un faux « il vous reste 23 % ».
+- **L'intensité est une bonne nouvelle** : une grosse semaine, c'est « tu montes en puissance », pas un voyant rouge.
+
+L'assistant renvoie **au plus 3 signaux**, triés par gravité, chacun avec un *pourquoi*. Exemples réels générés par l'app :
+
+> 🔴 **Tu vas peut-être être ralenti**
+> Ces 5 dernières heures, tu utilises Claude 3 fois plus que d'habitude. Si tu continues à ce rythme, Claude pourrait te ralentir dans ~1 h 10 min (avant que ça se remette à zéro à 14 h30). Pour les grosses tâches, attends ce moment-là.
+> *Pourquoi : sur Claude Max, c'est ça qui peut te ralentir — trop d'usage en 5 h. On te prévient avant.*
+
+> 🟢 **Belle journée de travail**
+> Aujourd'hui tu utilises Claude 2 fois plus que d'habitude, et il n'est que 11 h. Tu avances bien.
+
+> 🟢 **Tu montes en puissance avec Opus**
+> Cette semaine tu utilises Claude 2 fois plus que d'habitude, surtout Opus, le modèle le plus puissant. Tu prends de l'élan.
+
+Le premier signal calcule même une **ETA avant ralentissement** : il extrapole votre débit récent pour estimer *quand* vous toucheriez la zone inhabituelle, et le compare à l'heure du reset.
+
+Et l'app sépare proprement deux familles d'alertes : les **signaux intelligents** ci-dessus, et **vos repères perso** (jour / mois) que *vous* fixez, affichés sous un titre sans ambiguïté — « **Tes repères perso (pas une limite Claude)** ». Un seuil que vous avez choisi ne se déguise jamais en limite imposée par Anthropic.
+
+> La logique de comparaison (médiane, langage humain, signaux) vit dans `pwa/format.js`, couverte par `tests/test_format.mjs`. Le calcul de référence robuste — médiane + MAD en échelle log de votre historique — est fait côté moteur dans `tools/usage_core.py` et seulement consommé par le front.
+
+---
+
 ## Fonctionnalités
 
 ### Le feu tricolore unifié — « je peux continuer ? »
 
-Le cœur de l'app. Une seule réponse, calculée à partir du **pire** de trois horizons (fenêtre 5 h · semaine glissante · mois). La philosophie est délibérée :
-
-- **Seule la fenêtre glissante de 5 h peut passer le feu à l'orange ou au rouge.** C'est le *vrai* mécanisme de throttling sur Max : trop d'usage en 5 h, et Claude vous ralentit. L'app le suit avec un compte à rebours jusqu'au reset.
-- **La semaine et le mois sont purement informatifs.** Une grosse semaine ne déclenche **jamais** d'alerte — au contraire, le feu reste **vert** et affiche « Belle semaine — tu montes en puissance ». On compare l'utilisateur à *lui-même* (médiane robuste sur l'historique), jamais à un quota inventé.
+Le cœur de l'app : une seule réponse, calculée sur le **pire** de trois horizons (5 h · semaine · mois), mais seule la fenêtre de 5 h peut faire virer le feu à l'orange ou au rouge. Voir [« L'assistant intelligent »](#lassistant-intelligent) pour la philosophie complète.
 
 ### Carte « Utilisation du forfait »
 
@@ -81,7 +128,7 @@ Place l'utilisateur sur un spectre **Découverte → Régulier → Intensif → 
 - **Vrais projets, regroupés.** Chaque session est rattachée à son projet réel via son `cwd` (tous les `.claude/worktrees/*` d'un même dépôt fusionnent en une seule entrée), avec un coût pondéré par le vrai mix de modèles, un drill-down dans les sessions, et un filtre projet qui recalcule tout le tableau de bord.
 - **Coût en € live.** Une estimation théorique au tarif API, taux $→€ réglable, clairement étiquetée « estimation » (sur Max, le coût réel est un forfait fixe).
 - **Visualisations.** Timeline, heatmap heure × jour, répartition entrée / sortie / cache, split par modèle, comparaison semaine vs semaine.
-- **PWA complète.** Service worker à la racine (network-first sur l'app-shell, network-only sur la donnée, purge de cache versionnée), shell hors-ligne, notifications de seuil. Tous les budgets et réglages vivent dans le `localStorage` du téléphone (écran ⚙️) — rien côté serveur.
+- **PWA complète.** Service worker à la racine (network-first sur l'app-shell, network-only sur la donnée, purge de cache versionnée), shell hors-ligne. Tous les budgets et réglages vivent dans le `localStorage` du téléphone (écran ⚙️) — rien côté serveur.
 
 ---
 
@@ -143,7 +190,7 @@ Ce projet assume ses limites — c'est ce qui le rend digne de confiance :
 | Brique | Choix |
 |---|---|
 | **Front** | HTML/CSS/JS vanilla — **aucun build**, Chart.js pour les graphes |
-| **PWA** | Service worker à la racine (`sw.vN.js`), manifest, notifications de seuil, shell hors-ligne |
+| **PWA** | Service worker à la racine (`sw.vN.js`), manifest, shell hors-ligne |
 | **Moteur** | Python pur (`usage_core.py` logique testable + `push_usage.py` coquille I/O streaming) |
 | **Serveur** | Flask sur Render, `gunicorn`, auth à temps constant |
 | **Store** | Gist GitHub privée (contourne le disque éphémère du plan gratuit) |
@@ -181,7 +228,7 @@ installer-demarrage-auto.ps1     crée la tâche planifiée (démarrage auto du 
 desinstaller-demarrage-auto.bat  retire la tâche planifiée
 render.yaml                      blueprint de déploiement Render
 .github/workflows/               déploiement de la PWA sur Pages
-assets/                          hero, demo.gif, captures
+assets/                          hero.png (bannière)
 ```
 
 ---

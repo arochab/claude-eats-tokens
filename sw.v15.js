@@ -1,9 +1,9 @@
-/* Service worker v14 — Claude Eats Tokens.
+/* Service worker v15 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v14 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v15 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19). */
-const CACHE = "cet-v14";
+const CACHE = "cet-v15";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js",

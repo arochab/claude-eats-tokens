@@ -1,5 +1,5 @@
 """
-push_usage.py — tourne sur le PC d'Adam.
+push_usage.py — tourne sur le poste local de l'utilisateur.
 
 Lit les logs locaux de Claude Code (~/.claude/projects/**.jsonl), agrège la
 consommation de tokens (par jour / modèle / VRAI projet + fenêtres glissantes),
