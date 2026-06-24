@@ -1,0 +1,6 @@
+# Les scripts Windows DOIVENT rester en CRLF, sinon cmd.exe les casse
+# (commandes déchiquetées : "setl**ocal**", "ec**ho.**"...).
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+*.vbs  text eol=crlf
