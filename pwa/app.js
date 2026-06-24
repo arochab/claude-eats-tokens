@@ -162,37 +162,28 @@
     var weekU = d.weekly ? d.weekly.currentWeek : (d.last7Days ? d.last7Days.total : 0);
 
     /* héro HONNÊTE & HUMAIN : ce mois-ci en chiffres bruts + "X fois plus que
-       d'habitude" (PAS de "médiane" ni de "%"). */
+       d'habitude". Le RADAR (3 fenêtres) remplace l'anneau mensuel. */
     var ratio3m = (d.month && typeof d.month.ratio3m === "number") ? d.month.ratio3m : null;
     var median3m = d.month ? d.month.median3m : null;
     $("hero-lab").textContent = "Ce mois-ci";
     if (ratio3m != null) {
       var rMx = ratio3m / 100;  // 1 = comme d'habitude
-      var ringPct = Math.min(100, Math.round(rMx / 3 * 100));  // remplissage visuel
-      var col = rMx >= 2.5 ? "#B5563A" : rMx >= 1.5 ? "#C8923D" : "#7E9E6D";
-      // "×3" ou "normal" au centre de l'anneau
-      var center = rMx < 1.25 ? "normal" : "×" + (rMx < 10 ? (Math.round(rMx * 10) / 10).toString().replace(".", ",") : Math.round(rMx));
-      $("hero-ring-2d").innerHTML = ringSVG(ringPct, 120, 11, "rgba(240,238,230,.14)", col,
-        '<div class="pct"><b>' + center + '</b><small>vs d\'habitude</small></div>');
       $("hero-rest").textContent = "D'habitude tu fais : " + fmt(median3m || 0);
-      // le champ de tokens parle d'une seule voix avec l'anneau (même % + seuil)
-      if (window.CETField) { try { window.CETField.setData({ monthPct: ringPct, warn: settings.warnPct }); } catch (e) {} }
     } else {
-      // pas assez d'historique -> on n'invente pas de comparaison
-      $("hero-ring-2d").innerHTML = ringSVG(0, 120, 11, "rgba(240,238,230,.14)", "#7E9E6D",
-        '<div class="pct"><b>' + fmt(month).replace(/ .*/, '') + '</b><small>ce mois</small></div>');
       $("hero-rest").textContent = "Pas encore de mois précédent pour comparer";
-      if (window.CETField) { try { window.CETField.setData({ monthPct: 0, warn: settings.warnPct }); } catch (e) {} }
     }
     $("hero-used").classList.remove("sk");
     $("hero-used").textContent = fmt(month) + " tokens";
     if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> Jour ' + d.month.dayOfMonth + " / " + d.month.daysInMonth;
 
-    /* « Mes fenêtres » : les VRAIS % officiels capturés par le moteur (si présents) */
+    /* forfait d'abord (calcule les %, expose CET_FORFAIT_PCT pour le radar de repli),
+       puis « Mes fenêtres » (officiel) qui peut masquer le forfait, puis le feu. */
+    renderForfait(d);
     renderWindows(d);
 
-    /* forfait d'abord (calcule les %), puis le feu qui les reflète + alertes */
-    renderForfait(d);
+    /* RADAR : reçoit TOUT l'objet (pour lire windowsOfficial). Une seule voix. */
+    if (window.CETRadar) { try { window.CETRadar.setData(d); } catch (e) {} }
+
     renderVerdict(d, dayU, weekU);
     renderAlerts(d, 0, dayU, weekU);
     renderPosition(d);
@@ -229,7 +220,14 @@
     var rows = periodRows();
     var sum = sumRows(rows);
     var ratio = (d.month && d.month.ratio3m != null) ? (d.month.ratio3m + "% de ta médiane 3 mois") : "pas de comparaison";
-    setLabel("hero-ring", "Ce mois : " + fmt(month) + " tokens, " + ratio + ".");
+    // radar des fenêtres : décrit les 3 arcs (5 h / semaine / mois) si dispo
+    var rad = "Radar des fenêtres. Ce mois : " + fmt(month) + " tokens, " + ratio + ".";
+    var wo = d.windowsOfficial;
+    if (wo) {
+      if (typeof wo.w5hPct === "number") rad += " Fenêtre 5 h : " + Math.round(wo.w5hPct) + "%.";
+      if (typeof wo.w7dPct === "number") rad += " Cette semaine : " + Math.round(wo.w7dPct) + "%.";
+    }
+    setLabel("hero-radar", rad);
     setLabel("trend", "Évolution : " + fmt(sum.total) + " tokens sur la période sélectionnée (" + rows.length + " jours).");
     var tot = sum.total || 1;
     setLabel("donut", "Répartition : entrée " + Math.round(sum.input / tot * 100) + "%, sortie " +
@@ -263,12 +261,14 @@
     var now = Date.now();
     var w = CET.windowsCard ? CET.windowsCard(d, now) : null;
 
-    // absente -> état vide, pas de barres, message d'invite calme
+    // DÉDUP : pas de capture officielle -> on masque « Mes fenêtres » et on laisse
+    // « Utilisation du forfait » (l'estimation de repli) porter les 5 h / semaine.
+    // Exactement UNE des deux cartes affiche ces % — jamais les deux.
     if (!w || !w.rows.length) {
-      if (hint) hint.textContent = "";
-      body.innerHTML = '<p class="win-empty">Lance Claude Code pour voir tes vraies fenêtres.</p>';
+      card.style.display = "none";
       return;
     }
+    card.style.display = "";
 
     if (hint) hint.textContent = w.stale ? "dernière valeur" : "officiel";
 
@@ -293,16 +293,28 @@
       var capTxt = w.capturedAt ? ago(new Date(w.capturedAt).toISOString(), now) : "il y a un moment";
       html += '<p class="win-note">estimation — dernière capture ' + esc(capTxt) + '</p>';
     }
+    // le conseil utile du forfait (masqué quand l'officiel prime) atterrit ici :
+    // on garde la meilleure ligne d'action, sans dupliquer les barres.
+    if (FORFAIT_ADVICE_HTML) {
+      html += '<div class="win-advice">' + FORFAIT_ADVICE_HTML + '</div>';
+    }
     body.innerHTML = html;
   }
 
   var FORFAIT_LAST = { p5h: 0, pAll: 0, pOpus: 0 };  // exposé au verdict
+  var FORFAIT_ADVICE_HTML = "";                       // repris par « Mes fenêtres » si forfait masqué
   function renderForfait(d) {
     var card = $("forfait-card"); if (!card) return;
     var win = d.windows;
+    FORFAIT_ADVICE_HTML = "";
+    window.CET_FORFAIT_PCT = null;
     // vue filtrée projet : pas de fenêtres -> on masque la carte forfait
     if (!win) { card.style.display = "none"; return; }
-    card.style.display = "";
+    // DÉDUP : si les % OFFICIELS sont présents (et frais), « Mes fenêtres » prime
+    // et REMPLACE cette carte. On calcule quand même les % (verdict + radar de
+    // repli) mais on masque la carte et on délègue le conseil à « Mes fenêtres ».
+    var ofc = CET.windowsCard ? CET.windowsCard(d, Date.now()) : null;
+    var officialSupersedes = !!(ofc && ofc.rows.length && !ofc.stale);
     var k = settings.kCache != null ? settings.kCache : 0.1;
     var lim = settings.lim || {};
 
@@ -319,6 +331,8 @@
     function barPct(eff, limit) { return (limit && limit > 0) ? Math.min(100, Math.round(eff / limit * 100)) : null; }
     var p5h = barPct(eff5h, lim.w5h), pAll = barPct(effWeek, lim.weekAll), pOpus = barPct(effOpusWeek, lim.weekOpus);
     FORFAIT_LAST = { p5h: p5h || 0, pAll: pAll || 0, pOpus: pOpus || 0 };
+    // exposé au RADAR (estimation de repli si pas de % officiels)
+    window.CET_FORFAIT_PCT = { p5h: p5h, pAll: pAll, pOpus: pOpus };
 
     // reset hebdo (prochain lundi par défaut) + reset 5h
     var weekReset = CET.weeklyResetLabel(CET.nextWeeklyReset(Date.now(), settings.weekResetDay, settings.weekResetHour));
@@ -350,12 +364,22 @@
     // mention d'honnêteté
     $("forfait-note").innerHTML = "Estimation d'après ce que tu as déjà consommé — pas le chiffre exact d'Anthropic (ils ne le partagent pas avec les applis), mais un bon repère.";
 
-    // UN conseil smart selon la barre la plus haute
-    $("forfait-advice").innerHTML = forfaitAdvice(p5h, pAll, pOpus, reset5h, weekReset);
+    // UN conseil smart selon la barre la plus haute (toujours calculé)
+    var adviceHTML = forfaitAdvice(p5h, pAll, pOpus, reset5h, weekReset);
+    $("forfait-advice").innerHTML = adviceHTML;
 
     // bouton "définir ma limite" -> réglages
     var setBtn = $("forfait-bars").querySelector(".fbar-set");
     if (setBtn) setBtn.addEventListener("click", openSettings);
+
+    // DÉDUP : si l'officiel prime, on masque le forfait et on transmet SON conseil
+    // (la meilleure ligne) à « Mes fenêtres » pour ne rien perdre d'utile.
+    if (officialSupersedes) {
+      card.style.display = "none";
+      FORFAIT_ADVICE_HTML = adviceHTML;
+    } else {
+      card.style.display = "";
+    }
   }
   function forfaitAdvice(p5h, pAll, pOpus, reset5h, weekReset) {
     var warn = settings.warnPct || 80;
@@ -430,12 +454,13 @@
     $("pos-reperes").innerHTML = rep.map(function (r) { return "<li>" + r + "</li>"; }).join("");
   }
 
+  var VERDICT_LEVEL = "green";   // exposé à renderAlerts pour la dédup
   function renderVerdict(d, dayU, weekU) {
     // FEU TRICOLORE UNIFIÉ : "je peux continuer ?" = pire risque parmi
     // fenêtre 5h / semaine / mois. Calculé dans CET.status (pur, testé).
     var st = CET.status ? CET.status(d, Date.now()) : null;
     var v = $("verdict");
-    if (!st) { v.className = "verdict ok"; return; }
+    if (!st) { v.className = "verdict ok"; VERDICT_LEVEL = "green"; return; }
     // Les vraies limites Max (forfait) priment : si une barre est au plafond,
     // le feu passe au rouge ; si elle chauffe, au moins orange.
     var f = FORFAIT_LAST, fWorst = Math.max(f.p5h, f.pAll, f.pOpus);
@@ -454,6 +479,7 @@
       orange: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>', // triangle
       red: '<rect x="6" y="6" width="12" height="12" rx="2"/>',     // stop
     };
+    VERDICT_LEVEL = st.level;   // green | orange | red — pour la dédup des alertes
     v.className = "verdict " + (toneMap[st.level] || "ok");
     $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + iconMap[st.level] + '</svg>';
     $("vstate").textContent = st.title;
@@ -484,20 +510,33 @@
   }
 
   function renderAlerts(d, _unused, dayU, weekU) {
-    // ASSISTANT INTELLIGENT : signaux dérivés de TON historique (fenêtre 5h,
-    // journée anormale, garde-fou Opus hebdo). Zéro budget inventé.
+    // DÉ-DOUBLONNAGE RADICAL : le feu tricolore (verdict) porte déjà le diagnostic
+    // ("X fois plus que d'habitude", niveau global). Ici on n'affiche AU PLUS
+    // qu'UNE alerte, et seulement si elle apporte une info NEUVE (typiquement
+    // l'ETA / le reset de la fenêtre 5 h). Si le 1er signal ne fait que répéter
+    // le verdict, on n'affiche rien.
     var html = "";
     var signals = (CET.assistant ? CET.assistant(d, Date.now()) : []) || [];
-    signals.forEach(function (s) {
+    // le seul signal qui ajoute une info actionnable absente du verdict, c'est la
+    // saturation 5 h (avec son ETA / heure de reset). Les signaux "info" (belle
+    // journée, montée Opus) ne font que reformuler le verdict -> on les écarte.
+    var s = null;
+    for (var i = 0; i < signals.length; i++) {
+      if (signals[i].id === "w5h") { s = signals[i]; break; }
+    }
+    // redondant si le verdict couvre déjà ce niveau de risque sans détail neuf :
+    // on n'affiche le signal 5 h que s'il porte une heure de reset (info en plus).
+    var addsNewInfo = s && /se remet à zéro|ralentir dans/i.test(s.msg || "");
+    if (s && addsNewInfo) {
       html += '<div class="alert ' + s.level + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         (s.level === "bad" ? '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' :
-         s.level === "warn" ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>' :
-         '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>') + '</svg>' +
+         '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>') + '</svg>' +
         '<div><b>' + esc(s.title) + '</b><br/>' + esc(s.msg) +
         '<span class="why">' + esc(s.why) + '</span></div></div>';
-    });
-    // seuils perso opt-in (clairement séparés : "tes repères perso, pas une limite Claude")
+    }
+    // seuils perso opt-in (repères choisis par Adam, pas une limite Claude). Ils
+    // ne doublonnent jamais le verdict -> on garde le PLUS critique, un seul.
     var perso = [], warn = settings.warnPct || 80;
     function check(name, used, threshold) {
       if (!threshold || threshold <= 0) return;
@@ -507,12 +546,12 @@
     }
     check("Aujourd'hui", dayU, settings.day);
     check("Ce mois", d.month ? d.month.currentMonth : 0, settings.month);
-    if (perso.length) {
-      html += '<p class="alerts-sub">Tes repères perso (pas une limite Claude)</p>';
-      perso.slice(0, 2).forEach(function (x) { html += banner(x.t, x.m); });
+    if (perso.length && !html) {
+      // un seul repère perso, le plus grave (bad avant warn)
+      perso.sort(function (a, b) { return (a.t === "bad" ? 0 : 1) - (b.t === "bad" ? 0 : 1); });
+      html += '<p class="alerts-sub">Ton repère perso (pas une limite Claude)</p>' + banner(perso[0].t, perso[0].m);
     }
-    // rien à signaler -> message calme et honnête
-    if (!html) html = banner("ok", "Tout est calme — rien à signaler côté rythme.");
+    // rien de neuf à dire -> on ne met RIEN (le verdict suffit). Plus de filler.
     $("alerts").innerHTML = html;
   }
   function banner(t, m) {
@@ -1156,11 +1195,11 @@
   loadEurRate();
   load();
   startLive();
-  // « Champ de tokens » derrière le héro (lazy, dégradation gracieuse). Le script
-  // tokens-field.js (defer) s'auto-monte aussi sur #hero-field ; mount() est
+  // RADAR des fenêtres derrière le héro (lazy, dégradation gracieuse). Le script
+  // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
-  if (window.CETField) { try { window.CETField.mount(document.getElementById("hero-field")); } catch (e) {} }
-  var SW_FILE = "sw.v18.js";
+  if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
+  var SW_FILE = "sw.v19.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)

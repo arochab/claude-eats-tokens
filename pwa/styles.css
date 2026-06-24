@@ -120,9 +120,19 @@ body{font-family:var(--sans);background:
 /* le héro est TOUJOURS sombre -> texte clair fixe (pas la variable thémée). */
 .hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#211F1A 0%,#1A1915 55%,#15140F 100%);color:#F0EEE6;border-radius:var(--r-xl);padding:24px 24px 22px;margin-bottom:16px;box-shadow:var(--shadow-lg);display:flex;gap:22px;align-items:center}
 .hero .info .v,.hero .pct b{color:#F0EEE6}
-/* « Champ de tokens » : nuage de points WebGL derrière le contenu du héro */
+/* « Champ de tokens » : nuage de points WebGL derrière le contenu du héro (legacy, non câblé) */
 .hero-field{position:absolute;inset:0;border-radius:inherit;overflow:hidden;z-index:0;pointer-events:none}
 .hero>.ring,.hero>.info{position:relative;z-index:1}
+
+/* ===== HÉRO RADAR : chiffre serif à GAUCHE, radar des 3 fenêtres à DROITE ===== */
+.hero-radar-wrap{align-items:center;justify-content:space-between}
+.hero-radar-wrap .info{flex:1 1 auto;z-index:1;position:relative}
+/* hôte du canvas radar : carré net, à droite, bien visible (pas un voile) */
+.hero-radar{position:relative;z-index:1;flex:0 0 auto;width:128px;height:128px;border-radius:14px}
+.hero-radar canvas{border-radius:inherit}
+@media (max-width:360px){
+  .hero-radar{width:108px;height:108px}
+}
 
 /* ---------------------------------------------------------------------------
    Texture de grille technique (signature DA). Très subtile : traits ~0.4 alpha,
@@ -197,6 +207,14 @@ body{font-family:var(--sans);background:
 .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
 .card h2{font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:-.01em;margin:0 0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card h2 .hint{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:400;text-transform:uppercase}
+/* longue traîne (secondaire) : repère / évolution / projets. Plus discret que les
+   cartes-titres du haut — titre légèrement plus petit & atténué, ombre allégée. */
+.card-2{box-shadow:none;background:transparent;border-color:var(--line)}
+.card-2>h2{font-size:15px;color:var(--slate-soft);margin-bottom:14px}
+.card-2>h2 .hint{opacity:.85}
+/* conseil hérité du forfait, posé en pied de « Mes fenêtres » quand l'officiel prime */
+.win-advice{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.win-advice .alert{margin-bottom:0}
 .chart-wrap{position:relative;width:100%;height:170px}
 .donut-wrap{position:relative;width:150px;height:150px;margin:0 auto}
 
