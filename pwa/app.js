@@ -1186,6 +1186,22 @@
       fireNotif("Tokens — " + name, msg);
     });
     setNotified(state);
+
+    // --- NOTIFS PAR PALIERS sur le VRAI % officiel (5h + hebdo) ---
+    // paliers 25/50/75/90/95/100 %, une fois chacun par fenêtre (clé = reset).
+    if (CET.windowAlerts) {
+      var firedKey = "tokenTracker.winAlerts.v1";
+      var fired = {};
+      try { fired = JSON.parse(localStorage.getItem(firedKey) || "{}"); } catch (e) {}
+      var res = CET.windowAlerts(d, fired);
+      res.alerts.forEach(function (a) {
+        if (a.mark >= 100) fireNotif("⛔ " + a.label + " — plein", "Tu es à " + a.pct + "%. Claude risque de te ralentir. Ça repart au reset.");
+        else if (a.mark >= 90) fireNotif("🔴 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "%. Lève le pied, tu approches du plafond.");
+        else if (a.mark >= 75) fireNotif("🟠 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "%. Garde un œil dessus.");
+        else fireNotif("🟢 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "% de ta fenêtre.");
+      });
+      try { localStorage.setItem(firedKey, JSON.stringify(res.fired)); } catch (e) {}
+    }
   }
 
   function startLive() {
@@ -1217,7 +1233,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v20.js";
+  var SW_FILE = "sw.v21.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

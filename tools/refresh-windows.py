@@ -167,10 +167,85 @@ def write_relay(win):
         return False
 
 
+# --- notifications PC par paliers (25/50/75/90/95/100 % sur 5h et hebdo) ---
+WINDOW_MARKS = [25, 50, 75, 90, 95, 100]
+FIRED_FILE = os.path.join(HOME, ".claude", "usage-windows-fired.json")
+
+
+def _load_fired():
+    try:
+        with open(FIRED_FILE, encoding="utf-8") as f:
+            return json.load(f) or {}
+    except Exception:
+        return {}
+
+
+def _save_fired(d):
+    try:
+        with open(FIRED_FILE, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+    except OSError:
+        pass
+
+
+def detect_milestones(win, fired):
+    """Renvoie [(label, pct, mark)] des paliers NOUVELLEMENT franchis, et met à
+    jour `fired` (clé = fenêtre+reset+palier). Ne notifie que sur le vrai %."""
+    out = []
+    pairs = [("w5hPct", "w5hResetAt", "Fenêtre 5 h"),
+             ("w7dPct", "w7dResetAt", "Fenêtre hebdo")]
+    keep = {}
+    for pk, rk, label in pairs:
+        p = win.get(pk)
+        if not isinstance(p, (int, float)):
+            continue
+        wid = label + ":" + str(win.get(rk, 0))
+        for m in WINDOW_MARKS:
+            if p >= m:
+                key = wid + ":" + str(m)
+                keep[key] = 1
+                if not fired.get(key):
+                    out.append((label, round(p), m))
+    # ne garde que les clés des fenêtres actives (purge des anciens resets)
+    fired.clear()
+    fired.update(keep)
+    return out
+
+
+def notify_windows(title, body):
+    """Toast Windows best-effort via PowerShell (sans dépendance)."""
+    try:
+        ps = (
+            "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime] | Out-Null;"
+            "$t=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent("
+            "[Windows.UI.Notifications.ToastTemplateType]::ToastText02);"
+            "$x=$t.GetElementsByTagName('text');"
+            "$x.Item(0).AppendChild($t.CreateTextNode(%r))|Out-Null;"
+            "$x.Item(1).AppendChild($t.CreateTextNode(%r))|Out-Null;"
+            "$n=[Windows.UI.Notifications.ToastNotification]::new($t);"
+            "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Claude Eats Tokens').Show($n);"
+        ) % (title, body)
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                       capture_output=True, timeout=10)
+    except Exception:
+        pass
+
+
 def main():
     token = ensure_fresh_token()
     usage = fetch_usage(token)
     win = normalize(usage)
+    if win:
+        # notifs PC par paliers (avant d'écrire le relais, sur le vrai %)
+        fired = _load_fired()
+        for label, pct, mark in detect_milestones(win, fired):
+            if mark >= 100:
+                notify_windows(label + " — plein (" + str(pct) + "%)", "Claude risque de te ralentir. Ça repart au reset.")
+            elif mark >= 90:
+                notify_windows(label + " — " + str(mark) + "% (" + str(pct) + "%)", "Lève le pied, tu approches du plafond.")
+            else:
+                notify_windows(label + " — " + str(mark) + "%", "Tu es à " + str(pct) + "% de ta fenêtre.")
+        _save_fired(fired)
     if win and write_relay(win):
         bits = []
         if "w5hPct" in win:

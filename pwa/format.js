@@ -386,6 +386,46 @@
     };
   }
 
+  /* ---------- NOTIFICATIONS PAR PALIERS (vrai % officiel 5h / 7j) ----------
+     Paliers demandés : 25 / 50 / 75 / 90 / 95 / 100 %. On notifie au
+     FRANCHISSEMENT (passage au-dessus), une seule fois par palier et par
+     fenêtre, tant que la fenêtre n'a pas été remise à zéro (reset -> on oublie
+     les paliers franchis). Pur et testable : on ne déclenche que sur le VRAI %
+     officiel (d.windowsOfficial), jamais sur une estimation.
+     fired = état mémorisé { "5h:1750000000:75":1, ... } (clé = fenêtre+reset+palier).
+     Retourne { alerts:[{key,label,pct,mark}], fired } — fired mis à jour. */
+  var WINDOW_MARKS = [25, 50, 75, 90, 95, 100];
+
+  function windowAlerts(d, fired) {
+    fired = fired || {};
+    var out = [];
+    var off = d && d.windowsOfficial;
+    if (!off || off.stale) return { alerts: out, fired: fired };  // pas de notif sur estimation
+    function check(pctKey, resetKey, label) {
+      var p = off[pctKey];
+      if (typeof p !== "number" || !isFinite(p)) return;
+      // identifiant de fenêtre = son reset (change à chaque nouvelle fenêtre)
+      var win = label + ":" + (off[resetKey] || 0);
+      for (var i = 0; i < WINDOW_MARKS.length; i++) {
+        var m = WINDOW_MARKS[i];
+        if (p >= m) {
+          var key = win + ":" + m;
+          if (!fired[key]) { fired[key] = 1; out.push({ key: key, label: label, pct: Math.round(p), mark: m }); }
+        }
+      }
+    }
+    check("w5hPct", "w5hResetAt", "fenêtre 5 h");
+    check("w7dPct", "w7dResetAt", "fenêtre hebdo");
+    // purge des clés d'anciennes fenêtres (reset passé) pour ne pas gonfler indéfiniment
+    var keep = {};
+    var active5 = "fenêtre 5 h:" + (off.w5hResetAt || 0);
+    var active7 = "fenêtre hebdo:" + (off.w7dResetAt || 0);
+    Object.keys(fired).forEach(function (k) {
+      if (k.indexOf(active5) === 0 || k.indexOf(active7) === 0) keep[k] = fired[k];
+    });
+    return { alerts: out, fired: keep };
+  }
+
   var api = {
     COLORS: COLORS, modelColor: modelColor, fmt: fmt, fmtFull: fmtFull,
     pct: pct, esc: esc, ringColor: ringColor, toneOf: toneOf, ago: ago,
@@ -395,6 +435,7 @@
     position: position, POSITION_BENCH: POSITION_BENCH, POSITION_TIERS: POSITION_TIERS,
     xtimes: xtimes, xtimesShort: xtimesShort,
     windowsCard: windowsCard, WINDOWS_COLORS: WINDOWS_COLORS,
+    windowAlerts: windowAlerts, WINDOW_MARKS: WINDOW_MARKS,
   };
 
   root.CET = api;

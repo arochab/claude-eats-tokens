@@ -323,3 +323,46 @@ test("windowsCard — pct borné 0..100 et arrondi", () => {
   assert.equal(r.rows[1].pct, 100);
   assert.equal(r.rows[2].pct, 61);
 });
+
+// ---------- Notifications par paliers (windowAlerts) ----------
+const offD = (o) => ({ windowsOfficial: Object.assign({ capturedAt: 1, source: "oauth", stale: false }, o) });
+
+test("windowAlerts — franchit les paliers 25/50/75/90/95/100 sur 5h", () => {
+  const r = CET.windowAlerts(offD({ w5hPct: 77, w5hResetAt: 1000 }), {});
+  const marks = r.alerts.map(a => a.mark).sort((a,b)=>a-b);
+  assert.deepEqual(marks, [25, 50, 75]);            // 77% -> 25,50,75 franchis
+  assert.equal(r.alerts[0].label, "fenêtre 5 h");
+});
+
+test("windowAlerts — ne renotifie pas un palier déjà franchi", () => {
+  const d = offD({ w5hPct: 60, w5hResetAt: 1000 });
+  const r1 = CET.windowAlerts(d, {});
+  assert.equal(r1.alerts.length, 2);                // 25, 50
+  const r2 = CET.windowAlerts(d, r1.fired);         // même fenêtre, même %
+  assert.equal(r2.alerts.length, 0);                // rien de neuf
+});
+
+test("windowAlerts — un nouveau reset relance les paliers", () => {
+  const r1 = CET.windowAlerts(offD({ w5hPct: 30, w5hResetAt: 1000 }), {});
+  assert.equal(r1.alerts.length, 1);                // 25
+  // fenêtre remise à zéro (reset différent), % repart
+  const r2 = CET.windowAlerts(offD({ w5hPct: 30, w5hResetAt: 2000 }), r1.fired);
+  assert.equal(r2.alerts.length, 1);                // 25 de la NOUVELLE fenêtre
+});
+
+test("windowAlerts — 5h ET hebdo indépendants", () => {
+  const r = CET.windowAlerts(offD({ w5hPct: 95, w5hResetAt: 1, w7dPct: 51, w7dResetAt: 2 }), {});
+  const labels = [...new Set(r.alerts.map(a => a.label))].sort();
+  assert.deepEqual(labels, ["fenêtre 5 h", "fenêtre hebdo"]);
+  assert.ok(r.alerts.some(a => a.label === "fenêtre 5 h" && a.mark === 95));
+  assert.ok(r.alerts.some(a => a.label === "fenêtre hebdo" && a.mark === 50));
+});
+
+test("windowAlerts — JAMAIS de notif sur une estimation (stale)", () => {
+  const r = CET.windowAlerts(offD({ w5hPct: 99, w5hResetAt: 1, stale: true }), {});
+  assert.equal(r.alerts.length, 0);
+});
+
+test("windowAlerts — pas de windowsOfficial -> rien", () => {
+  assert.equal(CET.windowAlerts({}, {}).alerts.length, 0);
+});
