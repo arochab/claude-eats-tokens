@@ -18,7 +18,7 @@
   <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-CC785C">
   <img alt="No build step" src="https://img.shields.io/badge/build-no%20build%20step-1A1915">
   <img alt="Coût d'infra" src="https://img.shields.io/badge/infra-100%25%20gratuite-7E9E6D">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-75%20%E2%9C%93-7E9E6D">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-101%20%E2%9C%93-7E9E6D">
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-D4A27F">
 </p>
 
@@ -77,7 +77,7 @@ Une PWA statique + un mini-serveur de push, reliés par les propres habitudes al
 2. **Un serveur gratuit garde les derniers chiffres.** Une app **Flask sur Render** reçoit le push (protégé par secret partagé, comparaison à temps constant) et le recopie dans une **Gist GitHub privée**, pour que les chiffres survivent à la mise en veille du plan gratuit.
 3. **La PWA affiche où vous en êtes.** Installable depuis **GitHub Pages**, elle lit la source la plus fraîche disponible (Render → `data/usage.json` → dataset de démo embarqué) et rend le verdict, les jauges, la heatmap et les tendances. En `localhost`, le front ignore Render et lit directement le fichier local (dev sans serveur).
 
-Le calcul vit dans `tools/usage_core.py` — **logique pure et testée** ; `push_usage.py` n'est qu'une coquille d'I/O. Le format d'échange est documenté dans [`SCHEMA.md`](SCHEMA.md) (schéma `usage.json` v3).
+Le calcul vit dans `tools/usage_core.py` — **logique pure et testée** ; `push_usage.py` n'est qu'une coquille d'I/O. Le format d'échange est documenté dans [`SCHEMA.md`](SCHEMA.md) (schéma `usage.json` v4).
 
 ---
 
@@ -117,9 +117,13 @@ Et l'app sépare proprement deux familles d'alertes : les **signaux intelligents
 
 Le cœur de l'app : une seule réponse, calculée sur le **pire** de trois horizons (5 h · semaine · mois), mais seule la fenêtre de 5 h peut faire virer le feu à l'orange ou au rouge. Voir [« L'assistant intelligent »](#lassistant-intelligent) pour la philosophie complète.
 
-### Carte « Utilisation du forfait »
+### Carte « Mes fenêtres » — le **vrai** pourcentage officiel
 
-Un pourcentage des limites réelles du forfait Max, dans l'esprit de la page d'usage de Claude. Les tokens sont pondérés (`effectiveTokens`, cache lu × 0,1) pour refléter ce qui compte vraiment — sinon on afficherait 300 % là où Claude affiche 11 %. **Ce sont des estimations** (voir « Honnêteté des chiffres »).
+Le pourcentage **serveur exact** de vos fenêtres (5 h, semaine, Opus), le même que celui affiché par Claude Code — pas une estimation. Capté côté PC via l'endpoint officiel d'usage (`tools/refresh-windows.py`, qui rafraîchit le jeton via `claude -p` puis interroge `/api/oauth/usage`). Quand le vrai chiffre n'est pas disponible (PC éteint), un **badge** bascule de « officiel » (vert) à « estimation · moteur endormi » (terracotta), et l'app retombe sur l'estimation maison — **jamais un chiffre inventé qui se ferait passer pour officiel.**
+
+### Carte « Utilisation du forfait » (repli estimé)
+
+Quand le vrai % officiel n'est pas dispo, cette carte prend le relais : un pourcentage **estimé** des limites Max, tokens pondérés (`effectiveTokens`, cache lu × 0,1) pour refléter ce qui compte vraiment. Clairement étiquetée **estimation** (voir « Honnêteté des chiffres »).
 
 ### Carte « Où je me situe »
 
@@ -128,9 +132,11 @@ Place l'utilisateur sur un spectre **Découverte → Régulier → Intensif → 
 ### Et aussi
 
 - **Vrais projets, regroupés.** Chaque session est rattachée à son projet réel via son `cwd` (tous les `.claude/worktrees/*` d'un même dépôt fusionnent en une seule entrée), avec un coût pondéré par le vrai mix de modèles, un drill-down dans les sessions, et un filtre projet qui recalcule tout le tableau de bord.
+- **Notifications par paliers.** Une alerte (sur le téléphone *et* sur le PC) à chaque palier franchi — 25 / 50 / 75 / 90 / 95 / 100 % — sur vos fenêtres 5 h et hebdo, calculée sur le **vrai % officiel** (jamais sur une estimation), une fois par palier et par fenêtre.
+- **Héro radar 3D.** Un radar (Canvas natif, sans dépendance) dont les 3 arcs représentent vos 3 fenêtres (5 h / semaine / mois), remplis à leurs vrais pourcentages, teintés par l'état. Le grand chiffre éditorial se pose dessus.
 - **Coût en € live.** Une estimation théorique au tarif API, taux $→€ réglable, clairement étiquetée « estimation » (sur Max, le coût réel est un forfait fixe).
-- **Visualisations.** Timeline, heatmap heure × jour, répartition entrée / sortie / cache, split par modèle, comparaison semaine vs semaine.
-- **PWA complète.** Service worker à la racine (network-first sur l'app-shell, network-only sur la donnée, purge de cache versionnée), shell hors-ligne. Tous les budgets et réglages vivent dans le `localStorage` du téléphone (écran ⚙️) — rien côté serveur.
+- **Courbe d'évolution + projets.** Tendance tokens/jour (Aujourd'hui / 7 j / 30 j / Tout), et la conso par **vrai projet** (regroupé depuis le `cwd`, drill-down par session).
+- **PWA complète.** Service worker à la racine (network-first sur l'app-shell, network-only sur la donnée, mise à jour automatique infaillible), shell hors-ligne. Tous les budgets et réglages vivent dans le `localStorage` du téléphone (écran ⚙️) — rien côté serveur.
 
 ---
 
@@ -209,7 +215,7 @@ Chaque formule est couverte : inférence de projet depuis le `cwd`, coût pondé
 python tests/run_all.py
 ```
 
-**75 tests** au total — **46 Python** (`test_usage_core.py`, `test_server.py`, via `unittest`) et **29 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
+**101 tests** au total — **60 Python** (`test_usage_core.py`, `test_server.py`, `test_statusline.py`, via `unittest`) et **41 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
 
 ---
 
@@ -224,7 +230,7 @@ server/app.py                    serveur de push Flask (Render) + persistance Gi
 tools/usage_core.py              logique pure (cwd→projet, coût/modèle, fenêtres) — entièrement testée
 tools/push_usage.py              côté PC : stream logs → agrège → POST /push
 tools/make_demo.py               régénère le dataset de démo
-tests/                           75 tests · python tests/run_all.py (Python + Node)
+tests/                           101 tests · python tests/run_all.py (Python + Node)
 DEMARRER.bat                     lance le moteur à la main (double-clic)
 installer-demarrage-auto.ps1     crée la tâche planifiée (démarrage auto du moteur)
 desinstaller-demarrage-auto.bat  retire la tâche planifiée

@@ -89,7 +89,7 @@
   function toneOf(p) { return CET.toneOf(p, settings.warnPct); }
   var $ = function (id) { return document.getElementById(id); };
 
-  var DATA = null, VIEW = null, period = "7", trendChart = null, donutChart = null, weekCmpChart = null;
+  var DATA = null, VIEW = null, period = "7", trendChart = null;
   var SUPPORTED_SCHEMA = 4;  // version max de usage.json comprise par ce front (v4 : windowsOfficial)
 
   /* ---------- filtre projet : recompose une vue DATA-compatible ----------
@@ -184,7 +184,7 @@
     /* RADAR : reçoit TOUT l'objet (pour lire windowsOfficial). Une seule voix. */
     if (window.CETRadar) { try { window.CETRadar.setData(d); } catch (e) {} }
 
-    renderVerdict(d, dayU, weekU);
+    renderVerdict(d, dayU, weekU, demo);
     renderAlerts(d, 0, dayU, weekU);
     renderPosition(d);
 
@@ -202,8 +202,8 @@
     var plabel = { today: "aujourd'hui", "7": "7 jours", "30": "30 jours", all: "tout l'historique" }[period] || "";
     if ($("chart-hint")) $("chart-hint").textContent = plabel + " · " + fmt(ptot) + " tokens";
 
-    /* projets (liste complète, drill-down porte le donut + modèles) */
-    renderProjects(DATA);
+    /* projets — MÊME source que le reste du dashboard (respecte le filtre projet) */
+    renderProjects(filteredData());
 
     var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
     var asOf = (d.source && d.source.pricingAsOf) ? (" (tarifs " + d.source.pricingAsOf + ")") : "";
@@ -465,11 +465,22 @@
   }
 
   var VERDICT_LEVEL = "green";   // exposé à renderAlerts pour la dédup
-  function renderVerdict(d, dayU, weekU) {
+  function renderVerdict(d, dayU, weekU, demo) {
+    var v = $("verdict");
+    // En mode DÉMO, les chiffres sont fictifs : un feu vert/rouge serait trompeur.
+    // On affiche un état NEUTRE "Exemple" (pastille grise), jamais un vrai go/no-go.
+    if (demo) {
+      v.className = "verdict demo";
+      VERDICT_LEVEL = "green";
+      $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>';
+      $("vstate").textContent = "Exemple";
+      $("vsub").textContent = "Données de démonstration — lance le moteur pour ton vrai verdict.";
+      var gz0 = $("vgauges"); if (gz0) gz0.innerHTML = "";
+      return;
+    }
     // FEU TRICOLORE UNIFIÉ : "je peux continuer ?" = pire risque parmi
     // fenêtre 5h / semaine / mois. Calculé dans CET.status (pur, testé).
     var st = CET.status ? CET.status(d, Date.now()) : null;
-    var v = $("verdict");
     if (!st) { v.className = "verdict ok"; VERDICT_LEVEL = "green"; return; }
     // Les vraies limites Max (forfait) priment : si une barre est au plafond,
     // le feu passe au rouge ; si elle chauffe, au moins orange.
@@ -513,18 +524,6 @@
           (g.sub ? '<div class="vg-sub">' + esc(g.sub) + '</div>' : '') + '</div>';
       }).join("");
     }
-  }
-
-  function renderApiCard(d) {
-    var box = $("apicard"); if (!box) return;
-    var theo = d.totals ? d.totals.cost : 0;
-    box.innerHTML =
-      '<div class="at" style="display:flex;align-items:center;gap:12px;width:100%">' +
-      '<div style="width:36px;height:36px;border-radius:9px;background:var(--cream-2);display:grid;place-items:center;flex:0 0 auto;color:var(--muted)">' +
-      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>' +
-      '<div style="min-width:0"><p class="k" style="margin:0 0 2px">Valeur consommee <span style="font-weight:400">(theorique)</span></p>' +
-      '<p class="v" style="margin:0">' + eur(theo) + '</p>' +
-      '<p class="s" style="margin:3px 0 0">Sur Max tu paies un forfait fixe : tu ne paies <b>rien de plus</b>. Equivalent au tarif API, a titre indicatif.</p></div></div>';
   }
 
   function renderAlerts(d, _unused, dayU, weekU) {
@@ -620,19 +619,6 @@
       " <span style='opacity:.75'>Valable si le rythme reste constant ; Max = fenêtres 5 h, pas de plafond mensuel officiel.</span>");
   }
 
-  function renderModels(d) {
-    var box = $("models"); box.innerHTML = "";
-    var max = Math.max.apply(null, (d.models || []).map(function (m) { return m.total; }).concat([1]));
-    (d.models || []).forEach(function (m) {
-      var c = modelColor(m.label), w = Math.max(3, Math.round((m.total / max) * 100));
-      var el = document.createElement("div"); el.className = "model";
-      el.innerHTML = '<div class="row"><span class="name"><span class="swatch" style="background:' + c + '"></span>' + esc(m.label) +
-        '</span><span class="val"><b>' + fmt(m.total) + "</b> · " + money(m.cost) + "</span></div>" +
-        '<div class="bar"><span style="width:' + w + "%;background:" + c + '"></span></div>';
-      box.appendChild(el);
-    });
-    if (!(d.models || []).length) box.innerHTML = '<p style="color:var(--muted);font-size:13px">Aucune donnée.</p>';
-  }
   var projSort = "tokens";
   function renderProjects(d) {
     var pbox = $("projects"); pbox.innerHTML = "";
@@ -730,25 +716,6 @@
   }
   function closeProjSheet() { closeSheet("projsheet"); }
 
-  function renderComplexity(restMonth) {
-    var card = $("complexity-card"), box = $("complexity");
-    var ps = settings.projects || [];
-    if (!ps.length) { card.style.display = "none"; return; }
-    card.style.display = "";
-    var need = ps.reduce(function (a, p) { return a + (Number(p.weight) || 0); }, 0);
-    var ratio = restMonth ? need / restMonth : 99;
-    var tone = ratio > 1 ? "bad" : ratio > 0.8 ? "warn" : "ok";
-    var verdict = ratio > 1 ? "Tes projets en cours pèsent <b>plus</b> que ton budget mensuel restant." :
-      ratio > 0.8 ? "Tes projets en cours consommeront presque tout ton budget restant." :
-      "Ton budget restant couvre tes projets en cours.";
-    var rows = ps.map(function (p) {
-      var w = pct(Number(p.weight) || 0, need || 1);
-      return '<div class="model"><div class="row"><span class="name">' + esc(p.name) + '</span><span class="val"><b>' + fmt(Number(p.weight) || 0) + "</b></span></div>" +
-        '<div class="bar"><span style="width:' + Math.max(3, w) + '%;background:var(--clay)"></span></div></div>';
-    }).join("");
-    box.innerHTML = banner(tone, verdict + " Besoin estimé : <b>" + fmt(need) + "</b> · reste ce mois : <b>" + fmt(restMonth) + "</b>.") + rows;
-  }
-
   /* ---------- charts ---------- */
   function drawTrend(rows) {
     var ctx = $("trend").getContext("2d");
@@ -773,106 +740,6 @@
     if (trendChart) { trendChart.destroy(); trendChart = null; }
     trendChart = new Chart(ctx, cfg);
   }
-  function drawDonut(t) {
-    var ctx = $("donut").getContext("2d");
-    var data = [t.input, t.output, t.cacheCreate, t.cacheRead];
-    var labels = ["Entrée", "Sortie", "Cache créé", "Cache lu"];
-    var cols = [TONE.input, TONE.output, TONE.cacheCreate, TONE.cacheRead];
-    if (donutChart) {
-      donutChart.data.datasets[0].data = data;
-      donutChart.update("none");
-    } else {
-      donutChart = new Chart(ctx, {
-        type: "doughnut",
-        data: { labels: labels, datasets: [{ data: data, backgroundColor: cols, borderWidth: 0, hoverOffset: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", callbacks: { label: function (c) { return c.label + " : " + fmt(c.parsed); } } } } }
-      });
-    }
-    var tot = data.reduce(function (a, b) { return a + b; }, 0) || 1;
-    $("donut-legend").innerHTML = labels.map(function (l, i) {
-      return '<span><i style="background:' + cols[i] + '"></i>' + l + " " + Math.round(data[i] / tot * 100) + "%</span>";
-    }).join("");
-  }
-  function drawHeat(tl) {
-    var max = Math.max.apply(null, tl.map(function (r) { return r.total; }).concat([1]));
-    function color(v) { if (!v) return "var(--cream-2)"; var r = v / max; return r > .75 ? "#B5563A" : r > .5 ? "#CC785C" : r > .25 ? "#D88E6E" : "#E8C5B5"; }
-    // grille par semaines (colonnes) x 7 jours
-    var byDate = {}; tl.forEach(function (r) { byDate[r.date] = r.total; });
-    var days = tl.slice(-70); // ~10 semaines
-    if (!days.length) { $("heat").innerHTML = ""; return; }
-    var first = new Date(days[0].date + "T00:00:00Z");
-    var offset = (first.getUTCDay() + 6) % 7;
-    var cells = [];
-    for (var i = 0; i < offset; i++) cells.push(null);
-    days.forEach(function (r) { cells.push(r); });
-    var cols = [], col = [];
-    cells.forEach(function (c, i) { col.push(c); if (col.length === 7) { cols.push(col); col = []; } });
-    if (col.length) cols.push(col);
-    $("heat").innerHTML = cols.map(function (c) {
-      return '<div class="col">' + c.map(function (cell) {
-        if (!cell) return '<div class="cell" style="background:transparent"></div>';
-        return '<div class="cell" title="' + dayLabel(cell.date) + " : " + fmtFull(cell.total) + ' tokens" style="background:' + color(cell.total) + '"></div>';
-      }).join("") + '</div>';
-    }).join("");
-  }
-
-  /* ---------- AXE 4 : heures de pointe (jour de semaine × heure) ---------- */
-  var WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-  function drawHourHeat(hourly) {
-    var box = $("hourheat"); if (!box) return;
-    var grid = hourly && hourly.weekdayHour;
-    if (!grid || !grid.length) { box.innerHTML = emptyState("Pas encore de données horaires", "Reviens après quelques sessions."); $("hourheat-note").textContent = ""; return; }
-    var max = 1, peak = { d: 0, h: 0, v: 0 }, byHourTotal = new Array(24).fill(0);
-    for (var d = 0; d < 7; d++) for (var h = 0; h < 24; h++) {
-      var v = grid[d][h] || 0; if (v > max) max = v;
-      byHourTotal[h] += v;
-      if (v > peak.v) peak = { d: d, h: h, v: v };
-    }
-    function col(v) { if (!v) return "var(--cream-2)"; var r = v / max; return r > .75 ? "#B5563A" : r > .5 ? "#CC785C" : r > .25 ? "#D88E6E" : "#E8C5B5"; }
-    // en-tête heures (0,6,12,18) + grille
-    var html = '<div class="hh-grid">';
-    for (var dd = 0; dd < 7; dd++) {
-      html += '<div class="hh-row"><span class="hh-day">' + WEEKDAYS[dd] + '</span>';
-      for (var hh = 0; hh < 24; hh++) {
-        var val = grid[dd][hh] || 0;
-        html += '<span class="hh-cell" title="' + WEEKDAYS[dd] + " " + hh + "h : " + fmtFull(val) + ' tokens" style="background:' + col(val) + '"></span>';
-      }
-      html += '</div>';
-    }
-    html += '<div class="hh-row hh-axis"><span class="hh-day"></span>' +
-      [0, 6, 12, 18].map(function (h) { return '<span class="hh-axis-lbl">' + h + 'h</span>'; }).join("") + '</div>';
-    html += '</div>';
-    box.innerHTML = html;
-    // note : créneau le plus chargé
-    var topHour = byHourTotal.indexOf(Math.max.apply(null, byHourTotal));
-    $("hourheat-note").textContent = peak.v
-      ? "Pic le " + WEEKDAYS[peak.d] + " vers " + peak.h + "h · créneau le plus chargé : " + topHour + "h–" + ((topHour + 1) % 24) + "h."
-      : "";
-  }
-
-  /* ---------- AXE 4 : comparaison semaine vs semaine ---------- */
-  function drawWeekCmp(weekly) {
-    var weeks = (weekly && weekly.weeks) || [];
-    var card = $("weekcmp-card");
-    if (weeks.length < 2) { if (card) card.style.display = "none"; return; }
-    if (card) card.style.display = "";
-    var last = weeks.slice(-8);
-    var labels = last.map(function (w) { return w.week.replace(/^\d+-/, ""); }); // "S25"
-    var data = last.map(function (w) { return w.total; });
-    var cols = data.map(function (_, i) { return i === data.length - 1 ? "#CC785C" : "#D4A27F"; });
-    var ctx = $("weekcmp").getContext("2d");
-    if (weekCmpChart) {
-      weekCmpChart.data.labels = labels; weekCmpChart.data.datasets[0].data = data;
-      weekCmpChart.data.datasets[0].backgroundColor = cols; weekCmpChart.update("none");
-      return;
-    }
-    weekCmpChart = new Chart(ctx, {
-      type: "bar",
-      data: { labels: labels, datasets: [{ data: data, backgroundColor: cols, borderRadius: 6, maxBarThickness: 38 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1A1915", displayColors: false, callbacks: { label: function (c) { return fmtFull(c.parsed.y) + " tokens"; } } } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 } } }, y: { grid: { color: "rgba(128,128,128,.12)" }, border: { display: false }, ticks: { color: "#9A988C", font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return fmt(v); } } } } }
-    });
-  }
-
   /* ---------- AXE 4 : export CSV & PNG ---------- */
   function download(filename, blob) {
     var url = URL.createObjectURL(blob);
@@ -972,7 +839,7 @@
           // des champs. On AFFICHE quand même (le front ignore ce qu'il ne connaît
           // pas) au lieu de bloquer l'app — on note juste qu'une MAJ est dispo.
           var sc = d.schema || 1;
-          DATA = d; render(); checkThresholds(d);
+          DATA = d; render(); try { checkThresholds(d); } catch (e) {}
           if (sc > SUPPORTED_SCHEMA) {
             setStatus("Une mise à jour de l'app est disponible (format " + sc + ").", "warn");
           }
@@ -1170,8 +1037,9 @@
       ["semaine", d.weekly ? d.weekly.currentWeek : 0, settings.week]
     ];
     if (d.windows) {
-      checks.push(["fenêtre 5 h", d.windows.w5h.total, settings.w5h]);
-      checks.push(["fenêtre 7 j", d.windows.w7d.total, settings.w7d]);
+      // défensif : un payload tronqué (windows sans w5h/w7d) ne doit pas planter
+      if (d.windows.w5h) checks.push(["fenêtre 5 h", d.windows.w5h.total || 0, settings.w5h]);
+      if (d.windows.w7d) checks.push(["fenêtre 7 j", d.windows.w7d.total || 0, settings.w7d]);
     }
     var marks = [100, settings.warnPct, 50];
     checks.forEach(function (c) {
@@ -1233,7 +1101,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v21.js";
+  var SW_FILE = "sw.v22.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

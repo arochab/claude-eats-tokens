@@ -3,11 +3,11 @@
 Le moteur (`tools/push_usage.py`) produit ce JSON ; le front (`pwa/app.js`) le
 consomme ; le serveur (`server/app.py`) le relaie. Champ `schema` = version.
 
-## v3 (courant)
+## v4 (courant)
 
 ```jsonc
 {
-  "schema": 3,
+  "schema": 4,
   "generatedAt": "2026-06-22T18:00:00+00:00",   // ISO UTC, quand le moteur a tourné
   "demo": false,                                  // true uniquement pour le dataset démo
   "source": {
@@ -23,10 +23,25 @@ consomme ; le serveur (`server/app.py`) le relaie. Champ `schema` = version.
   "last7Days":  { "input","output","cacheCreate","cacheRead","total" },
   "last30Days": { ... },
   "timeline": [ { "date":"YYYY-MM-DD", "input","output","cacheCreate","cacheRead","total" }, ... ],
-  "windows": {
+  "windows": {                                   // ESTIMATION maison (calcul local)
     "w5h":  { ...accumulateur..., "total" },     // fenêtre glissante 5h
     "w5hResetAt": "ISO" | null,                  // (plus vieux bucket dans la fenêtre) + 5h
     "w7d":  { ... }
+  },
+
+  // —— Nouveauté v4 : le VRAI % officiel des fenêtres (serveur Anthropic) ——
+  // Capturé par tools/refresh-windows.py (endpoint OAuth /api/oauth/usage, jeton
+  // rafraîchi via `claude -p`) ou tools/statusline-windows.py. ABSENT si le moteur
+  // n'a pas pu capter (jeton expiré, hors session) -> le front retombe sur
+  // l'estimation `windows` ci-dessus, avec un badge explicite. JAMAIS inventé.
+  "windowsOfficial": {                           // ou null
+    "w5hPct": N, "w5hResetAt": EPOCH_SEC,        // % serveur exact + reset (epoch s)
+    "w7dPct": N, "w7dResetAt": EPOCH_SEC,
+    "w7dOpusPct": N, "w7dOpusResetAt": EPOCH_SEC,    // optionnels (si exposés)
+    "w7dSonnetPct": N, "w7dSonnetResetAt": EPOCH_SEC,
+    "capturedAt": EPOCH_SEC,                      // quand on a capté
+    "source": "oauth" | "statusline",
+    "stale": false                               // true = capture trop vieille (> 6h) -> traiter en estimation
   },
   "weekly": { "weeks":[ {"week":"2026-S25","total":N}, ... ], "currentWeek": N },
   "models": [ { "model":"opus", "label":"Claude Opus", ...acc..., "total", "cost" }, ... ],

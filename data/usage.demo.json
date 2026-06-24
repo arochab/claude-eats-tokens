@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "generatedAt": "2026-06-22T18:00:00+00:00",
   "demo": true,
   "source": {
@@ -1602,5 +1602,16 @@
       ]
     ]
   },
-  "api": null
+  "api": null,
+  "windowsOfficial": {
+    "w5hPct": 42,
+    "w5hResetAt": 1782329709,
+    "w7dPct": 58,
+    "w7dResetAt": 1782666609,
+    "w7dOpusPct": 71,
+    "w7dOpusResetAt": 1782666609,
+    "capturedAt": 1782320829,
+    "source": "oauth",
+    "stale": false
+  }
 }
