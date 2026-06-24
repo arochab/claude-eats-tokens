@@ -300,5 +300,25 @@ class TestAssistantStats(unittest.TestCase):
         self.assertEqual(uc.robust_z_log(1, med_l, 0), 0.0)  # mad nul -> 0
 
 
+
+class TestOfficialWindows(unittest.TestCase):
+    """v4 : fraicheur du vrai % officiel des fenetres (5h/7j)."""
+
+    def test_schema_v4(self):
+        self.assertEqual(uc.SCHEMA_VERSION, 4)
+
+    def test_freshness_age(self):
+        self.assertEqual(uc.official_freshness({"capturedAt": 1000}, 1300), 300)
+        self.assertIsNone(uc.official_freshness(None, 1000))
+        self.assertIsNone(uc.official_freshness({}, 1000))
+
+    def test_is_fresh(self):
+        now = 100000
+        self.assertTrue(uc.official_is_fresh({"capturedAt": now - 60}, now))
+        self.assertTrue(uc.official_is_fresh({"capturedAt": now - 5 * 3600}, now))
+        self.assertFalse(uc.official_is_fresh({"capturedAt": now - 7 * 3600}, now))
+        self.assertFalse(uc.official_is_fresh(None, now))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

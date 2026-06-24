@@ -74,6 +74,95 @@ def iter_records(fp):
         return
 
 
+# --------------------------------------------------------------------------
+# Fenêtres OFFICIELLES (vrai % serveur des fenêtres 5h/7j).
+# Source A : fichier relais écrit par tools/statusline-windows.py (recommandé,
+# zéro réseau). Source B : endpoint OAuth /api/oauth/usage (best-effort, si le
+# jeton local est encore frais). Tout est best-effort : aucune erreur ne bloque
+# le push ; en l'absence de données, le front retombe sur l'estimation.
+# --------------------------------------------------------------------------
+_RELAY = Path.home() / ".claude" / "usage-windows.json"
+_CREDS = Path.home() / ".claude" / ".credentials.json"
+_OAUTH_URL = "https://api.anthropic.com/api/oauth/usage"
+
+
+def read_relay_windows():
+    """Lit le fichier relais du statusline. Retourne le dict ou None."""
+    try:
+        if not _RELAY.exists():
+            return None
+        data = json.loads(_RELAY.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) and "capturedAt" in data else None
+    except Exception:
+        return None
+
+
+def fetch_oauth_windows():
+    """Best-effort : interroge l'endpoint OAuth si le jeton local est frais.
+
+    NE manipule PAS le secret : lit seulement le jeton déjà stocké par Claude
+    Code, ne le pousse nulle part, ne l'affiche pas. Retourne un dict normalisé
+    (même forme que le relais) ou None. Endpoint non documenté -> tout en try.
+    """
+    try:
+        if not _CREDS.exists():
+            return None
+        creds = json.loads(_CREDS.read_text(encoding="utf-8"))
+        oauth = (creds or {}).get("claudeAiOauth") or {}
+        token = oauth.get("accessToken")
+        exp = oauth.get("expiresAt")  # epoch ms
+        if not token:
+            return None
+        # jeton expiré -> on n'appelle pas (évite un 401 inutile)
+        if isinstance(exp, (int, float)) and exp / 1000.0 <= time.time():
+            return None
+        r = requests.get(_OAUTH_URL, timeout=4, headers={
+            "Authorization": "Bearer " + token,
+            "anthropic-beta": "oauth-2025-04-20",
+            "User-Agent": "claude-code/2.1.89",  # requis sinon 429
+            "Content-Type": "application/json",
+        })
+        if r.status_code != 200:
+            return None
+        body = r.json()
+        # l'endpoint nomme les champs comme rate_limits -> on réutilise le parseur
+        # pur du statusline pour normaliser (utilization/used_percentage, garde-fous).
+        import importlib.util
+        sp = os.path.join(os.path.dirname(__file__), "statusline-windows.py")
+        spec = importlib.util.spec_from_file_location("statusline_windows", sp)
+        sw = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sw)
+        win = sw.extract_windows({"rate_limits": body})
+        if win:
+            win["source"] = "oauth"
+        return win
+    except Exception:
+        return None
+
+
+def official_windows(now_epoch=None):
+    """Renvoie le bloc windowsOfficial le plus fiable, ou None.
+
+    Priorité : relais statusline frais > endpoint OAuth > relais périmé (gardé
+    pour info, marqué stale). Le front décide de l'afficher comme officiel ou de
+    le présenter comme dernière valeur connue selon la fraîcheur.
+    """
+    now = int(now_epoch if now_epoch is not None else time.time())
+    relay = read_relay_windows()
+    if relay and uc.official_is_fresh(relay, now):
+        relay["stale"] = False
+        return relay
+    oauth = fetch_oauth_windows()
+    if oauth:
+        oauth["capturedAt"] = now
+        oauth["stale"] = False
+        return oauth
+    if relay:  # périmé mais mieux que rien : dernière valeur connue
+        relay["stale"] = True
+        return relay
+    return None
+
+
 def build(verbose=False):
     """Agrège tous les logs en un payload usage.json (schéma v2)."""
     source_dir, files = None, []
@@ -368,6 +457,7 @@ def build(verbose=False):
                   "cost": round(uc.cost_of(today, "") if today else 0, 2)},
         "last7Days": srange(7), "last30Days": srange(30),
         "windows": {"w5h": w5h, "w5hResetAt": w5h_reset, "w7d": w7d},
+        "windowsOfficial": official_windows(),
         "weekly": {"weeks": [{"week": k, "total": v} for k, v in sorted(week_map.items())],
                    "currentWeek": current_week},
         "month": {"currentMonth": current_month, "projection": projection,

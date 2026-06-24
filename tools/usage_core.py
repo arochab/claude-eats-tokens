@@ -14,7 +14,7 @@ import calendar
 import re
 from datetime import datetime, timezone, timedelta
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4  # v4 : champ windowsOfficial (vrai % serveur des fenêtres 5h/7j)
 
 # Tarif API (USD / million de tokens). Sur Max c'est un forfait : ces chiffres
 # servent à estimer une *valeur théorique*, pas une facture.
@@ -446,3 +446,31 @@ def merge_projects_by_name(projects):
         del m["_days"]
         out.append(m)
     return out
+
+
+# --- v4 : fenêtres officielles (vrai % serveur) ---
+# Le capteur statusline écrit un fichier relais {w5hPct, w7dPct, ..., capturedAt}.
+# On ne fait CONFIANCE au % officiel que s'il est assez récent ; sinon le front
+# retombe sur l'estimation (avec un badge). Pur et testable.
+
+OFFICIAL_FRESH_SECONDS = 6 * 3600  # 6 h : au-delà, on considère le % périmé
+
+
+def official_freshness(win, now_epoch):
+    """Renvoie l'âge en secondes du % officiel, ou None si pas de capture.
+
+    win = dict du fichier relais (ou None). now_epoch = temps courant (epoch s).
+    """
+    if not win or "capturedAt" not in win:
+        return None
+    try:
+        age = int(now_epoch) - int(win["capturedAt"])
+    except (TypeError, ValueError):
+        return None
+    return max(0, age)
+
+
+def official_is_fresh(win, now_epoch, max_age=OFFICIAL_FRESH_SECONDS):
+    """True si le % officiel capté est assez récent pour être affiché comme tel."""
+    age = official_freshness(win, now_epoch)
+    return age is not None and age <= max_age
