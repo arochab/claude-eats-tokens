@@ -104,7 +104,10 @@ body{font-family:var(--sans);background:
 /* le héro est TOUJOURS sombre -> texte clair fixe (pas la variable thémée). */
 .hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#211F1A 0%,#1A1915 55%,#15140F 100%);color:#F0EEE6;border-radius:var(--r-xl);padding:24px 24px 22px;margin-bottom:16px;box-shadow:var(--shadow-lg);display:flex;gap:22px;align-items:center}
 .hero .info .v,.hero .pct b{color:#F0EEE6}
-.hero::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(240,238,230,.06);pointer-events:none}
+/* ambiance « Aurore Liquide » : voile WebGL derrière le contenu du héro */
+.hero-aurora{position:absolute;inset:0;border-radius:inherit;overflow:hidden;z-index:0;pointer-events:none}
+.hero>.ring,.hero>.info{position:relative;z-index:1}
+.hero::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(240,238,230,.06);pointer-events:none;z-index:2}
 .ring{position:relative;width:120px;height:120px;flex:0 0 auto}
 .ring svg{transform:rotate(-90deg)}
 .ring .pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}

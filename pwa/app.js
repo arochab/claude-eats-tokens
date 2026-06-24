@@ -175,11 +175,14 @@
       $("hero-ring-2d").innerHTML = ringSVG(ringPct, 120, 11, "rgba(240,238,230,.14)", col,
         '<div class="pct"><b>' + center + '</b><small>vs d\'habitude</small></div>');
       $("hero-rest").textContent = "D'habitude tu fais : " + fmt(median3m || 0);
+      // l'aurore parle d'une seule voix avec l'anneau (même % + même seuil)
+      if (window.CETAurora) { try { window.CETAurora.setTone(ringPct, settings.warnPct); } catch (e) {} }
     } else {
       // pas assez d'historique -> on n'invente pas de comparaison
       $("hero-ring-2d").innerHTML = ringSVG(0, 120, 11, "rgba(240,238,230,.14)", "#7E9E6D",
         '<div class="pct"><b>' + fmt(month).replace(/ .*/, '') + '</b><small>ce mois</small></div>');
       $("hero-rest").textContent = "Pas encore de mois précédent pour comparer";
+      if (window.CETAurora) { try { window.CETAurora.setTone(0, settings.warnPct); } catch (e) {} }
     }
     $("hero-used").classList.remove("sk");
     $("hero-used").textContent = fmt(month) + " tokens";
@@ -1107,7 +1110,9 @@
   loadEurRate();
   load();
   startLive();
-  var SW_FILE = "sw.v15.js";
+  // ambiance « Aurore Liquide » derrière le héro (lazy, dégradation gracieuse)
+  if (window.CETAurora) { try { window.CETAurora.mount(document.getElementById("hero-aurora")); } catch (e) {} }
+  var SW_FILE = "sw.v16.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       // 1) désenregistre tout SW qui n'est pas la version courante (purge les fantômes)
