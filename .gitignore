@@ -14,3 +14,4 @@ data/usage.json
 
 # Secrets locaux (NE JAMAIS committer) — un par machine
 secret.local.bat
+claudeeatstoken*.mp4
