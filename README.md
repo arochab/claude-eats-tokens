@@ -36,6 +36,34 @@
 
 ---
 
+## Why this one?
+
+Claude Max has **no usage API**. You cannot check how close you are to the
+5-hour sliding window that actually throttles you — unless you're sitting
+at your desk staring at Claude Code.
+
+This app fixes that. It reads Claude Code's local logs, pushes them to a
+free server, and gives you a **phone-installable app** that answers one
+question:
+
+> **"Can I keep going, or will I get throttled?"**
+
+Three things no other tracker does:
+
+- **Works from your phone.** Install it, check your usage from the couch,
+  the train, anywhere. No terminal required.
+- **Alerts before you hit the wall.** Push notifications on your phone when
+  your 5-hour window is heating up — based on Anthropic's actual server
+  percentage, not a guess.
+- **Tells you what to do, not just what happened.** A traffic light with
+  severity, ETA to throttle, and plain-language advice. A productive week
+  gets a compliment, not a warning.
+
+Zero build step · free infra · 101 tests · MIT ·
+[see it in action →](assets/demo.gif)
+
+---
+
 ## En deux phrases
 
 Sur l'abonnement **Claude Max**, il n'existe **aucune API d'usage** : impossible de récupérer un « il vous reste X ». Mais Claude Code journalise déjà chaque échange dans des fichiers `~/.claude/projects/**/*.jsonl`. **Claude Eats Tokens** fait donc la seule chose honnête possible : un moteur Python lit ces logs, agrège la consommation, et la pousse vers une PWA mobile-first qui répond à la seule question qui compte — **« je peux continuer ou pas ? »**.
