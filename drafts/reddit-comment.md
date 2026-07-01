@@ -1,7 +1,7 @@
 # Brouillon — Comment Reddit r/ClaudeAI "23 trackers"
 
 > A poster par Adam sur le thread listant 23+ trackers.
-> AVANT DE POSTER : remplacer REPO_URL et DEMO_URL par les vraies URLs.
+> AVANT DE POSTER : remplacer https://github.com/arochab/claude-eats-tokens et DEMO_URL par les vraies URLs.
 
 ---
 
@@ -17,7 +17,7 @@ Worth being upfront about the limitations: Anthropic doesn't publish any hard qu
 
 It's a solo side project, free infra (Render + GitHub Pages), MIT licensed. I use it every day.
 
-[repo](REPO_URL) · [demo on phone (gif)](DEMO_URL)
+[repo](https://github.com/arochab/claude-eats-tokens) · [live app](https://arochab.github.io/claude-eats-tokens/)
 
 ---
 

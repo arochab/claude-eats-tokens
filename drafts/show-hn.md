@@ -1,6 +1,6 @@
 # Brouillon — Show HN / Product Hunt
 
-> A soumettre par Adam. Remplacer REPO_URL et DEMO_URL par les vraies URLs.
+> A soumettre par Adam. Remplacer https://github.com/arochab/claude-eats-tokens et https://arochab.github.io/claude-eats-tokens/ par les vraies URLs.
 
 ---
 
@@ -34,8 +34,8 @@ Stack: Python, vanilla JS, zero build step, zero dependencies beyond
 Chart.js. Repo and live demo in the links.
 ```
 
-Live demo: DEMO_URL
-Repo: REPO_URL
+Live demo: https://arochab.github.io/claude-eats-tokens/
+Repo: https://github.com/arochab/claude-eats-tokens
 
 ---
 
