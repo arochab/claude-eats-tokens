@@ -138,3 +138,73 @@ dépendance de plus.
 
 Au-delà → Supabase Pro à 25 $/mois, mais à ce stade tu auras des utilisateurs
 Pro qui paient, donc c'est rentable.
+
+---
+
+# Activer le paiement Pro (Lemon Squeezy) — 5 €/mois
+
+Le plan Pro (5 €/mois) débloque les notifs par paliers, l'historique 30j+, la
+projection, le drill-down, l'export, **Waste Radar** et **Boîte noire**. Le
+paiement passe par **Lemon Squeezy** (Merchant of Record : il gère la TVA UE,
+les reçus, les factures — pas de société requise).
+
+## 0. Appliquer la migration billing
+
+```bash
+npx supabase db push   # applique 0002_billing.sql (colonnes ls_subscription_id, plan_status…)
+```
+
+## 1. Créer le produit sur Lemon Squeezy
+
+1. Compte sur [lemonsqueezy.com](https://www.lemonsqueezy.com) (gratuit, commission au %).
+2. Store → **New Product** → nom « Claude Eats Tokens — Pro », prix **5 €/mois**
+   (subscription, récurrent mensuel).
+3. Récupère l'**URL du buy link** du produit → ce sera `LS_CHECKOUT_URL`.
+
+## 2. Configurer le webhook
+
+1. Settings → **Webhooks** → **Add endpoint**.
+2. URL : `https://claude-eats-tokens.onrender.com/billing/webhook`
+3. Events à cocher : `subscription_created`, `subscription_updated`,
+   `subscription_cancelled`, `subscription_expired`, `subscription_paused`,
+   `subscription_resumed`.
+4. Lemon Squeezy génère un **Signing secret** → ce sera `LS_WEBHOOK_SECRET`.
+
+## 3. Générer le secret de liaison + configurer Render
+
+Le `LS_LINK_SECRET` sert à signer le jeton de liaison paiement↔compte (il est à
+NOUS, pas à Lemon Squeezy). Génère-en un fort une fois :
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Dans **Render → Environment**, ajoute 3 variables :
+
+| Clé | Valeur |
+|---|---|
+| `LS_WEBHOOK_SECRET` | le Signing secret de l'étape 2 |
+| `LS_LINK_SECRET` | la chaîne générée ci-dessus (garde-la) |
+| `LS_CHECKOUT_URL` | l'URL du buy link de l'étape 1 |
+
+Save → Render redéploie.
+
+## 4. Tester en mode Test
+
+1. Lemon Squeezy → active le **Test mode** (cartes de test, 0 € réel).
+2. Dans la PWA (connecté avec une clé API), ouvre « Passe à Pro » → le bouton
+   ouvre le checkout pré-rempli (email + jeton de liaison signé).
+3. Paie avec une carte de test → le webhook passe ton compte en `plan=pro`.
+4. Vérifie : `GET /auth/me` (avec ta clé) renvoie `"plan": "pro"`, et la PWA
+   débloque les cartes Pro.
+
+## Comment marche la liaison (résumé technique)
+
+Le serveur injecte dans le checkout un **jeton signé** `ct_<user_id>.<hmac>`
+(HMAC de l'UUID avec `LS_LINK_SECRET`). Au retour du webhook, il le vérifie par
+signature → impossible à usurper (forger le jeton exige le secret serveur), et
+la jointure se fait sur l'UUID immuable, jamais sur l'email (qui peut changer).
+Idempotent : rejouer un webhook donne le même état final.
+
+> ⚠️ Ne jamais compter sur l'URL de retour navigateur (success_url) pour activer
+> Pro — **seul le webhook signé fait foi**. C'est déjà le cas dans le code.

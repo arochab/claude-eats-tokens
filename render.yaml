@@ -19,3 +19,9 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: LS_WEBHOOK_SECRET
+        sync: false
+      - key: LS_LINK_SECRET
+        sync: false
+      - key: LS_CHECKOUT_URL
+        sync: false

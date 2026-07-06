@@ -26,6 +26,7 @@ Env (Render → Environment) :
   ALLOWED_ORIGINS  origines autorisées en lecture (def. github.io + onrender)
   PORT             fourni par Render
 """
+import base64
 import hmac
 import json
 import logging
@@ -33,6 +34,7 @@ import os
 import secrets
 import time
 import hashlib
+import urllib.parse
 
 import requests
 from flask import Flask, jsonify, request, redirect
@@ -52,6 +54,11 @@ GIST_FILE = "usage.json"
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")  # service_role key
 MULTI_TENANT = bool(SUPABASE_URL and SUPABASE_KEY)
+
+# Billing (Lemon Squeezy)
+LS_WEBHOOK_SECRET = os.environ.get("LS_WEBHOOK_SECRET", "")  # signe les webhooks
+LS_LINK_SECRET = os.environ.get("LS_LINK_SECRET", "")        # signe le token checkout (uid)
+LS_CHECKOUT_URL = os.environ.get("LS_CHECKOUT_URL", "")      # URL de checkout LS du produit
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://arochab.github.io/claude-eats-tokens")
 
@@ -78,17 +85,98 @@ def _sb_headers():
     }
 
 
+_USER_SELECT = "id,email,plan,plan_status,plan_renews_at"
+
+
 def _sb_get_user_by_api_key(api_key):
     """Cherche un utilisateur par sa clé API (hash SHA-256)."""
     if not MULTI_TENANT or not api_key:
         return None
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
     r = requests.get(
-        f"{SUPABASE_URL}/rest/v1/users?api_key_hash=eq.{key_hash}&select=id,email,plan",
+        f"{SUPABASE_URL}/rest/v1/users?api_key_hash=eq.{key_hash}&select={_USER_SELECT}",
         headers=_sb_headers(), timeout=10)
     if r.ok and r.json():
         return r.json()[0]
     return None
+
+
+def _sb_get_user_by_sub(sub_id):
+    """Cherche un utilisateur par son id d'abonnement Lemon Squeezy."""
+    if not MULTI_TENANT or not sub_id:
+        return None
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/users?ls_subscription_id=eq.{sub_id}&select=id,email,plan",
+        headers=_sb_headers(), timeout=10)
+    if r.ok and r.json():
+        return r.json()[0]
+    return None
+
+
+def _sb_get_user_by_email(email):
+    """Cherche un utilisateur par email (webhook : fallback de résolution)."""
+    if not MULTI_TENANT or not email:
+        return None
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/users?email=eq.{email}&select=id,email,plan",
+        headers=_sb_headers(), timeout=10)
+    if r.ok and r.json():
+        return r.json()[0]
+    return None
+
+
+def _sb_update_user(user_id, fields):
+    """PATCH partiel d'une ligne users (id=eq.{user_id}). Retourne r.ok."""
+    r = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/users?id=eq.{user_id}",
+        headers=_sb_headers(), json=fields, timeout=10)
+    return r.ok
+
+
+# ---------------------------------------------------------------------------
+# Billing helpers (Lemon Squeezy)
+# ---------------------------------------------------------------------------
+def make_checkout_token(user_id):
+    """Jeton signé porté dans checkout[custom][uid] et renvoyé par le webhook.
+
+    Format : ct_{user_id}.{sig} où sig = HMAC-SHA256(LS_LINK_SECRET, user_id),
+    tronqué à 32 caractères base64url. Prouve que le uid vient bien de nous.
+    """
+    sig = base64.urlsafe_b64encode(
+        hmac.new(LS_LINK_SECRET.encode(), user_id.encode(), hashlib.sha256).digest()
+    ).decode()[:32]
+    return f"ct_{user_id}.{sig}"
+
+
+def verify_checkout_token(token):
+    """Vérifie un jeton produit par make_checkout_token. Retourne user_id ou None.
+
+    Robuste : tout jeton absent/malformé/altéré renvoie None sans lever.
+    """
+    try:
+        if not token or not isinstance(token, str) or not token.startswith("ct_"):
+            return None
+        body = token[3:]  # retire "ct_"
+        user_id, sig = body.split(".", 1)  # split sur le premier '.'
+        if not user_id or not sig:
+            return None
+        expected = base64.urlsafe_b64encode(
+            hmac.new(LS_LINK_SECRET.encode(), user_id.encode(), hashlib.sha256).digest()
+        ).decode()[:32]
+        if hmac.compare_digest(expected, sig):
+            return user_id
+        return None
+    except Exception:  # noqa: BLE001 — jamais throw sur entrée hostile
+        return None
+
+
+# Statuts Lemon Squeezy qui donnent droit au plan 'pro'.
+_ACTIVE_STATUSES = {"active", "on_trial", "past_due"}
+
+
+def derive_plan(status):
+    """Fonction PURE : mappe un statut d'abonnement LS vers 'pro' ou 'free'."""
+    return "pro" if status in _ACTIVE_STATUSES else "free"
 
 
 def _sb_save_usage(user_id, payload):
@@ -258,7 +346,12 @@ def usage():
         if data is None:
             return jsonify({"error": "no data yet"}), 404
         out = dict(data) if isinstance(data, dict) else data
-        out["user"] = {"email": user.get("email", ""), "plan": user.get("plan", "free")}
+        out["user"] = {
+            "email": user.get("email", ""),
+            "plan": user.get("plan", "free"),
+            "plan_status": user.get("plan_status", "none"),
+            "plan_renews_at": user.get("plan_renews_at"),
+        }
         resp = jsonify(out)
         resp.headers["Cache-Control"] = "no-store"
         return resp
@@ -347,7 +440,106 @@ def me():
     return jsonify({
         "email": user.get("email", ""),
         "plan": user.get("plan", "free"),
+        "plan_status": user.get("plan_status", "none"),
+        "plan_renews_at": user.get("plan_renews_at"),
     })
+
+
+# ---------------------------------------------------------------------------
+# Billing (Lemon Squeezy) — checkout + webhook
+# ---------------------------------------------------------------------------
+@app.get("/billing/checkout")
+def billing_checkout():
+    """Redirige l'utilisateur (authentifié) vers le checkout Lemon Squeezy.
+
+    On préremplit l'email et on injecte un jeton signé (uid) dans le custom
+    data : le webhook s'en servira pour rattacher l'abonnement au bon compte.
+    """
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    api_key = request.headers.get("X-Api-Key", "") or request.args.get("key", "")
+    user = _sb_get_user_by_api_key(api_key)
+    if not user:
+        return jsonify({"error": "unauthorized"}), 401
+
+    if not LS_CHECKOUT_URL:
+        return jsonify({"error": "checkout not configured"}), 501
+
+    email = user.get("email", "")
+    token = make_checkout_token(user["id"])
+    url = (
+        LS_CHECKOUT_URL
+        + "?checkout[email]=" + urllib.parse.quote(email)
+        + "&checkout[custom][uid]=" + urllib.parse.quote(token)
+    )
+    return redirect(url, code=302)
+
+
+@app.post("/billing/webhook")
+def billing_webhook():
+    """Reçoit les événements d'abonnement Lemon Squeezy.
+
+    - Vérifie la signature HMAC (X-Signature) sur le corps brut.
+    - Résout l'utilisateur (jeton uid signé → id d'abonnement → email).
+    - Dérive le plan depuis le statut et écrit un état ABSOLU (idempotent).
+    - 200 = traité/ACK, 401 = signature invalide, 500 = update raté (retry LS).
+    """
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    raw = request.get_data()
+    sig = request.headers.get("X-Signature", "")
+    expected = hmac.new(LS_WEBHOOK_SECRET.encode(), raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        log.info("webhook refusé : signature invalide")
+        return jsonify({"error": "invalid signature"}), 401
+
+    try:
+        payload = json.loads(raw)
+        event = payload["meta"]["event_name"]
+        attrs = payload["data"]["attributes"]
+    except Exception:  # noqa: BLE001 — corps mal formé après signature valide
+        log.warning("webhook : corps JSON invalide")
+        return jsonify({"error": "bad json"}), 400
+
+    # On ne traite que les événements d'abonnement. Le reste (order_created,
+    # etc.) est simplement ACK pour éviter les retries inutiles de Lemon Squeezy.
+    if not event.startswith("subscription_"):
+        return jsonify({"ok": True, "ignored": event}), 200
+
+    status = attrs.get("status")
+    custom = payload["meta"].get("custom_data", {}) or {}
+    sub_id = str(payload["data"].get("id") or "")
+
+    # Résolution de l'utilisateur, par priorité décroissante de confiance.
+    user_id = verify_checkout_token(custom.get("uid"))
+    if not user_id and sub_id:
+        u = _sb_get_user_by_sub(sub_id)
+        user_id = u["id"] if u else None
+    if not user_id:
+        u = _sb_get_user_by_email((attrs.get("user_email") or "").strip().lower())
+        user_id = u["id"] if u else None
+
+    if not user_id:
+        # On ACK pour ne pas provoquer de retry sur un abonnement orphelin.
+        log.error("webhook %s : utilisateur introuvable (uid/sub/email) sub=%s", event, sub_id)
+        return jsonify({"ok": True, "unresolved": True}), 200
+
+    fields = {
+        "plan": derive_plan(status),
+        "plan_status": status,
+        "ls_subscription_id": sub_id or None,
+        "ls_customer_id": str(attrs.get("customer_id") or "") or None,
+        "plan_renews_at": attrs.get("renews_at") or attrs.get("ends_at"),
+        "updated_at": "now()",
+    }
+    if not _sb_update_user(user_id, fields):
+        # Update raté (réseau/5xx) : on renvoie 500 pour que LS retente.
+        log.warning("webhook %s : update user %s échoué", event, user_id)
+        return jsonify({"error": "update failed"}), 500
+
+    return jsonify({"ok": True, "event": event, "plan": fields["plan"]}), 200
 
 
 if __name__ == "__main__":
