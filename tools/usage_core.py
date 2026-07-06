@@ -23,13 +23,21 @@ SCHEMA_VERSION = 5  # v5 : sessions enrichies (byModel/cost/durée) + anomalies[
 
 # Tarif API (USD / million de tokens). Sur Max c'est un forfait : ces chiffres
 # servent à estimer une *valeur théorique*, pas une facture.
-# Date de validité des tarifs (à mettre à jour si Anthropic change ses prix).
-PRICING_AS_OF = "2026-01"
+# Date de validité des tarifs — À METTRE À JOUR quand Anthropic change ses prix
+# (il n'existe pas d'API publique de tarifs : maintenance manuelle assumée,
+# transparente via ce champ daté). Source : platform.claude.com/docs pricing.
+PRICING_AS_OF = "2026-07"
 PRICING = {
-    "opus":    {"in": 15.0, "cw": 18.75, "cr": 1.5,  "out": 75.0},
-    "sonnet":  {"in": 3.0,  "cw": 3.75,  "cr": 0.3,  "out": 15.0},
-    "haiku":   {"in": 0.8,  "cw": 1.0,   "cr": 0.08, "out": 4.0},
-    "fable":   {"in": 3.0,  "cw": 3.75,  "cr": 0.3,  "out": 15.0},
+    # Opus 4.8 : Anthropic a fortement baissé Opus (était 15/75).
+    "opus":    {"in": 5.0,  "cw": 6.25,  "cr": 0.5,  "out": 25.0},
+    # Sonnet 5 : 2/10 jusqu'au 31/08/2026, puis 3/15 (on prend le tarif courant).
+    "sonnet":  {"in": 2.0,  "cw": 2.5,   "cr": 0.2,  "out": 10.0},
+    "haiku":   {"in": 1.0,  "cw": 1.25,  "cr": 0.1,  "out": 5.0},
+    # Fable 5 (Mythos-class) : le plus cher du catalogue grand public, ~2× Opus.
+    # (Avant : placeholder au tarif Sonnet — sous-estimait fortement le coût.)
+    "fable":   {"in": 10.0, "cw": 12.5,  "cr": 1.0,  "out": 50.0},
+    # Mythos 5 : même tarif que Fable 5 (apparaît comme claude-mythos-5).
+    "mythos":  {"in": 10.0, "cw": 12.5,  "cr": 1.0,  "out": 50.0},
     "default": {"in": 3.0,  "cw": 3.75,  "cr": 0.3,  "out": 15.0},
 }
 
@@ -65,6 +73,8 @@ def family(model):
         return "haiku"
     if "fable" in s:
         return "fable"
+    if "mythos" in s:
+        return "mythos"
     if "synthetic" in s:
         return None
     return "autre"
@@ -73,7 +83,7 @@ def family(model):
 def pretty_model(fam):
     return {
         "opus": "Claude Opus", "sonnet": "Claude Sonnet", "haiku": "Claude Haiku",
-        "fable": "Claude Fable", "autre": "Autre",
+        "fable": "Claude Fable", "mythos": "Claude Mythos", "autre": "Autre",
     }.get(fam, fam or "Inconnu")
 
 
@@ -87,6 +97,8 @@ def price_for(model_or_family):
         return PRICING["haiku"]
     if "fable" in m:
         return PRICING["fable"]
+    if "mythos" in m:
+        return PRICING["mythos"]
     return PRICING["default"]
 
 

@@ -116,11 +116,14 @@ class TestModelFamilyAndPricing(unittest.TestCase):
         self.assertIsNone(uc.family("<synthetic>"))
 
     def test_cost_uses_correct_model(self):
-        # 1M output tokens : Opus coûte $75, Sonnet $15. La VRAIE correction A1-3.
+        # 1M output tokens (tarifs 2026-07) : Opus 4.8 = $25, Sonnet 5 = $10.
         acc = {"input": 0, "output": 1_000_000, "cacheCreate": 0, "cacheRead": 0}
-        self.assertAlmostEqual(uc.cost_of(acc, "opus"), 75.0, places=4)
-        self.assertAlmostEqual(uc.cost_of(acc, "sonnet"), 15.0, places=4)
-        # Le bug historique passait "" -> tarif Sonnet pour de l'Opus :
+        self.assertAlmostEqual(uc.cost_of(acc, "opus"), 25.0, places=4)
+        self.assertAlmostEqual(uc.cost_of(acc, "sonnet"), 10.0, places=4)
+        # Fable 5 : le plus cher, $50/M output (2x Opus). Corrige le placeholder.
+        self.assertAlmostEqual(uc.cost_of(acc, "fable"), 50.0, places=4)
+        self.assertAlmostEqual(uc.cost_of(acc, "mythos"), 50.0, places=4)
+        # Le bug historique passait "" -> tarif default pour de l'Opus :
         self.assertNotAlmostEqual(uc.cost_of(acc, ""), uc.cost_of(acc, "opus"))
 
     def test_per_project_cost_is_weighted_sum(self):
@@ -128,12 +131,12 @@ class TestModelFamilyAndPricing(unittest.TestCase):
         opus = {"input": 0, "output": 800_000, "cacheCreate": 0, "cacheRead": 0}
         sonnet = {"input": 0, "output": 200_000, "cacheCreate": 0, "cacheRead": 0}
         weighted = uc.cost_of(opus, "opus") + uc.cost_of(sonnet, "sonnet")
-        # = 0.8*75 + 0.2*15 = 60 + 3 = 63
-        self.assertAlmostEqual(weighted, 63.0, places=4)
-        # L'ancien calcul (tout Sonnet) aurait donné 15 -> 4.2x trop bas.
+        # = 0.8*25 + 0.2*10 = 20 + 2 = 22 (tarifs 2026-07)
+        self.assertAlmostEqual(weighted, 22.0, places=4)
+        # Tout Sonnet aurait donné 10 -> le mix Opus est ~2.2x plus cher.
         all_sonnet = uc.cost_of({"input": 0, "output": 1_000_000, "cacheCreate": 0, "cacheRead": 0}, "sonnet")
-        self.assertAlmostEqual(all_sonnet, 15.0, places=4)
-        self.assertGreater(weighted, all_sonnet * 4)
+        self.assertAlmostEqual(all_sonnet, 10.0, places=4)
+        self.assertGreater(weighted, all_sonnet * 2)
 
 
 class TestWindows(unittest.TestCase):
@@ -344,10 +347,11 @@ class TestOpusWasteSuspects(unittest.TestCase):
         self.assertEqual(len(out), 1)
         row = out[0]
         self.assertEqual(row["sessionId"], "sess-small")
-        # 5000 output Opus = 5000*75/1e6 = 0.375 ; Sonnet = 5000*15/1e6 = 0.075
-        self.assertAlmostEqual(row["opusCost"], 0.375, places=4)
-        self.assertAlmostEqual(row["sonnetCost"], 0.075, places=4)
-        self.assertAlmostEqual(row["saving"], 0.30, places=4)  # économie théorique
+        # tarifs 2026-07 : 5000 output Opus = 5000*25/1e6 = 0.125 ;
+        # Sonnet = 5000*10/1e6 = 0.05 ; économie théorique = 0.075
+        self.assertAlmostEqual(row["opusCost"], 0.125, places=4)
+        self.assertAlmostEqual(row["sonnetCost"], 0.05, places=4)
+        self.assertAlmostEqual(row["saving"], 0.075, places=4)  # économie théorique
         self.assertGreater(row["saving"], 0)
         # reason FACTUELLE : pas de jugement « Sonnet aurait suffi »
         self.assertIn("opus", row["reason"])
