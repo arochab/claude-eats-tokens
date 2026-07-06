@@ -55,6 +55,32 @@ def _first_text(content):
     return ""
 
 
+def _is_sidechain(rec, msg):
+    """v5 : True si l'enregistrement vient d'un SOUS-AGENT. Le flag `isSidechain`
+    peut vivre sur le rec OU sur rec.message selon la version des logs."""
+    v = rec.get("isSidechain")
+    if v is None:
+        v = (msg or {}).get("isSidechain")
+    return bool(v)
+
+
+def _ephemeral_tokens(usage):
+    """v5 : (ephemeral5m, ephemeral1h) depuis message.usage.
+
+    Chemin principal : usage.cache_creation.{ephemeral_5m_input_tokens,
+    ephemeral_1h_input_tokens}. Fallback si absent : tout le cache_creation
+    compte comme 5m (le TTL par défaut du cache Claude), 1h à 0. Ne fabrique rien
+    au-delà de ce qui est mesuré."""
+    cc = usage.get("cache_creation")
+    if isinstance(cc, dict):
+        e5 = cc.get("ephemeral_5m_input_tokens", 0) or 0
+        e1 = cc.get("ephemeral_1h_input_tokens", 0) or 0
+        if e5 or e1:
+            return e5, e1
+    # fallback : pas de détail -> le cache_creation global est réputé 5m
+    return usage.get("cache_creation_input_tokens", 0) or 0, 0
+
+
 def iter_records(fp):
     """Génère (record, parse_error) ligne à ligne — JAMAIS le fichier entier en
     mémoire (corrige A2-5). Les lignes illisibles remontent comme erreurs
@@ -174,6 +200,10 @@ def build(verbose=False):
                 break
 
     by_day, by_model, by_hour = {}, {}, {}
+    # v5 : structure PARALLÈLE à by_hour (ne la pollue PAS : by_hour reste un
+    # dict d'accumulateurs uc.empty() manipulés partout via uc.total_of).
+    # by_hour_meta[hour] = {sidechain, ephemeral5m, ephemeral1h, byProject:{name:tokens}}
+    by_hour_meta = {}
     # by_project : clé = chemin du projet -> {tot, models{fam:acc}, sessions{}, last, name}
     by_project = {}
     seen = set()
@@ -266,9 +296,33 @@ def build(verbose=False):
                     "cacheRead": usage.get("cache_read_input_tokens", 0) or 0,
                 })
 
+            # v5 — méta horaire (Boîte noire) : split sous-agents / cache-miss /
+            # projet dominant, en PARALLÈLE de by_hour (ne le pollue pas).
+            if hour:
+                meta = by_hour_meta.setdefault(hour, {
+                    "sidechain": 0, "ephemeral5m": 0, "ephemeral1h": 0,
+                    "byProject": {},
+                })
+                msg_total = uc.total_of({
+                    "input": usage.get("input_tokens", 0) or 0,
+                    "output": usage.get("output_tokens", 0) or 0,
+                    "cacheCreate": usage.get("cache_creation_input_tokens", 0) or 0,
+                    "cacheRead": usage.get("cache_read_input_tokens", 0) or 0,
+                })
+                if _is_sidechain(rec, msg):
+                    meta["sidechain"] += msg_total
+                e5, e1 = _ephemeral_tokens(usage)
+                meta["ephemeral5m"] += e5
+                meta["ephemeral1h"] += e1
+                pname = proj["name"]
+                meta["byProject"][pname] = meta["byProject"].get(pname, 0) + msg_total
+
             sess = proj["sessions"].setdefault(session_id, {
                 "sessionId": session_id, "tokens": 0, "lastActivity": None,
+                "firstActivity": None,      # v5 : min(ts) -> durée (last-first)
                 "models": set(), "title": None,
+                "byModel": {},              # v5 : famille -> accumulateur (Waste Radar)
+                "messageCount": 0,          # v5 : nb de messages comptés
             })
             sess["tokens"] += uc.total_of({
                 "input": usage.get("input_tokens", 0) or 0,
@@ -276,10 +330,16 @@ def build(verbose=False):
                 "cacheCreate": usage.get("cache_creation_input_tokens", 0) or 0,
                 "cacheRead": usage.get("cache_read_input_tokens", 0) or 0,
             })
+            # v5 : split par modèle DANS la session (proxy de « Opus sur petite tâche »)
+            sess["byModel"].setdefault(mfam, uc.empty())
+            uc.add_usage(sess["byModel"][mfam], usage)
+            sess["messageCount"] += 1
             if fam:
                 sess["models"].add(fam)
             if ts and (not sess["lastActivity"] or ts > sess["lastActivity"]):
                 sess["lastActivity"] = ts
+            if ts and (not sess["firstActivity"] or ts < sess["firstActivity"]):
+                sess["firstActivity"] = ts
             if ts and (not proj["lastActivity"] or ts > proj["lastActivity"]):
                 proj["lastActivity"] = ts
             messages += 1
@@ -329,15 +389,50 @@ def build(verbose=False):
             model_break.append({"model": fam, "label": uc.pretty_model(fam),
                                 "total": uc.total_of(acc), "cost": round(c, 2)})
         model_break.sort(key=lambda x: -x["total"])
-        # sessions : top par tokens, sérialisables
+        # sessions : sérialisables + enrichissement v5 (Waste Radar)
         sess_list = []
         for s in p["sessions"].values():
+            by_model_acc = s.get("byModel") or {}
+            sess_cost = 0.0
+            cost_by_model = []
+            out_tokens = 0
+            for sfam, sacc in by_model_acc.items():
+                c = uc.cost_of(sacc, sfam)
+                sess_cost += c
+                out_tokens += sacc.get("output", 0)
+                cost_by_model.append({
+                    "model": sfam, "label": uc.pretty_model(sfam),
+                    "total": uc.total_of(sacc), "cost": round(c, 4),
+                    # `acc` = tokens bruts par famille -> permet à opus_waste_suspects
+                    # de recalculer le coût Opus au tarif Sonnet (économie théorique).
+                    "acc": dict(sacc),
+                })
+            cost_by_model.sort(key=lambda x: -x["total"])
+            fa = s.get("firstActivity")
+            la = s.get("lastActivity")
+            duration_sec = None
+            if fa and la:
+                try:
+                    d0 = datetime.fromisoformat(fa.replace("Z", "+00:00"))
+                    d1 = datetime.fromisoformat(la.replace("Z", "+00:00"))
+                    duration_sec = int((d1 - d0).total_seconds())
+                except Exception:
+                    duration_sec = None
             sess_list.append({
                 "sessionId": s["sessionId"], "title": s["title"],
-                "tokens": s["tokens"], "lastActivity": s["lastActivity"],
+                "tokens": s["tokens"], "lastActivity": la,
                 "models": sorted(s["models"]),
+                # ---- v5 ----
+                "cost": round(sess_cost, 4),
+                "costByModel": cost_by_model,
+                "messageCount": s.get("messageCount", 0),
+                "firstActivity": fa,
+                "durationSec": duration_sec,
+                "outputTokens": out_tokens,      # proxy de « taille de tâche »
             })
-        sess_list.sort(key=lambda x: -x["tokens"])
+        session_count = len(sess_list)   # vrai nombre AVANT cap
+        # v5 : cap intelligent (60) préservant les petites tâches Opus (Waste Radar).
+        sess_list = uc.select_sessions(sess_list, uc.SESSIONS_CAP)
         proj_timeline = [{"date": d, "total": p["byDay"][d]} for d in sorted(p["byDay"])]
         projects.append({
             "project": p["name"],          # rétrocompat (ancien champ)
@@ -346,8 +441,8 @@ def build(verbose=False):
             "total": uc.total_of(tot_acc),
             "cost": round(cost, 2),
             "models": model_break,
-            "sessionCount": len(sess_list),
-            "sessions": sess_list[:20],    # drill-down (cap raisonnable)
+            "sessionCount": session_count,
+            "sessions": sess_list,         # déjà cappé à SESSIONS_CAP (60)
             "timeline": proj_timeline,
             "lastActivity": p["lastActivity"],
             **tot_acc,
@@ -375,6 +470,30 @@ def build(verbose=False):
             "sessions": [], "lastActivity": max((p["lastActivity"] for p in tail if p["lastActivity"]), default=None),
             "isOthers": True, **other,
         })
+
+    # ---- v5 : Waste Radar (candidats « Opus sur petite tâche ») ----
+    # Pré-digéré à partir des sessions enrichies (qui portent encore `acc` par
+    # famille). GARDE-FOU : ce sont des CANDIDATS, jamais « Sonnet aurait suffi ».
+    # On rassemble les sessions de tous les projets (avec le nom du projet).
+    all_sessions = []
+    for p in projects_out:
+        for se in p.get("sessions", []):
+            se2 = dict(se)
+            se2["project"] = p.get("name")
+            all_sessions.append(se2)
+    waste_suspects = uc.opus_waste_suspects(all_sessions)
+    # rattache le projet sur chaque candidat (pour le drill-down front)
+    _sess_proj = {se.get("sessionId"): se.get("project") for se in all_sessions}
+    for w in waste_suspects:
+        w["project"] = _sess_proj.get(w["sessionId"])
+    waste_suspects = waste_suspects[:30]   # top 30 -> quelques Ko
+
+    # Une fois les candidats extraits, on RETIRE `acc` des sessions sérialisées
+    # (redondant pour le front, ~57 Ko économisés). Reste additif et sous budget.
+    for p in projects_out:
+        for se in p.get("sessions", []):
+            for cb in se.get("costByModel", []):
+                cb.pop("acc", None)
 
     # ---- Fenêtres ----
     w5h = uc.window_total(by_hour, 5, now)
@@ -424,6 +543,11 @@ def build(verbose=False):
     # référence honnête de l'assistant intelligent (pas un quota inventé).
     baseline5h = uc.baseline_5h(by_hour)
 
+    # ---- v5 : anomalies fenêtre 5h (Boîte noire) — pré-digérées (quelques Ko) ----
+    # Uniquement des FAITS mesurés (part sous-agents réelle, cache-miss réels).
+    # Aucune interprétation ici : le front décide quoi en dire.
+    anomalies = uc.detect_anomalies(by_hour, by_hour_meta, baseline5h, now)
+
     # ---- Heatmap horaire (jour de semaine x heure) — corrige MISSING-PEAK-HOURS ----
     hourly = {}  # "HH" -> total, ET grille weekday x hour
     weekday_hour = [[0] * 24 for _ in range(7)]
@@ -469,6 +593,8 @@ def build(verbose=False):
         "timeline": timeline, "models": models, "projects": projects_out,
         "hourly": {"byHour": [{"hour": h, "total": hourly[h]} for h in sorted(hourly)],
                    "weekdayHour": weekday_hour},
+        "anomalies": anomalies,   # v5 : épisodes fenêtre 5h anormaux (faits mesurés)
+        "wasteSuspects": waste_suspects,  # v5 : candidats « Opus sur petite tâche »
         "api": None,
     }
     if verbose:

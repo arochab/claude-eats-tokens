@@ -304,8 +304,8 @@ class TestAssistantStats(unittest.TestCase):
 class TestOfficialWindows(unittest.TestCase):
     """v4 : fraicheur du vrai % officiel des fenetres (5h/7j)."""
 
-    def test_schema_v4(self):
-        self.assertEqual(uc.SCHEMA_VERSION, 4)
+    def test_schema_v5(self):
+        self.assertEqual(uc.SCHEMA_VERSION, 5)
 
     def test_freshness_age(self):
         self.assertEqual(uc.official_freshness({"capturedAt": 1000}, 1300), 300)
@@ -318,6 +318,160 @@ class TestOfficialWindows(unittest.TestCase):
         self.assertTrue(uc.official_is_fresh({"capturedAt": now - 5 * 3600}, now))
         self.assertFalse(uc.official_is_fresh({"capturedAt": now - 7 * 3600}, now))
         self.assertFalse(uc.official_is_fresh(None, now))
+
+
+class TestOpusWasteSuspects(unittest.TestCase):
+    """v5 — PARTIE 1 : Waste Radar. Candidats « Opus sur petite tâche ».
+    GARDE-FOU : la fonction ne juge pas, elle chiffre une économie THÉORIQUE."""
+
+    def _sess(self, sid, opus_out, msg_count, title="t", extra_acc=None):
+        """Fabrique une session enrichie avec un accumulateur Opus donné."""
+        opus_acc = {"input": 0, "output": opus_out, "cacheCreate": 0, "cacheRead": 0}
+        cbm = [{"model": "opus", "label": "Claude Opus",
+                "total": opus_out, "cost": round(uc.cost_of(opus_acc, "opus"), 4),
+                "acc": opus_acc}]
+        if extra_acc:
+            cbm.append(extra_acc)
+        out_tokens = opus_out + (extra_acc["acc"].get("output", 0) if extra_acc else 0)
+        return {"sessionId": sid, "title": title, "tokens": out_tokens,
+                "costByModel": cbm, "outputTokens": out_tokens,
+                "messageCount": msg_count}
+
+    def test_small_opus_task_is_suspect_with_positive_saving(self):
+        # Opus sur une PETITE sortie (5k output, 6 messages) -> candidat.
+        s = self._sess("sess-small", opus_out=5_000, msg_count=6)
+        out = uc.opus_waste_suspects([s], min_saving_usd=0.0)
+        self.assertEqual(len(out), 1)
+        row = out[0]
+        self.assertEqual(row["sessionId"], "sess-small")
+        # 5000 output Opus = 5000*75/1e6 = 0.375 ; Sonnet = 5000*15/1e6 = 0.075
+        self.assertAlmostEqual(row["opusCost"], 0.375, places=4)
+        self.assertAlmostEqual(row["sonnetCost"], 0.075, places=4)
+        self.assertAlmostEqual(row["saving"], 0.30, places=4)  # économie théorique
+        self.assertGreater(row["saving"], 0)
+        # reason FACTUELLE : pas de jugement « Sonnet aurait suffi »
+        self.assertIn("opus", row["reason"])
+        self.assertNotIn("suffi", row["reason"].lower())
+
+    def test_large_opus_task_not_suspect(self):
+        # Opus sur une GROSSE sortie (500k output) -> PAS un candidat petite tâche.
+        s = self._sess("sess-big", opus_out=500_000, msg_count=200)
+        out = uc.opus_waste_suspects([s])
+        self.assertEqual(out, [])
+
+    def test_no_opus_returns_empty(self):
+        # Session 100% Sonnet -> jamais candidate (rien à économiser).
+        sonnet_acc = {"input": 0, "output": 5_000, "cacheCreate": 0, "cacheRead": 0}
+        s = {"sessionId": "sess-sonnet", "title": "t", "tokens": 5_000,
+             "costByModel": [{"model": "sonnet", "label": "Claude Sonnet",
+                              "total": 5_000, "cost": 0.075, "acc": sonnet_acc}],
+             "outputTokens": 5_000, "messageCount": 3}
+        self.assertEqual(uc.opus_waste_suspects([s]), [])
+
+    def test_min_saving_threshold_filters(self):
+        # Petite session Opus mais économie < seuil -> filtrée.
+        s = self._sess("sess-tiny", opus_out=1_000, msg_count=3)  # saving=0.06
+        self.assertEqual(uc.opus_waste_suspects([s], min_saving_usd=0.5), [])
+        self.assertEqual(len(uc.opus_waste_suspects([s], min_saving_usd=0.0)), 1)
+
+    def test_sorted_by_saving_desc(self):
+        s1 = self._sess("a", opus_out=3_000, msg_count=5)
+        s2 = self._sess("b", opus_out=10_000, msg_count=5)
+        out = uc.opus_waste_suspects([s1, s2], min_saving_usd=0.0)
+        self.assertEqual([r["sessionId"] for r in out], ["b", "a"])  # b économise +
+
+
+class TestSelectSessions(unittest.TestCase):
+    """v5 — cap intelligent : garde les grosses ET les petites tâches Opus."""
+
+    def test_no_cap_when_under_limit(self):
+        sessions = [{"sessionId": str(i), "tokens": i} for i in range(5)]
+        out = uc.select_sessions(sessions, cap=60)
+        self.assertEqual(len(out), 5)
+        self.assertEqual(out[0]["tokens"], 4)  # trié décroissant
+
+    def test_small_opus_survives_the_cap(self):
+        # 50 grosses sessions Sonnet + 1 petite session Opus suspecte.
+        big = [{"sessionId": "big%02d" % i, "tokens": 10_000_000 + i,
+                "models": ["sonnet"], "outputTokens": 500_000} for i in range(50)]
+        suspect = {"sessionId": "opus-small", "tokens": 100,
+                   "models": ["opus"], "outputTokens": 300,
+                   "costByModel": [{"model": "opus"}]}
+        out = uc.select_sessions(big + [suspect], cap=45)
+        ids = {s["sessionId"] for s in out}
+        # la petite tâche Opus (cible du Waste Radar) NE disparait PAS.
+        self.assertIn("opus-small", ids)
+        self.assertLessEqual(len(out), 45)
+
+
+class TestDetectAnomalies(unittest.TestCase):
+    """v5 — PARTIE 2 : Boîte noire. Épisodes fenêtre 5h anormaux (faits mesurés)."""
+
+    def _acc(self, t):
+        return {"input": t, "output": 0, "cacheCreate": 0, "cacheRead": 0}
+
+    def _healthy_baseline_buckets(self):
+        # 6 jours calmes, valeurs VARIÉES (MAD > 0) : pics 5h ~3-6M.
+        vals = [3_000_000, 5_000_000, 4_000_000, 6_000_000, 5_500_000, 4_500_000]
+        days = ["2026-06-30", "2026-07-01", "2026-07-02",
+                "2026-07-03", "2026-07-04", "2026-07-05"]
+        b = {}
+        for day, v in zip(days, vals):
+            b[day + "T10"] = self._acc(v)
+        return b
+
+    def test_sidechain_spike_flagged_with_real_share(self):
+        buckets = self._healthy_baseline_buckets()
+        meta = {}
+        # jour anormal : 60M sur 3 heures, dominé par des sous-agents.
+        for h in (9, 10, 11):
+            buckets["2026-07-06T%02d" % h] = self._acc(20_000_000)
+            meta["2026-07-06T%02d" % h] = {
+                "sidechain": 18_000_000, "ephemeral5m": 1_000_000,
+                "ephemeral1h": 0, "byProject": {"BigProj": 20_000_000}}
+        now = datetime(2026, 7, 6, 12, tzinfo=timezone.utc)
+        base = uc.baseline_5h(buckets, min_days=5)
+        self.assertGreater(base["madLog"], 0)  # dispersion réelle -> z calculable
+        an = uc.detect_anomalies(buckets, meta, base, now)
+        self.assertEqual(len(an), 1)
+        ep = an[0]
+        self.assertGreaterEqual(ep["z"], 3)              # au-dessus du seuil
+        self.assertEqual(ep["total"], 60_000_000)
+        self.assertAlmostEqual(ep["sidechainShare"], 0.9, places=2)  # FAIT mesuré
+        self.assertEqual(ep["cacheMiss5m"], 3_000_000)   # 3×1M sur la fenêtre
+        self.assertEqual(ep["cacheMiss1h"], 0)           # rien -> 0, pas inventé
+        self.assertEqual(ep["topProject"], "BigProj")
+
+    def test_healthy_data_returns_empty(self):
+        buckets = self._healthy_baseline_buckets()
+        now = datetime(2026, 7, 6, 12, tzinfo=timezone.utc)
+        base = uc.baseline_5h(buckets, min_days=5)
+        # aucun jour n'excède la baseline -> aucune anomalie fabriquée.
+        self.assertEqual(uc.detect_anomalies(buckets, {}, base, now), [])
+
+    def test_no_baseline_returns_empty(self):
+        self.assertEqual(uc.detect_anomalies({}, {}, None, datetime.now(timezone.utc)), [])
+
+
+class TestSessionEnrichmentBackcompat(unittest.TestCase):
+    """v5 — les sessions enrichies gardent les champs rétrocompat v4."""
+
+    def test_select_sessions_preserves_legacy_fields(self):
+        # Une session enrichie doit conserver sessionId/tokens/lastActivity/models.
+        s = {"sessionId": "s1", "title": "Refonte", "tokens": 42_000,
+             "lastActivity": "2026-07-01T10:00:00Z", "models": ["opus", "sonnet"],
+             "cost": 1.23, "costByModel": [{"model": "opus"}],
+             "messageCount": 12, "firstActivity": "2026-07-01T09:00:00Z",
+             "durationSec": 3600, "outputTokens": 8000}
+        out = uc.select_sessions([s], cap=60)[0]
+        for legacy in ("sessionId", "title", "tokens", "lastActivity", "models"):
+            self.assertIn(legacy, out)
+        self.assertEqual(out["models"], ["opus", "sonnet"])
+        self.assertEqual(out["tokens"], 42_000)
+        # et les nouveaux champs v5 sont là aussi
+        for new in ("cost", "costByModel", "messageCount", "firstActivity",
+                    "durationSec", "outputTokens"):
+            self.assertIn(new, out)
 
 
 if __name__ == "__main__":

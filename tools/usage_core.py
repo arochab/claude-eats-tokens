@@ -9,12 +9,17 @@ Pourquoi séparer : ce module est couvert par `tests/test_usage_core.py`. On peu
 prouver chaque formule sur des chiffres connus sans dépendre des vrais logs.
 
 Schéma de sortie : voir SCHEMA.md. Version courante = SCHEMA_VERSION.
+
+LICENCE : le dépôt est MIT, SAUF les heuristiques propriétaires de ce fichier
+(_looks_opus_suspect, select_sessions, opus_waste_suspects, detect_anomalies),
+couvertes par LICENSE-ENGINE.md (source-available : self-host OK, produit
+concurrent commercial interdit sans autorisation écrite).
 """
 import calendar
 import re
 from datetime import datetime, timezone, timedelta
 
-SCHEMA_VERSION = 4  # v4 : champ windowsOfficial (vrai % serveur des fenêtres 5h/7j)
+SCHEMA_VERSION = 5  # v5 : sessions enrichies (byModel/cost/durée) + anomalies[] (fenêtre 5h)
 
 # Tarif API (USD / million de tokens). Sur Max c'est un forfait : ces chiffres
 # servent à estimer une *valeur théorique*, pas une facture.
@@ -396,6 +401,70 @@ def iso_week(date_str):
     return f"{iso[0]}-S{iso[1]:02d}"
 
 
+# --------------------------------------------------------------------------
+# v5 — sélection des sessions à garder (cap intelligent, testable).
+# --------------------------------------------------------------------------
+SESSIONS_CAP = 60          # nb max de sessions gardées par projet (était 20)
+_SESS_BIGGEST = 40         # on garde d'office les 40 plus grosses (drill-down)
+_SESS_SUSPECT = 20         # + jusqu'à 20 sessions "suspectes Opus" (cible Waste Radar)
+
+
+def _looks_opus_suspect(s):
+    """True si la session sent le « Opus lancé sur une petite tâche » : de l'Opus
+    présent (dans models/byModel) ET peu de sortie. Sert uniquement à décider
+    QUELLES sessions on garde quand on cappe (pas un jugement — cf. garde-fou)."""
+    models = s.get("models") or []
+    by_model = s.get("costByModel") or []
+    has_opus = ("opus" in models
+                or any((m.get("model") == "opus") for m in by_model))
+    if not has_opus:
+        return False
+    out = s.get("outputTokens")
+    # peu d'output = signal de tâche courte. Si outputTokens manque (session
+    # d'un ancien build sans enrichissement), on ne peut pas juger -> pas suspect.
+    return out is not None and out < 20_000
+
+
+def select_sessions(sessions, cap=SESSIONS_CAP):
+    """Choisit les sessions à conserver quand on dépasse `cap`.
+
+    Choix DOCUMENTÉ : trier uniquement par tokens décroissants ferait disparaître
+    les petites tâches Opus — précisément la CIBLE du Waste Radar. On garde donc :
+      - les `_SESS_BIGGEST` plus grosses (utile au drill-down par volume) ;
+      - puis, dans le reste, jusqu'à `_SESS_SUSPECT` sessions « suspectes Opus »
+        (Opus + peu d'output), triées par output croissant (les plus petites
+        d'abord) ;
+      - on complète avec les plus grosses restantes jusqu'à `cap`.
+    Déduplication par sessionId. Ordre de sortie : tokens décroissants.
+    """
+    if len(sessions) <= cap:
+        return sorted(sessions, key=lambda x: -x.get("tokens", 0))
+    by_tokens = sorted(sessions, key=lambda x: -x.get("tokens", 0))
+    kept, kept_ids = [], set()
+    for s in by_tokens[:_SESS_BIGGEST]:
+        kept.append(s)
+        kept_ids.add(s.get("sessionId"))
+    rest = [s for s in by_tokens if s.get("sessionId") not in kept_ids]
+    suspects = sorted(
+        (s for s in rest if _looks_opus_suspect(s)),
+        key=lambda x: (x.get("outputTokens") or 0),  # les plus petites d'abord
+    )
+    for s in suspects[:_SESS_SUSPECT]:
+        if len(kept) >= cap:
+            break
+        kept.append(s)
+        kept_ids.add(s.get("sessionId"))
+    # complète avec les plus grosses restantes si on n'a pas atteint le cap
+    for s in rest:
+        if len(kept) >= cap:
+            break
+        if s.get("sessionId") in kept_ids:
+            continue
+        kept.append(s)
+        kept_ids.add(s.get("sessionId"))
+    return sorted(kept, key=lambda x: -x.get("tokens", 0))
+
+
 def merge_projects_by_name(projects):
     """Fusionne au niveau AFFICHAGE les projets qui partagent le même nom
     (ex. AGENTIC-FIGMA-MCP sous deux racines, ou plusieurs 'Sans projet').
@@ -440,8 +509,9 @@ def merge_projects_by_name(projects):
     for key in order:
         m = merged[key]
         m["models"] = sorted(m["models"].values(), key=lambda x: -x["total"])
-        m["sessions"].sort(key=lambda x: -x.get("tokens", 0))
-        m["sessions"] = m["sessions"][:20]
+        # v5 : cap intelligent (60) préservant les petites tâches Opus (Waste Radar),
+        # au lieu d'un simple tri-tokens + cap 20 qui les faisait disparaître.
+        m["sessions"] = select_sessions(m["sessions"], SESSIONS_CAP)
         m["timeline"] = [{"date": d, "total": m["_days"][d]} for d in sorted(m["_days"])]
         del m["_days"]
         out.append(m)
@@ -474,3 +544,171 @@ def official_is_fresh(win, now_epoch, max_age=OFFICIAL_FRESH_SECONDS):
     """True si le % officiel capté est assez récent pour être affiché comme tel."""
     age = official_freshness(win, now_epoch)
     return age is not None and age <= max_age
+
+
+# --------------------------------------------------------------------------
+# v5 — PARTIE 1 : Waste Radar (candidats « Opus sur petite tâche »).
+# Pur, testable. GARDE-FOU : on ne dit JAMAIS « Sonnet aurait suffi ». On liste
+# des CANDIDATS et l'économie THÉORIQUE si les mêmes tokens Opus étaient facturés
+# au tarif Sonnet — le front décide du mot exact. Aucun jugement fabriqué ici.
+# --------------------------------------------------------------------------
+_WASTE_MAX_OUTPUT = 20_000    # « peu de sortie » = tâche probablement courte
+_WASTE_MAX_MESSAGES = 40      # « peu d'échanges » = tâche probablement simple
+
+
+def _sonnet_cost_of_opus_acc(acc):
+    """Coût des mêmes tokens s'ils étaient facturés au tarif Sonnet (théorique)."""
+    return cost_of(acc, "sonnet")
+
+
+def opus_waste_suspects(sessions, min_saving_usd=0.5):
+    """[PROPRIÉTAIRE — feature « Waste Radar », voir LICENSE-ENGINE.md]
+    Repère les sessions où de l'Opus a été utilisé avec des signaux de FAIBLE
+    complexité (peu d'output, peu de messages), et chiffre l'économie THÉORIQUE
+    Opus→Sonnet (mêmes tokens Opus recalculés au tarif Sonnet).
+
+    `sessions` : liste des sessions enrichies (champ `costByModel` avec, par
+    famille, l'accumulateur {input/output/cacheCreate/cacheRead}, `outputTokens`,
+    `messageCount`). Retourne, triée par `saving` décroissant :
+        [{sessionId, title, opusCost, sonnetCost, saving, outputTokens,
+          messageCount, reason}]
+    `reason` est FACTUEL (ex. 'opus, 3k output, 5 messages') — pas un jugement.
+    Ne retient que les candidats dont l'économie théorique >= `min_saving_usd`.
+    """
+    out = []
+    for s in sessions or []:
+        # retrouve l'accumulateur Opus de la session (posé par le build enrichi)
+        opus_acc = None
+        for row in (s.get("costByModel") or []):
+            if row.get("model") == "opus" and row.get("acc"):
+                opus_acc = row["acc"]
+                break
+        if not opus_acc:
+            continue
+        output_tokens = s.get("outputTokens")
+        if output_tokens is None:
+            output_tokens = opus_acc.get("output", 0)
+        message_count = s.get("messageCount") or 0
+        # signaux de faible complexité (les DEUX doivent tenir : petite sortie
+        # ET peu d'échanges), sinon ce n'est pas un candidat « petite tâche ».
+        low_output = output_tokens < _WASTE_MAX_OUTPUT
+        low_messages = message_count and message_count < _WASTE_MAX_MESSAGES
+        if not (low_output and low_messages):
+            continue
+        opus_cost = cost_of(opus_acc, "opus")
+        sonnet_cost = _sonnet_cost_of_opus_acc(opus_acc)
+        saving = opus_cost - sonnet_cost
+        if saving < min_saving_usd:
+            continue
+        out.append({
+            "sessionId": s.get("sessionId"),
+            "title": s.get("title"),
+            "opusCost": round(opus_cost, 4),
+            "sonnetCost": round(sonnet_cost, 4),
+            "saving": round(saving, 4),
+            "outputTokens": output_tokens,
+            "messageCount": message_count,
+            # FACTUEL : décrit ce qu'on a mesuré, ne conclut pas.
+            "reason": "opus, %s output, %s messages" % (output_tokens, message_count),
+        })
+    out.sort(key=lambda x: -x["saving"])
+    return out
+
+
+# --------------------------------------------------------------------------
+# v5 — PARTIE 2 : Boîte noire (anomalies fenêtre 5h, split sous-agents/cache).
+# Pur, testable. GARDE-FOU : uniquement des FAITS mesurés (part sous-agents réelle,
+# cache-miss réels). Aucune interprétation ici — le front décide quoi en dire.
+# --------------------------------------------------------------------------
+_ANOMALY_Z = 3.0              # seuil robuste (~99e percentile en échelle log)
+
+
+def _peak5h_window_of_day(day_hours):
+    """Pour un jour {hour_int: total}, renvoie (best5h, start_hour) de la fenêtre
+    5h glissante la plus chargée. day_hours indexé par heure entière 0..23."""
+    best, best_start = 0, None
+    for start in range(24):
+        s = sum(day_hours.get((start + k) % 24, 0) for k in range(5))
+        if s > best:
+            best, best_start = s, start
+    return best, best_start
+
+
+def detect_anomalies(hour_buckets, hour_meta, baseline, now):
+    """[PROPRIÉTAIRE — feature « Boîte noire », voir LICENSE-ENGINE.md]
+    Repère les JOURS de la fenêtre 7j glissante où le pic 5h dépasse
+    anormalement la baseline habituelle (z robuste >= _ANOMALY_Z).
+
+    - `hour_buckets` : {'YYYY-MM-DDTHH': accumulateur} (standard, uc.empty()).
+    - `hour_meta`    : {'YYYY-MM-DDTHH': {sidechain, ephemeral5m, ephemeral1h,
+                        byProject:{name:tokens}}} — structure PARALLÈLE (v5).
+    - `baseline`     : sortie de baseline_5h (ou None). On réutilise medianLog/madLog.
+    - `now`          : datetime aware UTC.
+
+    Retourne, par épisode anormal (trié par z décroissant) :
+        {window, z, total, sidechainShare, cacheMiss5m, cacheMiss1h, topProject}
+    - `window` : 'YYYY-MM-DDTHH' de DÉBUT de la fenêtre 5h la plus chargée du jour.
+    - `sidechainShare` : part (0..1) de tokens issus de sous-agents sur la fenêtre.
+    - `cacheMiss5m/1h` : tokens ephemeral 5m/1h mesurés sur la fenêtre (0 si absents).
+    - `topProject` : projet le plus consommateur sur la fenêtre (ou None).
+    []  si `baseline` None ou rien d'anormal. Ne fabrique AUCUNE interprétation.
+    """
+    if not baseline:
+        return []
+    med_log = baseline.get("medianLog")
+    mad_log = baseline.get("madLog")
+    if not mad_log:  # dispersion nulle -> tout z = 0, rien d'« anormal »
+        return []
+
+    cutoff = now - timedelta(days=7)
+    # regroupe les heures par jour dans la fenêtre 7j
+    by_day = {}   # day -> {hour_int: total}
+    for hk, v in hour_buckets.items():
+        try:
+            dt = datetime.fromisoformat(hk + ":00:00+00:00")
+        except Exception:
+            continue
+        if dt < cutoff or dt > now + timedelta(hours=1):
+            continue
+        by_day.setdefault(hk[:10], {})[int(hk[11:13])] = total_of(v)
+
+    episodes = []
+    for day, day_hours in by_day.items():
+        best5h, start = _peak5h_window_of_day(day_hours)
+        if best5h <= 0 or start is None:
+            continue
+        z = robust_z_log(best5h, med_log, mad_log)
+        if z < _ANOMALY_Z:
+            continue
+        # heures composant la fenêtre 5h la plus chargée du jour
+        window_hours = [(start + k) % 24 for k in range(5)]
+        window_keys = ["%sT%02d" % (day, h) for h in window_hours]
+        # agrège les FAITS mesurés sur ces heures (structure parallèle)
+        sidechain = 0
+        eph5m = 0
+        eph1h = 0
+        by_project = {}
+        for wk in window_keys:
+            meta = hour_meta.get(wk)
+            if not meta:
+                continue
+            sidechain += meta.get("sidechain", 0) or 0
+            eph5m += meta.get("ephemeral5m", 0) or 0
+            eph1h += meta.get("ephemeral1h", 0) or 0
+            for name, tok in (meta.get("byProject") or {}).items():
+                by_project[name] = by_project.get(name, 0) + (tok or 0)
+        top_project = None
+        if by_project:
+            top_project = max(by_project.items(), key=lambda kv: kv[1])[0]
+        share = (sidechain / best5h) if best5h else 0.0
+        episodes.append({
+            "window": "%sT%02d" % (day, start),
+            "z": round(z, 2),
+            "total": best5h,
+            "sidechainShare": round(max(0.0, min(1.0, share)), 4),
+            "cacheMiss5m": eph5m,
+            "cacheMiss1h": eph1h,
+            "topProject": top_project,
+        })
+    episodes.sort(key=lambda e: -e["z"])
+    return episodes
