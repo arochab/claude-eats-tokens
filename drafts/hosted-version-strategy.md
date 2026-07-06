@@ -73,33 +73,40 @@ PC utilisateur                    Infra Adam (gratuite)
 
 ---
 
-## Modele de prix
+## Modele de prix — IMPLEMENTE (juillet 2026)
 
-### Free tier
-- Feu tricolore (verdict vert/orange/rouge)
-- Mini-stats (aujourd'hui, semaine)
-- Donnees des 7 derniers jours
-- Pas de notifications push
-
-### Pro — 3 EUR/mois (ou 2.50 USD)
-- Historique complet (30j, tout)
-- Notifications push par paliers (25/50/75/90/95/100%)
-- Projets detailles + drill-down
+### Free tier (diagnostic de l'instant present)
+- Feu tricolore (verdict vert/orange/rouge) + fenetres officielles + estimation forfait
+- Mini-stats (aujourd'hui, semaine, rythme)
+- Alerte + ETA DANS l'app
+- Courbe sur 7 jours + liste des projets
 - Carte "Ou je me situe"
-- Courbe d'evolution
-- Export des donnees
+- 1 SEULE notif push : fenetre PLEINE (100%) — le filet anti-blocage
 
-### Pourquoi 3 EUR
-- Assez bas pour ne pas reflechir (moins qu'un cafe)
-- 20 users Pro = 60 EUR/mois (objectif bas atteint)
-- 60 users Pro = 180 EUR/mois (objectif haut atteint)
-- Pas de cout fixe en face (Supabase free couvre 50+ users)
-- **Marge = 100% jusqu'a ~100 users**
+### Pro — 5 EUR/mois (memoire + anticipation + bras arme sur le telephone)
+- Notifs push par paliers 25/50/75/90/95% (etre prevenu AVANT le mur)
+- Historique 30j + illimite + comparaisons mois/mois
+- Projection fin de mois
+- Drill-down projets (donut, sessions)
+- Export CSV / PNG
+- Rapport hebdo auto, seuils d'alerte perso, cout/efficacite avances
+- **Waste Radar** ⭐ : audit du gaspillage Opus chiffre en € ("telle tache aurait pu
+  passer sur un modele plus leger — a verifier"). ROI : l'abo se rembourse seul.
+- **Boite noire** ⭐ : quand ta fenetre 5h fond anormalement, une phrase humaine dit
+  POURQUOI (tes sous-agents invisibles chez les concurrents). Carte conditionnelle.
 
-### Paiement : Stripe ou Lemon Squeezy
-- Lemon Squeezy = plus simple (gere la TVA europeenne, pas de setup Stripe Atlas)
-- Stripe = plus pro, mais plus de config
-- **Recommandation : Lemon Squeezy** (1 lien de paiement, webhook vers Supabase, fini)
+### Pourquoi 5 EUR (un Pro dense le justifie)
+- Toujours accessible (moins qu'un cafe et demi)
+- 12 users Pro = 60 EUR/mois (objectif bas) ; 40 users = 200 EUR/mois (objectif haut)
+- Pas de cout fixe en face (Supabase free + Render free + Waste Radar etage 1 = 0€)
+- Waste Radar / Boite noire = 2 secrets que les 23 concurrents ne peuvent copier
+  (log par-message + sur le telephone). **Avance produit, pas juste un tracker.**
+
+### Paiement : Lemon Squeezy (IMPLEMENTE)
+- Merchant of Record : gere la TVA UE, les recus, les factures. Pas de societe requise.
+- Liaison paiement↔compte : **checkout token signe** (`ct_<user_id>.<hmac>`), stateless,
+  passe en `custom_data` du checkout, verifie par HMAC cote webhook. Non-usurpable,
+  zero friction, decouple de l'auth. Voir server/app.py + HOSTED-SETUP.md.
 
 ---
 

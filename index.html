@@ -61,6 +61,27 @@
     <div class="vgauges" id="vgauges"></div>
   </section>
 
+  <!-- BOÎTE NOIRE (Pro) : n'apparaît QUE si une anomalie réelle est détectée
+       (z élevé). Explique POURQUOI la fenêtre fond, par template déterministe. -->
+  <section class="card boite-card" id="boite-card" hidden>
+    <h2>Boîte noire <span class="hint">pro</span></h2>
+    <button type="button" class="boite-btn" id="boite-btn">
+      <span class="boite-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span>
+      <span class="boite-txt"><b id="boite-title"></b><span id="boite-sentence"></span></span>
+    </button>
+  </section>
+
+  <!-- WASTE RADAR (Pro) : € récupérables cette semaine. Formulé "candidats à
+       vérifier", jamais un jugement. Masqué si rien de significatif. -->
+  <section class="card waste-card" id="waste-card" hidden>
+    <h2>Waste Radar <span class="hint">pro</span></h2>
+    <button type="button" class="waste-btn" id="waste-btn">
+      <span class="waste-verdict" id="waste-verdict"></span>
+      <span class="waste-sub" id="waste-sub">Des tâches où un modèle plus léger aurait sans doute suffi. À vérifier.</span>
+      <span class="waste-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+  </section>
+
   <section class="card" id="windows-card">
     <h2>Mes fenêtres <span class="hint" id="windows-hint">officiel</span></h2>
     <div id="windows-body"></div>
@@ -125,8 +146,8 @@
     <div class="seg" id="period" role="group" aria-label="Période d'affichage">
       <button type="button" data-p="today" aria-pressed="false">Aujourd'hui</button>
       <button type="button" data-p="7" class="on" aria-pressed="true">7 jours</button>
-      <button type="button" data-p="30" aria-pressed="false">30 jours</button>
-      <button type="button" data-p="all" aria-pressed="false">Tout</button>
+      <button type="button" data-p="30" class="pro-mini" aria-pressed="false">30 jours</button>
+      <button type="button" data-p="all" class="pro-mini" aria-pressed="false">Tout</button>
     </div>
     <div class="chart-wrap"><canvas id="trend" role="img" aria-label="Courbe de consommation de tokens par jour"></canvas></div>
   </section>
@@ -256,7 +277,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
         <div><b>Connecté</b> <span id="auth-logged-email"></span></div>
       </div>
-      <p class="about-txt" style="margin-top:12px">Plan : <b id="auth-logged-plan">free</b></p>
+      <p class="about-txt" style="margin-top:12px">Plan : <b id="auth-logged-plan">free</b><span id="auth-logged-status"></span></p>
+      <button class="btn" id="auth-go-pro" style="display:none">Passer à Pro</button>
       <button class="btn ghost" id="auth-logout">Se déconnecter</button>
     </div>
   </div>
@@ -270,6 +292,48 @@
     </h2>
     <div id="projsheet-body"></div>
     <button class="btn" id="projsheet-filter">Filtrer le tableau de bord sur ce projet</button>
+  </div>
+</div>
+
+<!-- Passe à Pro -->
+<div class="sheet" id="pro-sheet" role="dialog" aria-modal="true" aria-labelledby="pro-title">
+  <div class="sheet-inner">
+    <h2 id="pro-title">Passe à Pro
+      <button class="iconbtn" id="close-pro" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </h2>
+    <p class="lead">5 € / mois. Résiliable quand tu veux.</p>
+
+    <p class="pro-hook">Arrête de rouvrir l'app pour savoir si tu peux relancer. Ton téléphone te prévient <b>avant</b> que ça bloque.</p>
+
+    <ul class="pro-value">
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><b>Sois prévenu à temps.</b> Notifs dès 25, 50, 75 puis 90 % — pas seulement quand c'est trop tard.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><b>Vois plus loin.</b> 30 jours et tout l'historique, pas seulement les 7 derniers.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></span><b>Anticipe la fin de mois.</b> La projection te dit où tu atterris à ce rythme.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><b>Fouille tes projets.</b> Ouvre chaque projet : modèles, sessions, coût détaillé.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b>Waste Radar.</b> Découvre où tu gâches ton Opus — et ce que tu pourrais récupérer.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b>Boîte noire.</b> Comprends pourquoi ta fenêtre fond — sous-agents, cache, projet en cause.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><b>Exporte tout.</b> CSV et PNG pour garder tes chiffres ou les partager.</li>
+    </ul>
+
+    <button class="btn pro-cta" id="pro-checkout">Passer à Pro — 5 €/mois</button>
+    <p class="pro-reassure">Sans engagement. Le gratuit reste gratuit.</p>
+
+    <div class="grouplabel" id="pro-export-label">Exporter mes données <small class="hint-mini">pro</small></div>
+    <div class="exportrow">
+      <button class="btn ghost" id="export-csv"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6h6M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Export CSV</button>
+      <button class="btn ghost" id="export-png"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg> Export PNG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Waste Radar : liste des tâches candidates -->
+<div class="sheet" id="waste-sheet" role="dialog" aria-modal="true" aria-labelledby="waste-sheet-title">
+  <div class="sheet-inner">
+    <h2 id="waste-sheet-title">Waste Radar
+      <button class="iconbtn" id="close-waste" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </h2>
+    <p class="lead" id="waste-sheet-lead">Des tâches où tu as utilisé Opus alors qu'un modèle plus léger aurait sans doute suffi. Ce sont des <b>candidats à vérifier</b>, pas un verdict.</p>
+    <div id="waste-list"></div>
   </div>
 </div>
 

@@ -366,3 +366,117 @@ test("windowAlerts — JAMAIS de notif sur une estimation (stale)", () => {
 test("windowAlerts — pas de windowsOfficial -> rien", () => {
   assert.equal(CET.windowAlerts({}, {}).alerts.length, 0);
 });
+
+// ---------- Gating Pro (planFromData) : FAIL-OPEN ----------
+test("planFromData — pas de clé API -> pro (self-hosted/dev)", () => {
+  assert.equal(CET.planFromData(null, { user: { plan: "free" } }), "pro");
+  assert.equal(CET.planFromData("", { user: { plan: "free" } }), "pro");
+});
+
+test("planFromData — démo (pas de user.plan) -> pro, tout ouvert", () => {
+  assert.equal(CET.planFromData("cet_abc", { demo: true }), "pro");
+  assert.equal(CET.planFromData("cet_abc", {}), "pro");
+  assert.equal(CET.planFromData("cet_abc", null), "pro");
+});
+
+test("planFromData — hébergé + plan free -> free (seul cas bridé)", () => {
+  assert.equal(CET.planFromData("cet_abc", { user: { plan: "free" } }), "free");
+});
+
+test("planFromData — hébergé + plan pro -> pro", () => {
+  assert.equal(CET.planFromData("cet_abc", { user: { plan: "pro" } }), "pro");
+});
+
+// ---------- Waste Radar (wasteRadarCard) ----------
+const wasteD = (suspects) => ({ wasteSuspects: suspects });
+
+test("wasteRadarCard — pas de suspects -> null", () => {
+  assert.equal(CET.wasteRadarCard({}, 0.9), null);
+  assert.equal(CET.wasteRadarCard(wasteD([]), 0.9), null);
+  assert.equal(CET.wasteRadarCard(null, 0.9), null);
+});
+
+test("wasteRadarCard — total sous 0,5 $ -> null (rien à signaler)", () => {
+  const r = CET.wasteRadarCard(wasteD([{ saving: 0.2 }, { saving: 0.1 }]), 0.9);
+  assert.equal(r, null);
+});
+
+test("wasteRadarCard — somme des saving + conversion USD->€", () => {
+  const suspects = [
+    { sessionId: "s1", title: "Renommer des variables", project: "app", saving: 2.0, reason: "sortie courte" },
+    { sessionId: "s2", title: "Formatter du JSON", project: "app", saving: 1.5, reason: "peu de tokens" },
+  ];
+  const r = CET.wasteRadarCard(wasteD(suspects), 0.9);
+  assert.equal(r.count, 2);
+  assert.equal(r.totalUsd, 3.5);
+  assert.ok(Math.abs(r.totalEur - 3.15) < 1e-9);   // 3.5 * 0.9
+  assert.equal(r.hasRate, true);
+  assert.equal(r.top.length, 2);
+  assert.equal(r.top[0].title, "Renommer des variables");
+  assert.ok(Math.abs(r.top[0].savingEur - 1.8) < 1e-9);
+});
+
+test("wasteRadarCard — sans taux -> reste en $ (rate=1, hasRate=false)", () => {
+  const r = CET.wasteRadarCard(wasteD([{ saving: 3 }]), 0);
+  assert.equal(r.totalUsd, 3);
+  assert.equal(r.totalEur, 3);   // rate défaut 1 -> valeur $ brute
+  assert.equal(r.hasRate, false);
+});
+
+test("wasteRadarCard — top borné à 8", () => {
+  const many = Array.from({ length: 30 }, (_, i) => ({ saving: 0.2, title: "t" + i }));
+  const r = CET.wasteRadarCard(wasteD(many), 0.9);
+  assert.equal(r.count, 30);
+  assert.equal(r.top.length, 8);
+});
+
+// ---------- Boîte noire (boiteNoireCard) ----------
+const anomD = (anoms) => ({ anomalies: anoms });
+
+test("boiteNoireCard — [] -> null", () => {
+  assert.equal(CET.boiteNoireCard({}), null);
+  assert.equal(CET.boiteNoireCard(anomD([])), null);
+  assert.equal(CET.boiteNoireCard(null), null);
+});
+
+test("boiteNoireCard — sous-agents dominants -> la phrase parle des sous-agents", () => {
+  const r = CET.boiteNoireCard(anomD([{
+    window: "w-1", z: 4.2, total: 5e8, sidechainShare: 0.72,
+    cacheMiss5m: 0, cacheMiss1h: 0.1, topProject: "brandpulse-app",
+  }]));
+  assert.ok(r);
+  assert.match(r.sentence, /sous-agents/);
+  assert.match(r.sentence, /brandpulse-app/);
+  assert.match(r.sentence, /72 %/);
+  assert.equal(r.share, 72);
+  assert.equal(r.severity, "mid");   // z=4.2 -> 3..5
+});
+
+test("boiteNoireCard — cacheMiss5m=0 -> ne MENT jamais sur le cache 5 min", () => {
+  // sous-agents faibles, cache5m nul, cache1h fort -> doit parler de 1h, pas de 5 min
+  const r = CET.boiteNoireCard(anomD([{
+    window: "w-2", z: 6, total: 8e8, sidechainShare: 0.1,
+    cacheMiss5m: 0, cacheMiss1h: 0.55, topProject: "serp-scraper",
+  }]));
+  assert.ok(r);
+  assert.doesNotMatch(r.sentence, /5 min/);   // garde-fou anti-mensonge
+  assert.match(r.sentence, /heure/);          // parle bien de 1 h
+  assert.equal(r.severity, "high");           // z=6 >= 5
+});
+
+test("boiteNoireCard — cacheMiss5m significatif -> peut parler du cache 5 min", () => {
+  const r = CET.boiteNoireCard(anomD([{
+    window: "w-3", z: 3.5, total: 4e8, sidechainShare: 0.2,
+    cacheMiss5m: 0.6, cacheMiss1h: 0.1, topProject: "kapman-news",
+  }]));
+  assert.match(r.sentence, /5 min/);
+});
+
+test("boiteNoireCard — prend la plus grosse anomalie (z max)", () => {
+  const r = CET.boiteNoireCard(anomD([
+    { window: "a", z: 3.1, sidechainShare: 0.6, topProject: "petit" },
+    { window: "b", z: 7.5, sidechainShare: 0.8, topProject: "gros" },
+  ]));
+  assert.equal(r.window, "b");
+  assert.match(r.sentence, /gros/);
+});

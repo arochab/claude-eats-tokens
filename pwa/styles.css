@@ -418,3 +418,77 @@ button.proj:hover{background:rgba(204,120,92,.05)}
   .seg button{font-size:12px}
   .psum{grid-template-columns:1fr 1fr}
 }
+
+/* ===========================================================================
+   PRO — Waste Radar, Boîte noire, gating (teaser), sheet Pro, pastilles
+   Sobre, DA Anthropic. Jamais de nagware criard : le PRO se murmure.
+   =========================================================================== */
+
+/* pastille "PRO" en petit sur le hint des cartes Pro */
+.card h2 .hint,.hint-mini{}
+.waste-card h2 .hint,.boite-card h2 .hint,.hint-mini{
+  background:rgba(193,95,60,.12);color:var(--terracotta-d);padding:3px 8px;border-radius:6px;letter-spacing:.12em}
+
+/* ----- Boîte noire (carte conditionnelle) ----- */
+.boite-btn{display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:0;color:inherit;font:inherit}
+.boite-ic{width:36px;height:36px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;background:rgba(26,25,21,.05);color:var(--slate-soft)}
+.boite-card[data-severity="high"] .boite-ic{background:rgba(181,86,58,.14);color:var(--terracotta-d)}
+.boite-card[data-severity="mid"] .boite-ic{background:rgba(200,146,61,.16);color:#8a6014}
+.boite-ic svg{width:20px;height:20px}
+.boite-txt{font-size:13.5px;line-height:1.5;color:var(--slate-soft)}
+.boite-txt b{display:block;font-family:var(--serif);font-weight:500;font-size:15.5px;color:var(--slate);margin-bottom:2px;letter-spacing:-.01em}
+
+/* ----- Waste Radar (carte-teaser) ----- */
+.waste-btn{display:grid;grid-template-columns:1fr auto;grid-template-areas:"v chev" "sub chev";gap:2px 12px;align-items:center;width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:0;color:inherit;font:inherit}
+.waste-verdict{grid-area:v;font-family:var(--serif);font-weight:500;font-size:18px;color:var(--slate);letter-spacing:-.01em;line-height:1.2;font-variant-numeric:tabular-nums}
+.waste-sub{grid-area:sub;font-size:12px;color:var(--muted);line-height:1.45}
+.waste-chev{grid-area:chev;color:var(--muted);display:grid;place-items:center}
+.waste-chev svg{width:20px;height:20px}
+.waste-btn:active{opacity:.85}
+
+/* ----- Waste sheet : liste des tâches candidates ----- */
+.waste-row{padding:14px 0;border-bottom:1px solid var(--line)}
+.waste-row:last-child{border-bottom:none}
+.waste-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.waste-row-title{font-size:14px;color:var(--slate);font-weight:500;line-height:1.35}
+.waste-row-money{font-family:var(--serif);font-weight:500;font-size:16px;color:var(--terracotta-d);white-space:nowrap;font-variant-numeric:tabular-nums}
+.waste-row-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.waste-row-reason{font-size:12px;color:var(--slate-soft);line-height:1.45;margin-top:6px}
+.waste-ok{border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-family:var(--sans);font-size:11.5px;font-weight:500;border-radius:8px;padding:5px 11px;cursor:pointer;margin-top:9px;transition:.15s}
+.waste-ok:hover{color:var(--slate);border-color:var(--slate-soft)}
+.waste-ok:active{transform:scale(.97)}
+
+/* ----- Gating : teaser flou + overlay discret ----- */
+.pro-locked{position:relative}
+.pro-locked.pro-blur>*:not(.pro-overlay){filter:blur(5px);opacity:.55;pointer-events:none;user-select:none;transition:.2s}
+.pro-locked.pro-hide>*:not(.pro-overlay){visibility:hidden}
+.pro-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center;padding:14px;border-radius:var(--r-lg);background:linear-gradient(180deg,rgba(240,238,230,.30),rgba(240,238,230,.62));z-index:2}
+.pro-badge{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.16em;color:#fff;background:var(--terracotta);padding:3px 9px;border-radius:6px}
+.pro-pitch{font-family:var(--serif);font-size:14.5px;color:var(--slate);max-width:26ch;line-height:1.35}
+.pro-unlock{border:none;background:var(--slate);color:var(--cream);font-family:var(--sans);font-size:12.5px;font-weight:600;border-radius:10px;padding:8px 16px;cursor:pointer;transition:.15s}
+.pro-unlock:hover{background:var(--terracotta)}
+.pro-unlock:active{transform:scale(.97)}
+@media (prefers-color-scheme:dark){
+  .pro-overlay{background:linear-gradient(180deg,rgba(20,19,16,.30),rgba(20,19,16,.66))}
+  .pro-unlock{background:var(--terracotta)}
+}
+
+/* pastille "PRO" sur les boutons de période 30j / Tout (uniquement en Free) */
+.pro-mini{position:relative}
+.is-free .pro-mini::after{content:"PRO";position:absolute;top:-5px;right:2px;font-family:var(--mono);font-size:7px;font-weight:600;letter-spacing:.08em;color:var(--terracotta-d);background:var(--terracotta-l);padding:1px 3px;border-radius:4px;line-height:1}
+@media (prefers-color-scheme:dark){
+  .is-free .pro-mini::after{background:rgba(193,95,60,.24)}
+}
+
+/* ----- Sheet Pro : accroche, valeur, CTA ----- */
+.pro-hook{font-family:var(--serif);font-size:16px;line-height:1.45;color:var(--slate);margin:0 0 18px}
+.pro-hook b{color:var(--terracotta-d);font-weight:500}
+.pro-value{list-style:none;margin:0 0 20px;padding:0;display:flex;flex-direction:column;gap:13px}
+.pro-value li{display:flex;gap:11px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--slate-soft)}
+.pro-value li b{color:var(--slate);font-weight:600}
+.pro-value .pv-ic{width:26px;height:26px;border-radius:7px;flex:0 0 auto;display:grid;place-items:center;background:rgba(212,162,127,.20);color:var(--terracotta-d);margin-top:1px}
+.pro-value .pv-ic svg{width:15px;height:15px}
+.pro-cta{background:linear-gradient(135deg,var(--clay),var(--terracotta))}
+.pro-reassure{font-size:11.5px;color:var(--muted);text-align:center;margin:10px 0 4px}
+#pro-export-label{margin-top:24px;display:flex;align-items:center;gap:8px}
+#pro-export-label .hint-mini{text-transform:uppercase}

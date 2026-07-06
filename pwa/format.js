@@ -426,6 +426,119 @@
     return { alerts: out, fired: keep };
   }
 
+  /* ---------- GATING PRO (fail-open délibéré) ----------
+     Règle d'or : on ne bride QUE l'utilisateur HÉBERGÉ (clé API présente) dont
+     le serveur dit explicitement plan="free". Tout le reste — self-hosted,
+     legacy, démo, dev sans clé — retourne "pro" et voit TOUT. Le front ne
+     sécurise rien (le serveur tronque déjà le payload free) : ceci ne pilote
+     que le confort d'affichage. Pur & testable : pas de DOM, pas de window. */
+  function planFromData(apiKey, d) {
+    var hosted = !!apiKey;
+    if (hosted && d && d.user && d.user.plan) return d.user.plan;
+    return "pro";  // fail-open : jamais de flou hors du cas hébergé+plan connu
+  }
+
+  /* ---------- WASTE RADAR (Pro) — lit d.wasteSuspects[] ----------
+     Le serveur a déjà calculé (top 30, en USD) les tâches où de l'Opus a servi
+     là où un modèle plus léger aurait suffi. Ici : somme des `saving` -> total €
+     récupérable + nb de tâches. GARDE-FOU : on ne juge JAMAIS, on liste des
+     "candidats à vérifier". Retourne null si vide ou < 0.5 $ cumulé (rien à
+     signaler = pas d'alarmisme). rateEurUsd = taux €/$ des réglages (0 = pas de
+     taux -> on reste implicitement en $, totalEur porte alors la valeur $ brute).
+     Pur, testable. */
+  function wasteRadarCard(d, rateEurUsd) {
+    var list = (d && d.wasteSuspects) || [];
+    if (!list.length) return null;
+    var rate = (rateEurUsd && rateEurUsd > 0) ? rateEurUsd : 1;  // pas de taux -> $ tel quel
+    var totalUsd = 0;
+    list.forEach(function (s) { totalUsd += (s && s.saving) || 0; });
+    if (totalUsd < 0.5) return null;                 // trop peu -> rien à signaler
+    var top = list.slice(0, 8).map(function (s) {
+      return {
+        sessionId: s.sessionId || null,
+        title: s.title || "tâche",
+        project: s.project || null,
+        opusCost: s.opusCost || 0,
+        sonnetCost: s.sonnetCost || 0,
+        savingUsd: s.saving || 0,
+        savingEur: (s.saving || 0) * rate,
+        outputTokens: s.outputTokens || 0,
+        messageCount: s.messageCount || 0,
+        reason: s.reason || "",
+      };
+    });
+    return {
+      totalUsd: totalUsd,
+      totalEur: totalUsd * rate,
+      hasRate: !!(rateEurUsd && rateEurUsd > 0),
+      count: list.length,
+      top: top,
+    };
+  }
+
+  /* ---------- BOÎTE NOIRE (Pro) — lit d.anomalies[] ----------
+     Le serveur a détecté des pics de fenêtre anormaux (z-score élevé) avec la
+     décomposition RÉELLE : part sous-agents (sidechainShare), cache-miss 5 min /
+     1 h, projet dominant. On prend la plus grosse anomalie et on GÉNÈRE la phrase
+     par TEMPLATE DÉTERMINISTE branché sur les valeurs réelles.
+     GARDE-FOU ANTI-MENSONGE CRITIQUE : on ne parle du "cache 5 min expiré" que si
+     cacheMiss5m est réellement significatif ; sinon on parle de 1 h ou de
+     cache-miss général selon ce qui est vrai. Retourne null si [].
+     Pur, testable. */
+  function boiteNoireCard(d) {
+    var list = (d && d.anomalies) || [];
+    if (!list.length) return null;
+    // la plus grosse : z-score le plus élevé (à défaut, le plus gros total)
+    var a = list.slice().sort(function (x, y) {
+      return (y.z || 0) - (x.z || 0) || (y.total || 0) - (x.total || 0);
+    })[0];
+    if (!a) return null;
+
+    var z = a.z || 0;
+    var zTxt = z >= 10 ? Math.round(z) : Math.round(z * 10) / 10;
+    var zStr = String(zTxt).replace(".", ",");
+    var project = a.topProject || null;
+    var share = typeof a.sidechainShare === "number" ? Math.round(a.sidechainShare * 100) : null;
+    var miss5 = typeof a.cacheMiss5m === "number" ? a.cacheMiss5m : null;
+    var miss1h = typeof a.cacheMiss1h === "number" ? a.cacheMiss1h : null;
+    var severity = z >= 5 ? "high" : (z >= 3 ? "mid" : "low");
+
+    var title, sentence;
+    // 1) sous-agents dominants : accroche factuelle sur les sous-agents
+    if (share != null && a.sidechainShare > 0.5) {
+      title = "Ce sont tes sous-agents, pas toi";
+      sentence = "Sur " + (project ? project : "ce pic") + ", tes sous-agents ont brûlé " + share +
+        " % de cette fenêtre. C'est pour ça qu'elle a fondu " + zStr + "× plus vite que d'habitude.";
+    // 2) cache-miss 5 min RÉELLEMENT significatif -> on peut en parler
+    } else if (miss5 != null && miss5 >= 0.3) {
+      var m5 = Math.round(miss5 * 100);
+      title = "Ton contexte est reparti de zéro";
+      sentence = "Un gros bout de ta fenêtre (" + m5 + " %) est passé à recréer du cache expiré (5 min)" +
+        (project ? " sur " + project : "") + ". Résultat : elle a fondu " + zStr + "× plus vite.";
+    // 3) cache-miss 1 h significatif -> on parle de 1 h (jamais de 5 min si miss5≈0)
+    } else if (miss1h != null && miss1h >= 0.3) {
+      var m1 = Math.round(miss1h * 100);
+      title = "Beaucoup de cache à reconstruire";
+      sentence = "Environ " + m1 + " % de cette fenêtre est parti à reconstruire du cache d'il y a plus d'une heure" +
+        (project ? " sur " + project : "") + ". Elle a fondu " + zStr + "× plus vite que ta normale.";
+    // 4) fallback factuel : on constate le pic sans inventer de cause
+    } else {
+      title = "Ta fenêtre a fondu plus vite";
+      sentence = (project ? "Sur " + project + ", cette" : "Cette") + " fenêtre a fondu " + zStr +
+        "× plus vite que d'habitude" + (share != null ? " (dont " + share + " % de sous-agents)" : "") + ".";
+    }
+    return {
+      window: a.window || null,
+      title: title,
+      sentence: sentence,
+      share: share,
+      project: project,
+      z: z,
+      zStr: zStr,
+      severity: severity,
+    };
+  }
+
   var api = {
     COLORS: COLORS, modelColor: modelColor, fmt: fmt, fmtFull: fmtFull,
     pct: pct, esc: esc, ringColor: ringColor, toneOf: toneOf, ago: ago,
@@ -436,6 +549,7 @@
     xtimes: xtimes, xtimesShort: xtimesShort,
     windowsCard: windowsCard, WINDOWS_COLORS: WINDOWS_COLORS,
     windowAlerts: windowAlerts, WINDOW_MARKS: WINDOW_MARKS,
+    planFromData: planFromData, wasteRadarCard: wasteRadarCard, boiteNoireCard: boiteNoireCard,
   };
 
   root.CET = api;

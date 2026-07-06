@@ -90,7 +90,16 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var DATA = null, VIEW = null, period = "7", trendChart = null;
-  var SUPPORTED_SCHEMA = 4;  // version max de usage.json comprise par ce front (v4 : windowsOfficial)
+  var SUPPORTED_SCHEMA = 5;  // v5 : sessions enrichies + wasteSuspects[] + anomalies[]
+
+  /* ---------- PLAN / GATING PRO (point de vérité unique) ----------
+     window.CET_PLAN et isPro() sont dérivés dans render() à partir de
+     CET.planFromData (pur, testé). RÈGLE D'OR : on ne bride QUE l'utilisateur
+     HÉBERGÉ (clé API) dont le serveur dit plan="free". Legacy / self-hosted /
+     démo / dev -> "pro" -> TOUT visible, aucun flou. Le front ne sécurise rien
+     (confort) : le serveur tronque déjà le payload free. */
+  window.CET_PLAN = "pro";
+  function isPro() { return window.CET_PLAN !== "free"; }
 
   /* ---------- filtre projet : recompose une vue DATA-compatible ----------
      Quand un projet est sélectionné, on recalcule timeline / totals / today /
@@ -145,6 +154,12 @@
   function render() {
     VIEW = filteredData();
     var d = VIEW;
+    /* PLAN dérivé ICI, une seule fois (point de vérité unique). isHosted =
+       clé API présente. FAIL-OPEN : sans clé (legacy/self-hosted/dev) ou en démo
+       (pas de d.user.plan), planFromData renvoie "pro" -> tout ouvert. Seul un
+       utilisateur hébergé dont le serveur dit plan="free" est bridé. */
+    var isHosted = !!window.CET_API_KEY;
+    window.CET_PLAN = CET.planFromData(isHosted ? window.CET_API_KEY : null, d);
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var fr = $("firstrun"); if (fr) fr.hidden = !demo;
     if (demo) {
@@ -185,6 +200,8 @@
     if (window.CETRadar) { try { window.CETRadar.setData(d); } catch (e) {} }
 
     renderVerdict(d, dayU, weekU, demo);
+    renderBoiteNoire(d);   // Boîte noire (Pro) : sous le feu, conditionnelle
+    renderWasteRadar(d);   // Waste Radar (Pro) : sous le feu
     renderAlerts(d, 0, dayU, weekU);
     renderPosition(d);
 
@@ -212,6 +229,10 @@
       "<br/>Valeur théorique au tarif API" + asOf + " — sur Max tu paies un forfait fixe" + rateInfo + ".";
 
     updateChartA11y(d, month);
+
+    /* PASSE DE GATING — rejouée à chaque render (idempotente). En Free hébergé,
+       elle floute les features Pro (teaser). En Pro, elle retire tout overlay. */
+    applyGating();
   }
 
   // descriptions accessibles dynamiques des graphes/jauges (A3-4/A3-11)
@@ -526,6 +547,136 @@
     }
   }
 
+  /* ---------- WASTE RADAR (Pro) ----------
+     Carte-teaser sous le feu : "X € récupérables cette semaine · N tâches".
+     Tape -> #waste-sheet listant les tâches candidates. Calcul pur dans
+     CET.wasteRadarCard (retourne null si rien de significatif -> carte discrète). */
+  var WASTE_CARD = null;
+  function renderWasteRadar(d) {
+    var card = $("waste-card"); if (!card) return;
+    var w = CET.wasteRadarCard ? CET.wasteRadarCard(d, rateValue()) : null;
+    WASTE_CARD = w;
+    if (!w) {
+      // rien à signaler : on masque proprement (jamais d'alarmisme).
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    // Produit européen : on affiche en €, jamais en $. Le taux €/$ LIVE (API
+    // gratuite, cache 24h) couvre quasi tous les cas ; le bref instant où il
+    // n'est pas encore chargé, on montre "~€" sans inventer de taux figé — le
+    // montant exact apparaît dès que loadEurRate() a résolu (re-render).
+    var nTxt = w.count + (w.count > 1 ? " tâches" : " tâche");
+    var moneyTxt = w.hasRate
+      ? w.totalEur.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " €"
+      : "quelques € (taux en cours)";
+    $("waste-verdict").textContent = moneyTxt + " récupérables cette semaine · " + nTxt;
+  }
+
+  // tâches marquées "justifiées" localement (masquées de la liste) — localStorage
+  var WASTE_OK_KEY = "tokenTracker.wasteOk.v1";
+  function wasteOkSet() { try { return JSON.parse(localStorage.getItem(WASTE_OK_KEY) || "{}"); } catch (e) { return {}; } }
+  function markWasteOk(id) { var s = wasteOkSet(); s[id] = 1; try { localStorage.setItem(WASTE_OK_KEY, JSON.stringify(s)); } catch (e) {} }
+
+  function openWasteSheet() {
+    var w = WASTE_CARD; if (!w) return;
+    var okSet = wasteOkSet();
+    var list = $("waste-list");
+    var visible = w.top.filter(function (t) { return !(t.sessionId && okSet[t.sessionId]); });
+    if (!visible.length) {
+      list.innerHTML = emptyState("Tout est validé",
+        "Tu as marqué toutes ces tâches comme justifiées. Rien à revoir.");
+    } else {
+      list.innerHTML = visible.map(function (t) {
+        var m = t.savingEur;
+        var moneyTxt = w.hasRate
+          ? "≈ " + m.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
+          : "≈ $" + t.savingUsd.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+        var meta = [t.project ? esc(t.project) : "", "Opus",
+                    t.outputTokens ? fmt(t.outputTokens) + " sortie" : ""].filter(Boolean).join(" · ");
+        return '<div class="waste-row" data-id="' + esc(t.sessionId || "") + '">' +
+          '<div class="waste-row-top"><span class="waste-row-title">' + esc(t.title) + '</span>' +
+          '<span class="waste-row-money">' + moneyTxt + '</span></div>' +
+          (meta ? '<div class="waste-row-meta">' + meta + '</div>' : '') +
+          (t.reason ? '<div class="waste-row-reason">' + esc(t.reason) + '</div>' : '') +
+          '<button type="button" class="waste-ok" data-id="' + esc(t.sessionId || "") + '">c\'était justifié</button>' +
+          '</div>';
+      }).join("");
+      [].forEach.call(list.querySelectorAll(".waste-ok"), function (b) {
+        b.addEventListener("click", function () {
+          var id = this.getAttribute("data-id");
+          if (id) markWasteOk(id);
+          var row = this.closest(".waste-row"); if (row) row.style.display = "none";
+        });
+      });
+    }
+    openSheet("waste-sheet");
+  }
+
+  /* ---------- BOÎTE NOIRE (Pro) ----------
+     Carte CONDITIONNELLE (visible seulement si une anomalie réelle existe).
+     Phrase générée par template déterministe (CET.boiteNoireCard, testé) branché
+     sur les valeurs RÉELLES -> jamais de mensonge sur la cause. Tape -> #pro-sheet
+     en Free (via gating), sinon reste informative (pas de sheet dédié). */
+  function renderBoiteNoire(d) {
+    var card = $("boite-card"); if (!card) return;
+    var b = CET.boiteNoireCard ? CET.boiteNoireCard(d) : null;
+    if (!b) { card.hidden = true; return; }
+    card.hidden = false;
+    card.setAttribute("data-severity", b.severity);
+    $("boite-title").textContent = b.title;
+    $("boite-sentence").textContent = " " + b.sentence;
+  }
+
+  /* ---------- GATING PRO (overlay teaser idempotent) ----------
+     gateProFeature(el, {mode, pitch, cta}) : en Free, ajoute .pro-locked + un
+     overlay .pro-overlay (badge PRO + pitch + bouton -> #pro-sheet). En Pro,
+     retire tout. Rejoué à chaque render -> re-nettoie si redevenu pro.
+     mode "blur" = teaser (on voit derrière, ça donne envie) ; "hide" = masqué. */
+  function gateProFeature(el, opts) {
+    if (!el) return;
+    opts = opts || {};
+    var existing = el.querySelector(":scope > .pro-overlay");
+    if (isPro()) {
+      el.classList.remove("pro-locked", "pro-blur", "pro-hide");
+      if (existing) existing.remove();
+      return;
+    }
+    el.classList.add("pro-locked");
+    el.classList.toggle("pro-blur", opts.mode !== "hide");
+    el.classList.toggle("pro-hide", opts.mode === "hide");
+    if (existing) return;  // déjà posé, idempotent
+    var ov = document.createElement("div");
+    ov.className = "pro-overlay";
+    ov.innerHTML =
+      '<span class="pro-badge">PRO</span>' +
+      '<span class="pro-pitch">' + esc(opts.pitch || "Débloque cette vue avec Pro.") + '</span>' +
+      '<button type="button" class="pro-unlock">' + esc(opts.cta || "Passer à Pro") + '</button>';
+    ov.querySelector(".pro-unlock").addEventListener("click", function (e) {
+      e.stopPropagation(); openSheet("pro-sheet");
+    });
+    el.appendChild(ov);
+  }
+
+  /* Une passe de gating à la fin de render() : câble les features Pro en mode
+     BLUR (teaser). En Pro, tout est nettoyé. */
+  function applyGating() {
+    // classe globale pour les micro-affordances CSS (pastilles PRO) : seulement en Free
+    document.body.classList.toggle("is-free", !isPro());
+    // projection fin de mois : teaser flou
+    gateProFeature($("pace-banner"), { mode: "blur",
+      pitch: "Vois où tu atterris en fin de mois.", cta: "Passer à Pro" });
+    // Waste Radar & Boîte noire : teaser flou (seulement si la carte est visible)
+    var wc = $("waste-card");
+    if (wc && !wc.hidden) gateProFeature(wc, { mode: "blur",
+      pitch: "Découvre où part ton Opus — et ce que tu pourrais récupérer.", cta: "Passer à Pro" });
+    else if (wc) gateProFeature(wc, {});  // masquée -> nettoyage
+    var bc = $("boite-card");
+    if (bc && !bc.hidden) gateProFeature(bc, { mode: "blur",
+      pitch: "Comprends pourquoi ta fenêtre fond.", cta: "Passer à Pro" });
+    else if (bc) gateProFeature(bc, {});
+  }
+
   function renderAlerts(d, _unused, dayU, weekU) {
     // DÉ-DOUBLONNAGE RADICAL : le feu tricolore (verdict) porte déjà le diagnostic
     // ("X fois plus que d'habitude", niveau global). Ici on n'affiche AU PLUS
@@ -649,7 +800,11 @@
         el.setAttribute("type", "button");
         el.setAttribute("aria-label", "Détails du projet " + name + ", " + fmt(p.total) + " tokens");
         el.dataset.idx = i;
-        el.addEventListener("click", function () { openProjSheet(p); });
+        el.addEventListener("click", function () {
+          // GATING : le drill-down projet est Pro. En Free -> sheet, pas d'ouverture.
+          if (!isPro()) { openSheet("pro-sheet"); return; }
+          openProjSheet(p);
+        });
       }
       el.innerHTML =
         '<span class="pn"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>' +
@@ -749,6 +904,7 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
   function exportCSV() {
+    if (!isPro()) { openSheet("pro-sheet"); return; }
     if (!DATA) return;
     var rows = [["date", "input", "output", "cacheCreate", "cacheRead", "total"]];
     (DATA.timeline || []).forEach(function (r) {
@@ -766,6 +922,7 @@
       new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
   }
   function exportPNG() {
+    if (!isPro()) { openSheet("pro-sheet"); return; }
     // Capture le graphe d'évolution (canvas natif -> PNG, sans dépendance).
     var canvas = $("trend");
     if (!canvas) return;
@@ -868,10 +1025,14 @@
   }
   /* ---------- événements ---------- */
   function selectPeriod(b) {
+    // GATING : 30 jours & tout l'historique sont Pro. En Free, on ouvre la sheet
+    // et on NE change PAS la vue (le bouton actif reste sur 7 jours).
+    var p = b.getAttribute("data-p");
+    if (!isPro() && (p === "30" || p === "all")) { openSheet("pro-sheet"); return; }
     [].forEach.call($("period").children, function (x) {
       var on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false");
     });
-    period = b.getAttribute("data-p");
+    period = p;
     // libellé clair + total de la période, pour qu'on VOIE l'effet du clic
     var rows = periodRows();
     var tot = rows.reduce(function (a, r) { return a + r.total; }, 0);
@@ -895,6 +1056,36 @@
   $("refresh").addEventListener("click", function () { this.style.transform = "rotate(360deg)"; var s = this; setTimeout(function () { s.style.transform = ""; }, 400); load(); });
   if ($("export-csv")) $("export-csv").addEventListener("click", exportCSV);
   if ($("export-png")) $("export-png").addEventListener("click", exportPNG);
+
+  /* ----- Pro : checkout + sheet + cartes ----- */
+  // Hook de paiement : ouvre le checkout serveur si serveur+clé présents.
+  window.CET_startCheckout = function () {
+    var server = window.CLAUDE_EATS_TOKENS_SERVER, key = window.CET_API_KEY;
+    if (server && key) {
+      window.open(server.replace(/\/$/, "") + "/billing/checkout?key=" + encodeURIComponent(key), "_blank", "noopener");
+    } else {
+      banner && setStatus("Connecte-toi d'abord (bouton Compte) pour passer à Pro.", "warn");
+    }
+  };
+  if ($("pro-checkout")) $("pro-checkout").addEventListener("click", window.CET_startCheckout);
+  if ($("close-pro")) $("close-pro").addEventListener("click", function () { closeSheet("pro-sheet"); });
+  if ($("pro-sheet")) $("pro-sheet").addEventListener("click", function (e) { if (e.target === this) closeSheet("pro-sheet"); });
+
+  // Waste Radar : la carte -> sheet en Pro ; en Free l'overlay gère le tap.
+  if ($("waste-btn")) $("waste-btn").addEventListener("click", function () {
+    if (!isPro()) { openSheet("pro-sheet"); return; }
+    openWasteSheet();
+  });
+  if ($("close-waste")) $("close-waste").addEventListener("click", function () { closeSheet("waste-sheet"); });
+  if ($("waste-sheet")) $("waste-sheet").addEventListener("click", function (e) { if (e.target === this) closeSheet("waste-sheet"); });
+
+  // Boîte noire : en Free, le tap ouvre la sheet Pro (l'overlay est par-dessus).
+  if ($("boite-btn")) $("boite-btn").addEventListener("click", function () {
+    if (!isPro()) openSheet("pro-sheet");
+  });
+
+  // CTA "Passer à Pro" dans l'état connecté du compte
+  if ($("auth-go-pro")) $("auth-go-pro").addEventListener("click", window.CET_startCheckout);
 
   /* ----- système de "sheets" accessible (focus trap + Échap) — AXE 3 ----- */
   var _sheetReturnFocus = null;
@@ -1055,7 +1246,10 @@
       if (d.windows.w5h) checks.push(["fenêtre 5 h", d.windows.w5h.total || 0, settings.w5h]);
       if (d.windows.w7d) checks.push(["fenêtre 7 j", d.windows.w7d.total || 0, settings.w7d]);
     }
-    var marks = [100, settings.warnPct, 50];
+    // GATING NOTIFS : en Free, on ne garde que le palier >=100 % (le mur).
+    // Les paliers d'anticipation (25/50/75/90) sont la valeur Pro.
+    var pro = isPro();
+    var marks = pro ? [100, settings.warnPct, 50] : [100];
     checks.forEach(function (c) {
       var name = c[0], p = pct(c[1], c[2]);
       var hit = null;
@@ -1065,24 +1259,48 @@
       if (state[key]) return;
       state[key] = 1;
       var msg = hit >= 100 ? "Plafond atteint (" + p + "%)." : hit + "% du budget consommé (" + p + "%).";
+      // en Free, la notif du mur invite à anticiper avec Pro.
+      if (!pro && hit >= 100) msg += " Pro te prévient dès 75 % — avant le mur.";
       fireNotif("Tokens — " + name, msg);
     });
     setNotified(state);
 
     // --- NOTIFS PAR PALIERS sur le VRAI % officiel (5h + hebdo) ---
     // paliers 25/50/75/90/95/100 %, une fois chacun par fenêtre (clé = reset).
+    // GATING : en Free, on ne notifie QUE le mur (>=100 %).
     if (CET.windowAlerts) {
       var firedKey = "tokenTracker.winAlerts.v1";
       var fired = {};
       try { fired = JSON.parse(localStorage.getItem(firedKey) || "{}"); } catch (e) {}
       var res = CET.windowAlerts(d, fired);
       res.alerts.forEach(function (a) {
-        if (a.mark >= 100) fireNotif("⛔ " + a.label + " — plein", "Tu es à " + a.pct + "%. Claude risque de te ralentir. Ça repart au reset.");
+        if (a.mark >= 100) fireNotif("⛔ " + a.label + " — plein",
+          "Tu es à " + a.pct + "%. Claude risque de te ralentir. Ça repart au reset." +
+          (!pro ? " Pro te prévient dès 75 % — avant le mur." : ""));
+        else if (!pro) return;  // Free : aucun palier d'anticipation
         else if (a.mark >= 90) fireNotif("🔴 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "%. Lève le pied, tu approches du plafond.");
         else if (a.mark >= 75) fireNotif("🟠 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "%. Garde un œil dessus.");
         else fireNotif("🟢 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "% de ta fenêtre.");
       });
       try { localStorage.setItem(firedKey, JSON.stringify(res.fired)); } catch (e) {}
+    }
+
+    // --- NOTIF BOÎTE NOIRE (Pro uniquement) : nouvelle anomalie détectée ---
+    // Une seule fois par anomalie (clé = window). PAS en Free.
+    if (pro && CET.boiteNoireCard) {
+      var b = CET.boiteNoireCard(d);
+      if (b && b.window) {
+        var anomKey = "tokenTracker.anomFired.v1";
+        var anomFired = {};
+        try { anomFired = JSON.parse(localStorage.getItem(anomKey) || "{}"); } catch (e) {}
+        if (!anomFired[b.window]) {
+          anomFired[b.window] = 1;
+          var who = b.share != null && b.share > 50 ? "ce sont tes sous-agents, pas toi" : "regarde la Boîte noire";
+          fireNotif("Ta fenêtre fond ×" + b.zStr + " la normale",
+            who.charAt(0).toUpperCase() + who.slice(1) + ". Ouvre pour voir.");
+          try { localStorage.setItem(anomKey, JSON.stringify(anomFired)); } catch (e) {}
+        }
+      }
     }
   }
 
@@ -1129,7 +1347,25 @@
             .then(function (r) { return r.json(); })
             .then(function (d) {
               if (d.email) $("auth-logged-email").textContent = " — " + d.email;
-              if (d.plan) $("auth-logged-plan").textContent = d.plan;
+              var plan = d.plan || "free";
+              if ($("auth-logged-plan")) $("auth-logged-plan").textContent = plan;
+              // statut d'abonnement : "actif jusqu'au JJ/MM" quand résilié en cours
+              var statusEl = $("auth-logged-status");
+              if (statusEl) {
+                var extra = "";
+                if (d.plan_status === "cancelled" && d.plan_renews_at) {
+                  var dt = new Date(d.plan_renews_at);
+                  if (!isNaN(dt.getTime())) {
+                    extra = " — actif jusqu'au " + dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+                  } else extra = " — résiliation programmée";
+                } else if (d.plan_status && d.plan_status !== "active") {
+                  extra = " (" + d.plan_status + ")";
+                }
+                statusEl.textContent = extra;
+              }
+              // bouton "Passer à Pro" visible seulement si plan free
+              var goPro = $("auth-go-pro");
+              if (goPro) goPro.style.display = (plan === "free") ? "block" : "none";
             }).catch(function () {});
         }
       } else {
@@ -1246,7 +1482,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v22.js";
+  var SW_FILE = "sw.v23.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;
