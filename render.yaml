@@ -13,3 +13,9 @@ services:
         sync: false
       - key: GIST_ID
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

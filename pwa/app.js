@@ -798,11 +798,16 @@
 
   /* ---------- chargement ---------- */
   // fetch avec timeout (corrige REL-001 : Render endormi ne fige plus l'app)
-  function fetchTimeout(url, ms) {
-    if (typeof AbortController === "undefined") return fetch(url, { cache: "no-store" });
+  function fetchTimeout(url, ms, opts) {
+    var o = Object.assign({ cache: "no-store" }, opts || {});
+    if (opts && opts.headers) {
+      o.headers = Object.assign({}, opts.headers);
+    }
+    if (typeof AbortController === "undefined") return fetch(url, o);
     var ctrl = new AbortController();
+    o.signal = ctrl.signal;
     var to = setTimeout(function () { ctrl.abort(); }, ms);
-    return fetch(url, { cache: "no-store", signal: ctrl.signal })
+    return fetch(url, o)
       .finally(function () { clearTimeout(to); });
   }
   function setStatus(msg, kind) {
@@ -813,7 +818,13 @@
 
   function load(silent) {
     var sources = [];
-    if (PUSH_SERVER) sources.push({ url: PUSH_SERVER.replace(/\/$/, "") + "/usage.json", remote: true });
+    // Multi-tenant : si une API key est définie, on passe par le serveur avec la clé
+    var apiKey = window.CET_API_KEY;
+    if (PUSH_SERVER) {
+      var remoteUrl = PUSH_SERVER.replace(/\/$/, "") + "/usage.json";
+      if (apiKey) remoteUrl += "?key=" + encodeURIComponent(apiKey);
+      sources.push({ url: remoteUrl, remote: true, withKey: !!apiKey });
+    }
     sources.push({ url: "data/usage.json", remote: false });
     var sawRemoteTimeout = false;
 
@@ -831,7 +842,10 @@
           });
       }
       var src = sources[i];
-      return fetchTimeout(src.url, src.remote ? 12000 : 8000)
+      var fetchOpts = {};
+      // Passer l'API key en header aussi (pour les requêtes multi-tenant)
+      if (src.withKey && apiKey) fetchOpts.headers = { "X-Api-Key": apiKey };
+      return fetchTimeout(src.url, src.remote ? 12000 : 8000, fetchOpts)
         .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
         .then(function (d) {
           if (!d || !d.totals || !d.totals.total) throw new Error("empty");
@@ -1092,6 +1106,137 @@
       if (p === "granted") fireNotif("Tokens", "Notifications activées. Tu seras prévenu aux seuils.");
     }).catch(function () {});
   });
+
+  /* ---------- auth multi-tenant ---------- */
+  (function initAuth() {
+    var sheet = $("auth-sheet");
+    if (!sheet) return;
+
+    function openAuth() { sheet.classList.add("open"); updateAuthUI(); }
+    function closeAuth() { sheet.classList.remove("open"); }
+
+    function updateAuthUI() {
+      var apiKey = window.CET_API_KEY;
+      var form = $("auth-form"), success = $("auth-success"), logged = $("auth-logged");
+      if (!form) return;
+      if (apiKey) {
+        form.style.display = "none";
+        success.style.display = "none";
+        logged.style.display = "block";
+        // Charger le profil
+        if (PUSH_SERVER) {
+          fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/me", { headers: { "X-Api-Key": apiKey } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (d.email) $("auth-logged-email").textContent = " — " + d.email;
+              if (d.plan) $("auth-logged-plan").textContent = d.plan;
+            }).catch(function () {});
+        }
+      } else {
+        form.style.display = "block";
+        success.style.display = "none";
+        logged.style.display = "none";
+      }
+    }
+
+    if ($("open-auth")) $("open-auth").addEventListener("click", openAuth);
+    if ($("close-auth")) $("close-auth").addEventListener("click", closeAuth);
+
+    // S'inscrire
+    if ($("auth-submit")) $("auth-submit").addEventListener("click", function () {
+      var email = ($("auth-email").value || "").trim();
+      if (!email || email.indexOf("@") < 0) {
+        $("auth-error").textContent = "Email invalide.";
+        $("auth-error").style.display = "block";
+        return;
+      }
+      $("auth-error").style.display = "none";
+      $("auth-submit").textContent = "Création…";
+      $("auth-submit").disabled = true;
+
+      fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email }),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+          $("auth-submit").textContent = "Obtenir ma clé API";
+          $("auth-submit").disabled = false;
+          if (!res.ok) {
+            $("auth-error").textContent = res.data.error || "Erreur.";
+            $("auth-error").style.display = "block";
+            return;
+          }
+          // Succès : afficher la clé
+          window.CET_setApiKey(res.data.api_key);
+          $("auth-key-display").value = res.data.api_key;
+          $("auth-form").style.display = "none";
+          $("auth-success").style.display = "block";
+          load();  // recharger les données avec la clé
+        })
+        .catch(function () {
+          $("auth-submit").textContent = "Obtenir ma clé API";
+          $("auth-submit").disabled = false;
+          $("auth-error").textContent = "Erreur réseau. Le serveur dort peut-être (~50s).";
+          $("auth-error").style.display = "block";
+        });
+    });
+
+    // Copier la clé
+    if ($("auth-copy-key")) $("auth-copy-key").addEventListener("click", function () {
+      var key = $("auth-key-display").value;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(key).then(function () {
+          $("auth-copy-key").textContent = "Copié ✓";
+        });
+      } else {
+        $("auth-key-display").select();
+        document.execCommand("copy");
+        $("auth-copy-key").textContent = "Copié ✓";
+      }
+    });
+
+    // Fermer après copie
+    if ($("auth-done")) $("auth-done").addEventListener("click", function () {
+      closeAuth();
+      updateAuthUI();
+    });
+
+    // Se connecter avec une clé existante
+    if ($("auth-key-submit")) $("auth-key-submit").addEventListener("click", function () {
+      var key = ($("auth-key-input").value || "").trim();
+      if (!key || key.indexOf("cet_") !== 0) {
+        $("auth-error").textContent = "La clé doit commencer par cet_";
+        $("auth-error").style.display = "block";
+        return;
+      }
+      $("auth-error").style.display = "none";
+      window.CET_setApiKey(key);
+      closeAuth();
+      load();  // recharger avec la clé
+    });
+
+    // Déconnexion
+    if ($("auth-logout")) $("auth-logout").addEventListener("click", function () {
+      window.CET_clearApiKey();
+      updateAuthUI();
+      load();  // recharger sans clé (retour au mode legacy/démo)
+    });
+
+    // Fermer avec Escape
+    sheet.addEventListener("keydown", function (e) { if (e.key === "Escape") closeAuth(); });
+    // Fermer en cliquant le backdrop
+    sheet.addEventListener("click", function (e) { if (e.target === sheet) closeAuth(); });
+
+    // Indicateur visuel : bouton compte rempli si connecté
+    var authBtn = $("open-auth");
+    if (authBtn && window.CET_API_KEY) {
+      authBtn.style.background = "var(--terracotta)";
+      authBtn.style.color = "#fff";
+      authBtn.style.borderColor = "var(--terracotta)";
+    }
+  })();
 
   ensureNotifPermission();
   loadEurRate();

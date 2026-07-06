@@ -3,6 +3,7 @@ Tests du serveur Flask (tests/test_server.py) — sans réseau.
 
 On stub save_to_gist/load_from_gist pour ne jamais sortir. Couvre la sécurité
 (secret timing-safe, validation payload) et la fraîcheur exposée.
+Mode multi-tenant testé avec Supabase mocké.
 """
 import os
 import sys
@@ -14,6 +15,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "server"))
 os.environ["PUSH_SECRET"] = "test-secret-123"
 os.environ.pop("GITHUB_TOKEN", None)  # pas de Gist -> pas de réseau
 os.environ.pop("GIST_ID", None)
+os.environ.pop("SUPABASE_URL", None)  # pas de multi-tenant par défaut
+os.environ.pop("SUPABASE_KEY", None)
 
 import app as server  # noqa: E402
 
@@ -68,6 +71,22 @@ class TestServer(unittest.TestCase):
         self.assertTrue(server._valid_payload(GOOD))
         self.assertFalse(server._valid_payload({"totals": {"total": None}}))
         self.assertFalse(server._valid_payload("not a dict"))
+
+    def test_health_endpoint(self):
+        r = self.c.get("/")
+        self.assertEqual(r.status_code, 200)
+        body = r.get_json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["service"], "claude-eats-tokens")
+        self.assertIn("multiTenant", body)
+
+    def test_auth_register_disabled_without_supabase(self):
+        r = self.c.post("/auth/register", json={"email": "test@example.com"})
+        self.assertEqual(r.status_code, 501)
+
+    def test_auth_me_disabled_without_supabase(self):
+        r = self.c.get("/auth/me", headers={"X-Api-Key": "cet_test"})
+        self.assertEqual(r.status_code, 501)
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@ question:
 Three things no other tracker does:
 
 - **Works from your phone.** Install it, check your usage from the couch,
-  the train, anywhere. No terminal required.
+  the train, anywhere. No terminal, no Python, no npm — just open and go.
 - **Alerts before you hit the wall.** Push notifications on your phone when
   your 5-hour window is heating up — based on Anthropic's actual server
   percentage, not a guess.
@@ -59,7 +59,7 @@ Three things no other tracker does:
   severity, ETA to throttle, and plain-language advice. A productive week
   gets a compliment, not a warning.
 
-Zero build step · free infra · 101 tests · MIT ·
+Zero build step · zero install · cross-platform · free infra · 101 tests · MIT ·
 [see it in action →](assets/demo.gif)
 
 ---

@@ -477,9 +477,14 @@ def build(verbose=False):
     return payload
 
 
-def push(payload, url, secret):
+def push(payload, url, secret=None, api_key=None):
+    headers = {}
+    if api_key:
+        headers["X-Api-Key"] = api_key
+    elif secret:
+        headers["X-Push-Secret"] = secret
     r = requests.post(url.rstrip("/") + "/push", json=payload,
-                      headers={"X-Push-Secret": secret}, timeout=15)
+                      headers=headers, timeout=15)
     return r
 
 
@@ -492,8 +497,9 @@ def main():
 
     url = os.environ.get("PUSH_URL", "").strip()
     secret = os.environ.get("PUSH_SECRET", "").strip()
-    if not url or not secret:
-        print("⚠  Définis PUSH_URL et PUSH_SECRET (voir .env.example). "
+    api_key = os.environ.get("CET_API_KEY", "").strip()
+    if not url or (not secret and not api_key):
+        print("⚠  Définis PUSH_URL et PUSH_SECRET (ou CET_API_KEY). "
               "On écrit quand même data/usage.json en local.")
 
     out = Path(__file__).resolve().parent.parent / "data" / "usage.json"
@@ -506,9 +512,9 @@ def main():
         payload = build(verbose=args.verbose)
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         total = payload["totals"]["total"]
-        if url and secret:
+        if url and (secret or api_key):
             try:
-                r = push(payload, url, secret)
+                r = push(payload, url, secret=secret, api_key=api_key)
                 if r.ok:
                     ok, consecutive_errors = "OK", 0
                 else:

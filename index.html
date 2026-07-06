@@ -26,6 +26,9 @@
       <button class="iconbtn" id="share-app" aria-label="Partager" title="Partager">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
+      <button class="iconbtn" id="open-auth" aria-label="Compte" title="Compte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
       <button class="iconbtn" id="open-settings" aria-label="Réglages">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -138,7 +141,7 @@
     <div id="projects"></div>
   </section>
 
-  <p class="foot" id="foot">Données locales, jamais envoyées en ligne.</p>
+  <p class="foot" id="foot">Données locales, jamais envoyées en ligne.<br><a href="https://github.com/sponsors/arochab" class="foot-link" target="_blank" rel="noopener">Soutenir ce projet</a> · <a href="https://github.com/arochab/claude-eats-tokens" class="foot-link" target="_blank" rel="noopener">Code source</a></p>
 </div>
 
 <!-- Réglages -->
@@ -197,6 +200,65 @@
 
     <button class="btn" id="save-settings">Enregistrer</button>
     <button class="btn ghost" id="reset-settings">Réinitialiser les valeurs par défaut</button>
+
+    <div class="grouplabel">Ce projet</div>
+    <div class="about-block">
+      <p class="about-txt">Outil perso, open source, gratuit. Si tu l'utilises au quotidien et que tu veux soutenir le projet :</p>
+      <a class="btn sponsor-btn" href="https://github.com/sponsors/arochab" target="_blank" rel="noopener">Sponsor sur GitHub</a>
+      <div class="about-links">
+        <a href="https://github.com/arochab/claude-eats-tokens" target="_blank" rel="noopener">Code source (MIT)</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Connexion multi-tenant -->
+<div class="sheet" id="auth-sheet" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+  <div class="sheet-inner">
+    <h2 id="auth-title">Connexion
+      <button class="iconbtn" id="close-auth" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </h2>
+    <p class="lead">Connecte-toi pour voir tes données depuis n'importe quel appareil.</p>
+
+    <div id="auth-form">
+      <div class="grouplabel">S'inscrire ou se connecter</div>
+      <div class="fieldgroup">
+        <div class="field"><label>Email<small>ton adresse email</small></label><input type="email" id="auth-email" placeholder="toi@exemple.com" /></div>
+      </div>
+      <div id="auth-error" style="color:var(--danger);font-size:13px;margin:8px 0;display:none"></div>
+      <button class="btn" id="auth-submit">Obtenir ma clé API</button>
+      <p class="about-txt" style="margin-top:12px">Tu recevras une <b>clé API</b> à coller dans le moteur sur ton PC. Pas de mot de passe.</p>
+
+      <div class="grouplabel" style="margin-top:24px">J'ai déjà une clé API</div>
+      <div class="fieldgroup">
+        <div class="field"><label>Clé API<small>cet_...</small></label><input type="text" id="auth-key-input" placeholder="cet_..." /></div>
+      </div>
+      <button class="btn ghost" id="auth-key-submit">Me connecter avec ma clé</button>
+    </div>
+
+    <div id="auth-success" style="display:none">
+      <div class="alert ok" style="margin-top:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        <div>
+          <b>Compte créé !</b>
+          <span class="why">Ta clé API est ci-dessous. Copie-la maintenant — elle ne sera plus affichée.</span>
+        </div>
+      </div>
+      <div class="fieldgroup" style="margin-top:12px">
+        <div class="field"><label>Ta clé API<small>à garder précieusement</small></label><input type="text" id="auth-key-display" readonly style="font-family:var(--mono);font-size:11px;width:200px" /></div>
+      </div>
+      <button class="btn" id="auth-copy-key">Copier la clé</button>
+      <button class="btn ghost" id="auth-done">C'est bon, j'ai copié</button>
+    </div>
+
+    <div id="auth-logged" style="display:none">
+      <div class="alert ok" style="margin-top:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        <div><b>Connecté</b> <span id="auth-logged-email"></span></div>
+      </div>
+      <p class="about-txt" style="margin-top:12px">Plan : <b id="auth-logged-plan">free</b></p>
+      <button class="btn ghost" id="auth-logout">Se déconnecter</button>
+    </div>
   </div>
 </div>
 

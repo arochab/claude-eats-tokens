@@ -1,22 +1,28 @@
 """
 Claude Eats Tokens — push server (Flask).
 
-Rôle minimal et gratuit (Render free tier) : recevoir les chiffres d'usage
-poussés par le poste local (POST /push, protégé par un secret partagé) et les
-resservir à la PWA (GET /usage.json). Les données vivent dans une Gist privée
-GitHub pour survivre au disque éphémère du free tier.
+Deux modes de fonctionnement :
+1. **Legacy (single-tenant)** : un seul utilisateur, auth par PUSH_SECRET,
+   persistance dans une Gist privée GitHub. C'est le mode historique d'Adam.
+2. **Multi-tenant (hosted)** : plusieurs utilisateurs, auth par API key
+   personnelle, persistance dans Supabase PostgreSQL (free tier).
 
-Durcissements de sécurité/fiabilité (voir AUDIT.md) :
-- comparaison de secret en temps constant (hmac.compare_digest) ;
-- validation typée du payload /push ;
-- retry + backoff sur les écritures/lectures Gist, avec logs ;
-- CORS restreint (lecture publique GET, /push non exposé au navigateur) ;
-- /usage.json expose l'âge des données (fraîcheur côté front).
+Le mode est choisi automatiquement :
+- Si SUPABASE_URL est défini → multi-tenant.
+- Sinon → legacy (PUSH_SECRET + Gist).
+
+Les deux modes peuvent coexister : Adam garde son PUSH_SECRET, les autres
+utilisateurs utilisent leur API key.
 
 Env (Render → Environment) :
-  PUSH_SECRET      secret partagé PC ↔ serveur (obligatoire)
+  -- Legacy --
+  PUSH_SECRET      secret partagé PC ↔ serveur (obligatoire en legacy)
   GITHUB_TOKEN     token avec scope `gist` (persistance durable, optionnel)
   GIST_ID          id de la Gist privée qui stocke usage.json (optionnel)
+  -- Multi-tenant --
+  SUPABASE_URL     URL du projet Supabase
+  SUPABASE_KEY     clé service_role (pas anon — on gère l'auth nous-mêmes)
+  -- Communs --
   ALLOWED_ORIGINS  origines autorisées en lecture (def. github.io + onrender)
   PORT             fourni par Render
 """
@@ -24,10 +30,12 @@ import hmac
 import json
 import logging
 import os
+import secrets
 import time
+import hashlib
 
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -40,17 +48,80 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GIST_ID = os.environ.get("GIST_ID", "")
 GIST_FILE = "usage.json"
 
-# Lecture publique (la PWA est sur GitHub Pages, autre origine). /usage.json ne
-# contient que des compteurs de tokens : aucun secret, aucun risque. On autorise
-# donc TOUTES les origines en GET (un wildcard *.github.io flask-cors ne matche
-# pas fiablement le sous-domaine et bloquait le téléphone). /push reste protégé
-# par le secret (hmac) et n'est pas appelé depuis un navigateur.
-CORS(app, resources={r"/usage.json": {"origins": "*", "methods": ["GET"]}})
+# Multi-tenant (Supabase)
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")  # service_role key
+MULTI_TENANT = bool(SUPABASE_URL and SUPABASE_KEY)
 
-# Cache mémoire (rapide) + Gist (durable).
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://arochab.github.io/claude-eats-tokens")
+
+# Lecture publique (la PWA est sur GitHub Pages, autre origine).
+CORS(app, resources={
+    r"/usage.json": {"origins": "*", "methods": ["GET"]},
+    r"/auth/*": {"origins": "*", "methods": ["GET", "POST"]},
+    r"/api/*": {"origins": "*", "methods": ["GET", "POST"]},
+})
+
+# Cache mémoire legacy (rapide) + Gist (durable).
 _cache = {"data": None, "ts": 0, "lastGistOk": None}
 
 
+# ---------------------------------------------------------------------------
+# Supabase helpers (multi-tenant)
+# ---------------------------------------------------------------------------
+def _sb_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+
+def _sb_get_user_by_api_key(api_key):
+    """Cherche un utilisateur par sa clé API (hash SHA-256)."""
+    if not MULTI_TENANT or not api_key:
+        return None
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/users?api_key_hash=eq.{key_hash}&select=id,email,plan",
+        headers=_sb_headers(), timeout=10)
+    if r.ok and r.json():
+        return r.json()[0]
+    return None
+
+
+def _sb_save_usage(user_id, payload):
+    """Sauvegarde le usage.json d'un utilisateur dans Supabase."""
+    body = {"user_id": user_id, "data": payload}
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/usage_blobs",
+        headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"},
+        json=body, timeout=10)
+    # Upsert : si l'utilisateur a déjà une ligne, on la remplace
+    if r.status_code == 409:
+        r = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/usage_blobs?user_id=eq.{user_id}",
+            headers=_sb_headers(),
+            json={"data": payload, "saved_at": "now()"},
+            timeout=10)
+    return r.ok
+
+
+def _sb_load_usage(user_id):
+    """Charge le dernier usage.json d'un utilisateur depuis Supabase."""
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/usage_blobs?user_id=eq.{user_id}&select=data,saved_at&order=saved_at.desc&limit=1",
+        headers=_sb_headers(), timeout=10)
+    if r.ok and r.json():
+        row = r.json()[0]
+        return row["data"], row["saved_at"]
+    return None, None
+
+
+# ---------------------------------------------------------------------------
+# Gist helpers (legacy)
+# ---------------------------------------------------------------------------
 def _gist_headers():
     return {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
 
@@ -114,39 +185,85 @@ def _valid_payload(p):
     return True
 
 
+def _auth_user():
+    """Extrait l'utilisateur depuis la requête (API key ou PUSH_SECRET legacy)."""
+    # 1. API key multi-tenant
+    api_key = request.headers.get("X-Api-Key", "")
+    if api_key and MULTI_TENANT:
+        user = _sb_get_user_by_api_key(api_key)
+        if user:
+            return {"mode": "multi", "user": user}
+        return None
+
+    # 2. Legacy PUSH_SECRET
+    secret = request.headers.get("X-Push-Secret", "")
+    if secret and PUSH_SECRET and hmac.compare_digest(secret, PUSH_SECRET):
+        return {"mode": "legacy"}
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 @app.get("/")
 def health():
     return jsonify({"service": "claude-eats-tokens", "ok": True,
                     "hasData": _cache["data"] is not None,
+                    "multiTenant": MULTI_TENANT,
                     "lastGistOk": _cache["lastGistOk"]})
 
 
 @app.post("/push")
 def push():
     """Le PC envoie ici son usage.json frais."""
-    secret = request.headers.get("X-Push-Secret", "")
-    # comparaison en temps constant (corrige SEC-001)
-    if not PUSH_SECRET or not hmac.compare_digest(secret, PUSH_SECRET):
-        log.info("push refusé : secret invalide")
+    auth = _auth_user()
+    if not auth:
+        log.info("push refusé : auth invalide")
         return jsonify({"error": "unauthorized"}), 401
+
     try:
         payload = request.get_json(force=True)
     except Exception:
         return jsonify({"error": "bad json"}), 400
     if not _valid_payload(payload):
         return jsonify({"error": "invalid payload"}), 400
-    _cache["data"] = payload
-    _cache["ts"] = time.time()
-    gist_ok = save_to_gist(payload)
-    # 207 si reçu mais non persisté durablement (le PC peut logguer l'alerte)
-    status = 200 if gist_ok or not (GITHUB_TOKEN and GIST_ID) else 207
-    return jsonify({"ok": True, "persisted": gist_ok,
-                    "received": payload["totals"].get("total", 0)}), status
+
+    if auth["mode"] == "multi":
+        # Multi-tenant : stockage Supabase
+        user_id = auth["user"]["id"]
+        ok = _sb_save_usage(user_id, payload)
+        status = 200 if ok else 500
+        return jsonify({"ok": ok, "received": payload["totals"].get("total", 0)}), status
+    else:
+        # Legacy : stockage Gist
+        _cache["data"] = payload
+        _cache["ts"] = time.time()
+        gist_ok = save_to_gist(payload)
+        status = 200 if gist_ok or not (GITHUB_TOKEN and GIST_ID) else 207
+        return jsonify({"ok": True, "persisted": gist_ok,
+                        "received": payload["totals"].get("total", 0)}), status
 
 
 @app.get("/usage.json")
 def usage():
     """La PWA lit ici les derniers chiffres."""
+    # Multi-tenant : l'utilisateur passe son API key
+    api_key = request.headers.get("X-Api-Key", "") or request.args.get("key", "")
+    if api_key and MULTI_TENANT:
+        user = _sb_get_user_by_api_key(api_key)
+        if not user:
+            return jsonify({"error": "unauthorized"}), 401
+        data, saved_at = _sb_load_usage(user["id"])
+        if data is None:
+            return jsonify({"error": "no data yet"}), 404
+        out = dict(data) if isinstance(data, dict) else data
+        out["user"] = {"email": user.get("email", ""), "plan": user.get("plan", "free")}
+        resp = jsonify(out)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    # Legacy : cache mémoire + Gist
     data = _cache["data"]
     if data is None:
         data = load_from_gist()
@@ -161,6 +278,76 @@ def usage():
     resp = jsonify(out)
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Auth multi-tenant (inscription + login)
+# ---------------------------------------------------------------------------
+@app.post("/auth/register")
+def register():
+    """Crée un compte et retourne une API key."""
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    body = request.get_json(force=True) if request.is_json else {}
+    email = (body.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"error": "email required"}), 400
+
+    # Vérifier si l'email existe déjà
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/users?email=eq.{email}&select=id",
+        headers=_sb_headers(), timeout=10)
+    if r.ok and r.json():
+        return jsonify({"error": "email already registered"}), 409
+
+    # Générer une API key
+    api_key = f"cet_{secrets.token_urlsafe(32)}"
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+
+    # Créer l'utilisateur
+    user_data = {
+        "email": email,
+        "api_key_hash": key_hash,
+        "plan": "free",
+    }
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/users",
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        json=user_data, timeout=10)
+
+    if not r.ok:
+        log.warning("register failed: %s %s", r.status_code, r.text)
+        return jsonify({"error": "registration failed"}), 500
+
+    user = r.json()[0] if r.json() else {}
+    return jsonify({
+        "ok": True,
+        "api_key": api_key,
+        "email": email,
+        "plan": "free",
+        "message": "Garde cette clé API précieusement — elle ne sera plus affichée.",
+    }), 201
+
+
+@app.get("/auth/me")
+def me():
+    """Retourne le profil de l'utilisateur connecté (via API key)."""
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    api_key = request.headers.get("X-Api-Key", "")
+    if not api_key:
+        return jsonify({"error": "api key required"}), 401
+
+    user = _sb_get_user_by_api_key(api_key)
+    if not user:
+        return jsonify({"error": "invalid api key"}), 401
+
+    return jsonify({
+        "email": user.get("email", ""),
+        "plan": user.get("plan", "free"),
+    })
 
 
 if __name__ == "__main__":
