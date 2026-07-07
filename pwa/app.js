@@ -1,6 +1,12 @@
 /* Token Tracker V2 — logique front. Dépendance : Chart.js (CDN). */
 (function () {
   "use strict";
+  /* ---------- Couleurs sémantiques (source unique, C2) ----------
+     Une seule définition des couleurs d'état, alignée sur les tokens CSS de
+     :root (--sage / --amber / --danger). À GARDER SYNCHRO avec pwa/styles.css.
+     Évite les hex d'état dispersés et divergents dans le JS (jauges du feu et
+     du forfait). ok = vert, warn = ambre, danger = rouge. */
+  var CET_COLORS = { ok: "#7E9466", warn: "#C8923D", danger: "#A8432F" };
   /* ---------- source des données ----------
      Renseigne l'URL de ton serveur Render ci-dessous (ou laisse vide).
      Ordre d'essai : serveur Render -> data/usage.json (GitHub Pages) -> démo. */
@@ -376,7 +382,7 @@
           '</span><button class="fbar-set" type="button">définir ma limite</button></div>' +
           '<div class="fbar-track"><span style="width:0"></span></div></div>';
       }
-      var col = p >= 100 ? "#B5563A" : p >= (settings.warnPct || 80) ? "#C8923D" : (accent || "#7E9E6D");
+      var col = p >= 100 ? CET_COLORS.danger : p >= (settings.warnPct || 80) ? CET_COLORS.warn : (accent || CET_COLORS.ok);
       return '<div class="fbar"><div class="fbar-top"><span class="fbar-lab">' + esc(label) +
         '</span><span class="fbar-pct" style="color:' + col + '">' + p + '%</span></div>' +
         '<div class="fbar-sub">' + esc(resetTxt) + '</div>' +
@@ -547,7 +553,7 @@
     var gz = $("vgauges");
     if (gz) {
       gz.innerHTML = (st.gauges || []).map(function (g) {
-        var col = g.level === "red" ? "#B5563A" : g.level === "orange" ? "#C8923D" : "#7E9E6D";
+        var col = g.level === "red" ? CET_COLORS.danger : g.level === "orange" ? CET_COLORS.warn : CET_COLORS.ok;
         // Canal NON-chromatique : un glyphe + suffixe pour que le niveau ne soit
         // pas porté par la couleur seule (WCAG 1.4.1 — daltonisme).
         var mark = g.level === "red" ? "● " : g.level === "orange" ? "⚠ " : "";
@@ -1615,7 +1621,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v28.js";
+  var SW_FILE = "sw.v29.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;
