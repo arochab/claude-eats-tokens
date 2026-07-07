@@ -1,12 +1,12 @@
-/* Service worker v29 — Claude Eats Tokens.
+/* Service worker v30 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v29 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v30 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v29 : C2 (noyau) — couleurs sémantiques unifiées (CET_COLORS source unique,
+   v30 : C2 (noyau) — couleurs sémantiques unifiées (CET_COLORS source unique,
    alignées sur les tokens CSS), rayon CTA unique (--r-btn), transitions
    explicites au lieu de `all`. Échelle de rayons complétée (--r-xs/-sm). */
-const CACHE = "cet-v29";
+const CACHE = "cet-v30";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js",
