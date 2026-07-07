@@ -1613,6 +1613,151 @@
     closeSheet("settings"); if (window.CET_openSetup) window.CET_openSetup();
   });
 
+  /* ---------- Brancher mon ordinateur (#pair-sheet) — device-pairing ----------
+     Flow : `claude-push` sur le PC affiche un code XXXX-XXXX dans le terminal ET
+     ouvre le navigateur sur l'app avec ?pair=<code>. Ici on montre CE code en gros
+     et on invite l'utilisateur à le comparer VISUELLEMENT à celui de son terminal
+     (anti-phishing) avant de confirmer. Confirmer = POST {SERVER}/pair/confirm
+     {code, api_key}. Il faut être connecté (window.CET_API_KEY) : sinon on route
+     d'abord vers l'auth puis on revient. Fire-and-forget propre, aucun crash. */
+  (function initPairing() {
+    var sheet = $("pair-sheet");
+    if (!sheet) return;
+    var server = (window.CLAUDE_EATS_TOKENS_SERVER || "").replace(/\/$/, "");
+    var pending = null;   // code en attente (ex. mémorisé pendant la connexion)
+    var live = $("pair-live");
+    function announce(m) { if (live) live.textContent = m || ""; }
+
+    // Normalise un code brut vers "XXXX-XXXX" (majuscules, un seul tiret). Renvoie
+    // "" si ça ne ressemble pas à un code (8 caractères alphanumériques).
+    function normCode(raw) {
+      var s = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (s.length !== 8) return "";
+      return s.slice(0, 4) + "-" + s.slice(4);
+    }
+
+    function showState(which) {
+      ["pair-need-auth", "pair-confirm", "pair-success"].forEach(function (id) {
+        var el = $(id); if (el) el.hidden = (id !== which);
+      });
+    }
+    function showError(msg) {
+      var box = $("pair-error");
+      if (box) { box.textContent = msg; box.hidden = false; }
+      announce(msg);
+    }
+    function clearError() { var box = $("pair-error"); if (box) box.hidden = true; }
+
+    // Ouvre le sheet sur le bon état. code optionnel (pré-rempli depuis l'URL) ;
+    // sinon on montre le champ manuel pour taper le code du terminal.
+    function open(code) {
+      var norm = code ? normCode(code) : "";
+      pending = norm || null;
+      clearError();
+      var manual = $("pair-manual");
+      if (norm) {
+        $("pair-code").textContent = norm;
+        $("pair-code").hidden = false;
+        if (manual) manual.hidden = true;
+      } else {
+        $("pair-code").hidden = true;         // pas de code connu -> saisie manuelle
+        if (manual) manual.hidden = false;
+        if ($("pair-code-input")) $("pair-code-input").value = "";
+      }
+      // pas de compte -> on demande d'abord la connexion
+      if (!window.CET_API_KEY) { showState("pair-need-auth"); }
+      else { showState("pair-confirm"); }
+      openSheet("pair-sheet");
+      if ($("pair-code-input") && !norm && window.CET_API_KEY) {
+        setTimeout(function () { try { $("pair-code-input").focus(); } catch (e) {} }, 60);
+      }
+    }
+    function close() { closeSheet("pair-sheet"); }
+    // Exposé : le boot (détection ?pair=) et les points d'entrée s'en servent.
+    window.CET_openPair = open;
+
+    // Récupère le code à confirmer : soit pré-rempli (pending), soit tapé à la main.
+    function currentCode() {
+      if (pending) return pending;
+      var inp = $("pair-code-input");
+      return inp ? normCode(inp.value) : "";
+    }
+
+    // Le bouton "Me connecter" : on garde le code en mémoire, on ouvre l'auth,
+    // et au retour (clé posée) on rouvre le pairing sur l'état confirmation.
+    if ($("pair-goto-auth")) $("pair-goto-auth").addEventListener("click", function () {
+      var keep = pending;
+      close();
+      if (typeof window.CET_openAuth === "function") window.CET_openAuth();
+      // sonde légère : dès qu'une clé apparaît, on revient au pairing.
+      var tries = 0;
+      var iv = setInterval(function () {
+        tries++;
+        if (window.CET_API_KEY) { clearInterval(iv); open(keep); }
+        else if (tries > 600) { clearInterval(iv); }  // ~5 min max, puis on lâche
+      }, 500);
+    });
+    if ($("pair-cancel-auth")) $("pair-cancel-auth").addEventListener("click", close);
+    if ($("pair-cancel")) $("pair-cancel").addEventListener("click", close);
+    if ($("close-pair")) $("close-pair").addEventListener("click", close);
+    sheet.addEventListener("click", function (e) { if (e.target === sheet) close(); });
+
+    if ($("pair-done")) $("pair-done").addEventListener("click", function () {
+      close();
+      load();  // recharge : les vrais chiffres du PC fraîchement branché arrivent
+    });
+
+    if ($("pair-confirm-btn")) $("pair-confirm-btn").addEventListener("click", function () {
+      clearError();
+      var code = currentCode();
+      if (!code) { showError("Entre le code affiché sur ton ordinateur (format XXXX-XXXX)."); return; }
+      // sécurité : sans compte on ne peut rien lier -> on renvoie vers l'auth
+      if (!window.CET_API_KEY) { pending = code; showState("pair-need-auth"); return; }
+      if (!server) { showError("Pas de serveur configuré. Le branchement se fait depuis la version en ligne de l'app."); return; }
+      var btn = this;
+      btn.disabled = true; btn.textContent = "Branchement…"; announce("Branchement en cours…");
+      fetch(server + "/pair/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": window.CET_API_KEY },
+        body: JSON.stringify({ code: code, api_key: window.CET_API_KEY }),
+      })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
+        })
+        .then(function (res) {
+          btn.disabled = false; btn.textContent = "Confirmer — c'est bien mon ordinateur";
+          if (res.ok && res.data && res.data.ok) {
+            pending = null;
+            showState("pair-success");
+            announce("C'est branché. Tes chiffres vont apparaître.");
+            return;
+          }
+          // messages clairs selon le code HTTP
+          if (res.status === 404) showError("Ce code n'existe pas (ou plus). Relance la commande sur ton ordinateur pour en obtenir un nouveau.");
+          else if (res.status === 410) showError("Ce code a expiré. Relance la commande sur ton ordinateur : un code neuf s'affichera.");
+          else if (res.status === 400) showError("Code invalide. Vérifie qu'il correspond exactement à celui de ton terminal.");
+          else showError((res.data && res.data.error) || "Le branchement a échoué. Réessaie dans un instant.");
+        })
+        .catch(function () {
+          btn.disabled = false; btn.textContent = "Confirmer — c'est bien mon ordinateur";
+          showError("Pas de réponse du serveur (il dort peut-être ~50 s). Réessaie dans un instant.");
+        });
+    });
+
+    // Entrée = confirmer, depuis le champ manuel.
+    if ($("pair-code-input")) $("pair-code-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); $("pair-confirm-btn").click(); }
+    });
+  })();
+
+  // Points d'entrée manuels du pairing : réglages + dernière étape de l'onboarding.
+  if ($("settings-pair")) $("settings-pair").addEventListener("click", function () {
+    closeSheet("settings"); if (window.CET_openPair) window.CET_openPair();
+  });
+  if ($("setup-pair-link")) $("setup-pair-link").addEventListener("click", function () {
+    closeSheet("setup-sheet"); if (window.CET_openPair) window.CET_openPair();
+  });
+
   ensureNotifPermission();
   loadEurRate();
   load();
@@ -1630,7 +1775,21 @@
     if (PUSH_SERVER && /^[a-z0-9-]{1,32}$/.test(_ref)) new Image().src = PUSH_SERVER.replace(/\/$/, "") + "/beacon?ref=" + _ref;
   } catch (e) {}
 
-  var SW_FILE = "sw.v31.js";
+  // Device-pairing : `claude-push` sur le PC ouvre l'app avec ?pair=XXXX-XXXX.
+  // On ouvre l'écran de confirmation avec le code pré-rempli, puis on NETTOIE
+  // l'URL (comme le beacon) pour ne pas rejouer le pairing à un refresh/partage.
+  try {
+    var _pair = new URLSearchParams(location.search).get("pair");
+    if (_pair && /^[A-Za-z0-9]{4}-?[A-Za-z0-9]{4}$/.test(_pair.trim())) {
+      if (window.CET_openPair) window.CET_openPair(_pair.trim());
+      if (window.history && history.replaceState) {
+        var _u = new URL(location.href); _u.searchParams.delete("pair");
+        history.replaceState(null, "", _u.pathname + _u.search + _u.hash);
+      }
+    }
+  } catch (e) {}
+
+  var SW_FILE = "sw.v32.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

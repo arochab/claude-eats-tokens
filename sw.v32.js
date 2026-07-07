@@ -1,11 +1,12 @@
-/* Service worker v31 — Claude Eats Tokens.
+/* Service worker v32 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v31 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v32 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v31 : instrumentation GTM — beacon ?ref= (comptage par canal 0-PII) au boot,
-   routes serveur /stats + /beacon. Aucun changement de stratégie de cache. */
-const CACHE = "cet-v31";
+   v32 : device-pairing — écran « Brancher mon ordinateur » (#pair-sheet) qui
+   confirme l'appairage sans copier de clé (?pair=<code>, vérif visuelle du code
+   anti-phishing). Aucun changement de stratégie de cache. */
+const CACHE = "cet-v32";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js",

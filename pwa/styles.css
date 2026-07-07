@@ -358,6 +358,25 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .fr-cta{background:none;border:none;color:var(--terracotta-d);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;padding:8px 0 0;margin:0}
 .fr-cta:hover{text-decoration:underline}
 
+/* ===== Brancher mon ordinateur (#pair-sheet) — device-pairing ===== */
+/* le code en gros, style "carte de sécurité" : mono, espacé, centré, chiffre
+   éditorial. Doit être lisible d'un coup d'œil pour comparer au terminal. */
+.pair-code{font-family:var(--mono);font-weight:600;font-size:34px;letter-spacing:.18em;text-align:center;color:var(--slate);
+  background:var(--paper);border:1px solid var(--line-strong);border-radius:var(--r-lg);
+  padding:22px 12px;margin:6px 0 16px;user-select:all;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 2px rgba(26,25,21,.04)}
+.pair-check{display:flex;gap:11px;align-items:flex-start;background:rgba(212,162,127,.13);border:1px solid rgba(212,162,127,.3);border-radius:var(--r-md);
+  padding:12px 14px;margin:0 0 14px;font-size:12.5px;line-height:1.5;color:var(--slate-soft)}
+.pair-check-ic{flex:0 0 auto;color:var(--terracotta-d);margin-top:1px}
+.pair-check-ic svg{width:20px;height:20px}
+.pair-msg{font-size:13px;line-height:1.5;border-radius:var(--r-md);padding:11px 13px;margin:0 0 12px}
+.pair-msg--err{background:rgba(181,86,58,.14);color:var(--terracotta-d)}
+.pair-msg[hidden]{display:none}
+.pair-success-ic{width:52px;height:52px;border-radius:14px;background:rgba(126,158,109,.18);color:#4e6b41;display:grid;place-items:center;margin:8px auto 12px}
+.pair-success-ic svg{width:28px;height:28px}
+.pair-success-t{font-family:var(--serif);font-size:22px;text-align:center;margin:0 0 6px;color:var(--slate)}
+.pair-success-h{font-size:13.5px;color:var(--slate-soft);line-height:1.55;text-align:center;margin:0 0 18px}
+.pair-success-h b{font-weight:600;color:var(--slate)}
+
 /* active projects editor */
 .proj-edit{display:flex;align-items:center;gap:9px;padding:10px 0;border-top:1px solid var(--line)}
 .proj-edit:first-child{border-top:none}
