@@ -377,6 +377,10 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .vstate{font-family:var(--serif);font-weight:500;font-size:30px;margin:0;line-height:1.1;letter-spacing:-.01em;transition:color .4s var(--ease)}
 .verdict.ok .vstate{color:#3f5733}.verdict.warn .vstate{color:#7a5410}.verdict.bad .vstate{color:var(--terracotta-d)}
 .verdict.demo{background:var(--cream-2)}.verdict.demo .vstate{color:var(--muted)}.verdict.demo .vlight{color:var(--muted)}
+/* Démo : vrai feu calculé, mais badge « Exemple » pour ne jamais tromper (B1). */
+.demo-badge{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.03em;
+  vertical-align:middle;padding:2px 8px;border-radius:999px;background:var(--cream-2);
+  color:var(--muted);border:1px solid var(--line-strong);margin-left:8px}
 .vsub{font-size:13px;margin:5px 0 0;color:var(--slate-soft);line-height:1.45}
 /* 3 jauges sous le feu : fenêtre 5h / semaine / mois */
 .vgauges{display:flex;flex-direction:column;gap:11px;margin-top:16px;padding-top:15px;border-top:1px solid rgba(26,25,21,.08)}

@@ -488,17 +488,11 @@
   var VERDICT_LEVEL = "green";   // exposé à renderAlerts pour la dédup
   function renderVerdict(d, dayU, weekU, demo) {
     var v = $("verdict");
-    // En mode DÉMO, les chiffres sont fictifs : un feu vert/rouge serait trompeur.
-    // On affiche un état NEUTRE "Exemple" (pastille grise), jamais un vrai go/no-go.
-    if (demo) {
-      v.className = "verdict demo";
-      VERDICT_LEVEL = "green";
-      $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>';
-      $("vstate").textContent = "Exemple";
-      $("vsub").textContent = "Données de démonstration — lance le moteur pour ton vrai verdict.";
-      var gz0 = $("vgauges"); if (gz0) gz0.innerHTML = "";
-      return;
-    }
+    // En mode DÉMO : on montre le VRAI feu, calculé par CET.status sur les
+    // chiffres de démonstration (honnête, pas mis en scène) — pour faire ressentir
+    // la valeur avant l'effort d'installation. Un badge « Exemple » + un sous-titre
+    // disent clairement que ce n'est pas encore ton verdict. On ne fabrique aucune
+    // urgence : la couleur sort du calcul, badgée « Exemple ».
     // FEU TRICOLORE UNIFIÉ : "je peux continuer ?" = pire risque parmi
     // fenêtre 5h / semaine / mois. Calculé dans CET.status (pur, testé).
     var st = CET.status ? CET.status(d, Date.now()) : null;
@@ -522,9 +516,15 @@
       red: '<rect x="6" y="6" width="12" height="12" rx="2"/>',     // stop
     };
     VERDICT_LEVEL = st.level;   // green | orange | red — pour la dédup des alertes
-    v.className = "verdict " + (toneMap[st.level] || "ok");
+    v.className = "verdict " + (toneMap[st.level] || "ok") + (demo ? " is-demo" : "");
     $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + iconMap[st.level] + '</svg>';
-    $("vstate").textContent = st.title;
+    // En démo : badge « Exemple » sur le titre pour que ce vrai verdict ne soit
+    // jamais pris pour celui de l'utilisateur.
+    if (demo) {
+      $("vstate").innerHTML = esc(st.title) + ' <span class="demo-badge">Exemple</span>';
+    } else {
+      $("vstate").textContent = st.title;
+    }
     // quand le feu n'est pas vert, la vraie question est "jusqu'à quand ?" :
     // on colle l'heure de reset 5h direct dans la phrase, sans scroller.
     var sub = st.msg;
@@ -533,6 +533,7 @@
       if (/réinitialis/i.test(u)) sub += " Ça repart maintenant.";
       else sub += " Ça repart " + u.replace(/^reset /, "") + ".";
     }
+    if (demo) sub = "Voilà le verdict que tu verras avec tes vraies données. " + sub;
     $("vsub").textContent = sub;
     // 3 jauges : fenêtre 5h / semaine / mois
     var gz = $("vgauges");
@@ -1499,7 +1500,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v25.js";
+  var SW_FILE = "sw.v26.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;
