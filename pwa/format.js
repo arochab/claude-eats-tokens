@@ -504,22 +504,22 @@
     var severity = z >= 5 ? "high" : (z >= 3 ? "mid" : "low");
 
     var title, sentence;
-    // 1) sous-agents dominants : accroche factuelle sur les sous-agents
+    // 1) sous-agents dominants : accroche factuelle, terme réel + glose
     if (share != null && a.sidechainShare > 0.5) {
       title = "Ce sont tes sous-agents, pas toi";
-      sentence = "Sur " + (project ? project : "ce pic") + ", tes sous-agents ont brûlé " + share +
+      sentence = "Sur " + (project ? project : "ce pic") + ", les tâches que Claude a lancées en arrière-plan (ses sous-agents) ont accaparé " + share +
         " % de cette fenêtre. C'est pour ça qu'elle a fondu " + zStr + "× plus vite que d'habitude.";
     // 2) cache-miss 5 min RÉELLEMENT significatif -> on peut en parler
     } else if (miss5 != null && miss5 >= 0.3) {
       var m5 = Math.round(miss5 * 100);
       title = "Ton contexte est reparti de zéro";
-      sentence = "Un gros bout de ta fenêtre (" + m5 + " %) est passé à recréer du cache expiré (5 min)" +
-        (project ? " sur " + project : "") + ". Résultat : elle a fondu " + zStr + "× plus vite.";
+      sentence = "Une bonne partie (" + m5 + " %) est repartie à recharger le contexte que Claude avait mis de côté quelques minutes plus tôt" +
+        (project ? " sur " + project : "") + ". Résultat : ta fenêtre a fondu " + zStr + "× plus vite.";
     // 3) cache-miss 1 h significatif -> on parle de 1 h (jamais de 5 min si miss5≈0)
     } else if (miss1h != null && miss1h >= 0.3) {
       var m1 = Math.round(miss1h * 100);
-      title = "Beaucoup de cache à reconstruire";
-      sentence = "Environ " + m1 + " % de cette fenêtre est parti à reconstruire du cache d'il y a plus d'une heure" +
+      title = "Beaucoup de contexte à recharger";
+      sentence = "Environ " + m1 + " % de cette fenêtre est parti à recharger le contexte mis de côté il y a plus d'une heure" +
         (project ? " sur " + project : "") + ". Elle a fondu " + zStr + "× plus vite que ta normale.";
     // 4) fallback factuel : on constate le pic sans inventer de cause
     } else {

@@ -452,24 +452,24 @@ test("boiteNoireCard — sous-agents dominants -> la phrase parle des sous-agent
   assert.equal(r.severity, "mid");   // z=4.2 -> 3..5
 });
 
-test("boiteNoireCard — cacheMiss5m=0 -> ne MENT jamais sur le cache 5 min", () => {
-  // sous-agents faibles, cache5m nul, cache1h fort -> doit parler de 1h, pas de 5 min
+test("boiteNoireCard — cacheMiss5m=0 -> ne MENT jamais sur le cache court", () => {
+  // sous-agents faibles, cache5m nul, cache1h fort -> doit parler de 1h, pas des minutes
   const r = CET.boiteNoireCard(anomD([{
     window: "w-2", z: 6, total: 8e8, sidechainShare: 0.1,
     cacheMiss5m: 0, cacheMiss1h: 0.55, topProject: "serp-scraper",
   }]));
   assert.ok(r);
-  assert.doesNotMatch(r.sentence, /5 min/);   // garde-fou anti-mensonge
-  assert.match(r.sentence, /heure/);          // parle bien de 1 h
-  assert.equal(r.severity, "high");           // z=6 >= 5
+  assert.doesNotMatch(r.sentence, /quelques minutes/); // garde-fou anti-mensonge
+  assert.match(r.sentence, /heure/);                   // parle bien de 1 h
+  assert.equal(r.severity, "high");                    // z=6 >= 5
 });
 
-test("boiteNoireCard — cacheMiss5m significatif -> peut parler du cache 5 min", () => {
+test("boiteNoireCard — cacheMiss5m significatif -> parle du contexte récent (minutes)", () => {
   const r = CET.boiteNoireCard(anomD([{
     window: "w-3", z: 3.5, total: 4e8, sidechainShare: 0.2,
     cacheMiss5m: 0.6, cacheMiss1h: 0.1, topProject: "kapman-news",
   }]));
-  assert.match(r.sentence, /5 min/);
+  assert.match(r.sentence, /quelques minutes/);
 });
 
 test("boiteNoireCard — prend la plus grosse anomalie (z max)", () => {

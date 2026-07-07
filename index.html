@@ -64,7 +64,7 @@
   <!-- BOÎTE NOIRE (Pro) : n'apparaît QUE si une anomalie réelle est détectée
        (z élevé). Explique POURQUOI la fenêtre fond, par template déterministe. -->
   <section class="card boite-card" id="boite-card" hidden>
-    <h2>Boîte noire <span class="hint">pro</span></h2>
+    <h2>Boîte noire <span class="hint">pro</span> <span class="hint">détecté auto</span></h2>
     <button type="button" class="boite-btn" id="boite-btn">
       <span class="boite-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span>
       <span class="boite-txt"><b id="boite-title"></b><span id="boite-sentence"></span></span>
@@ -181,8 +181,11 @@
           <button type="button" data-plan="20x">Max 20×</button>
         </div>
       </div>
-      <div class="field"><label>Caler sur ma vraie barre 5 h<small>le % que Claude t'affiche, là, maintenant</small></label><input type="number" id="b-calib" inputmode="numeric" placeholder="ex. 11" min="1" max="100" /></div>
+      <div class="field"><label>Aligner sur le vrai % de Claude<small>quand Claude t'affiche un % sur ta limite, note-le ici : l'app recale ses chiffres sur cette réalité</small></label><input type="number" id="b-calib" inputmode="numeric" placeholder="ex. 11" min="1" max="100" /></div>
     </div>
+
+    <details class="adv-settings">
+      <summary>Réglages avancés</summary>
 
     <div class="grouplabel">Repères perso <span style="font-weight:400;opacity:.7">(facultatif)</span></div>
     <div class="fieldgroup">
@@ -202,6 +205,8 @@
     <div class="fieldgroup">
       <div class="field"><label>Crédits achetés ($)<small>ex. 5</small></label><input type="number" id="b-api" inputmode="decimal" /></div>
     </div>
+
+    </details>
 
     <div class="grouplabel">Affichage</div>
     <div class="fieldgroup">

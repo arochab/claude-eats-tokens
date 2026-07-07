@@ -223,6 +223,15 @@ body{font-family:var(--sans);background:
 .pos-details[open]>summary::after{content:"−"}
 .pos-details>summary h2{margin-bottom:0}
 .pos-details[open]>summary h2{margin-bottom:16px}
+/* Réglages avancés : replie les champs experts, garde l'essentiel visible (B4) */
+.adv-settings{margin-top:8px;border-top:1px solid var(--line)}
+.adv-settings>summary{list-style:none;cursor:pointer;display:flex;align-items:center;
+  padding:14px 2px 4px;font-weight:600;color:var(--terracotta-d);font-size:14px}
+.adv-settings>summary::-webkit-details-marker{display:none}
+.adv-settings>summary::after{content:"+";font-family:var(--mono);color:var(--terracotta-d);
+  font-size:18px;margin-left:auto}
+.adv-settings[open]>summary::after{content:"−"}
+.adv-settings>summary:focus-visible{outline:2px solid var(--terracotta);outline-offset:2px;border-radius:6px}
 /* conseil hérité du forfait, posé en pied de « Mes fenêtres » quand l'officiel prime */
 .win-advice{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 .win-advice .alert{margin-bottom:0}
@@ -292,9 +301,14 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .emptystate .es-h{font-size:12.5px;margin:0;max-width:30ch;line-height:1.5}
 
 /* settings sheet */
-.sheet{position:fixed;inset:0;background:rgba(26,25,21,.4);display:none;z-index:50;align-items:flex-end;justify-content:center}
-.sheet.open{display:flex}
-.sheet-inner{background:var(--cream);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:var(--r-xl) var(--r-xl) 0 0;padding:22px 18px calc(28px + env(safe-area-inset-bottom))}
+/* Sheets : overlay toujours présent, animé au compositor (0 layout shift).
+   Le voile fond, le panneau glisse depuis le bas (convention Material/Apple, B2). */
+.sheet{position:fixed;inset:0;background:rgba(26,25,21,.4);display:flex;z-index:50;align-items:flex-end;justify-content:center;
+  opacity:0;visibility:hidden;transition:opacity .25s var(--ease),visibility 0s linear .25s}
+.sheet.open{opacity:1;visibility:visible;transition-delay:0s}
+.sheet-inner{background:var(--cream);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:var(--r-xl) var(--r-xl) 0 0;padding:22px 18px calc(28px + env(safe-area-inset-bottom));
+  transform:translateY(16px);transition:transform .28s var(--ease)}
+.sheet.open .sheet-inner{transform:none}
 .sheet h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 4px;display:flex;justify-content:space-between;align-items:center}
 .sheet .lead{font-size:13px;color:var(--muted);margin:0 0 18px}
 .fieldgroup{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);padding:6px 15px;margin-bottom:14px}
@@ -349,18 +363,18 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 @keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.4);opacity:0}}
 
 /* ===== Verdict global ===== */
-.verdict{border-radius:var(--r-xl);padding:22px 24px;margin-bottom:16px;transition:background .4s var(--ease);border:1px solid transparent}
+.verdict{border-radius:var(--r-xl);padding:22px 24px;margin-bottom:16px;transition:background .4s var(--ease),border-color .4s var(--ease);border:1px solid transparent}
 .verdict.ok{background:rgba(126,158,109,.14);border-color:rgba(126,158,109,.22)}
 .verdict.warn{background:rgba(200,146,61,.15);border-color:rgba(200,146,61,.25)}
 .verdict.bad{background:rgba(181,86,58,.15);border-color:rgba(181,86,58,.25)}
 .vmain{display:flex;align-items:center;gap:16px}
 /* feu tricolore : pastille icône colorée */
-.vlight{width:64px;height:64px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(26,25,21,.12)}
+.vlight{width:64px;height:64px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(26,25,21,.12);transition:background .4s var(--ease)}
 .vlight svg{width:32px;height:32px}
 .verdict.ok .vlight{background:linear-gradient(150deg,#8cae78,var(--sage))}
 .verdict.warn .vlight{background:linear-gradient(150deg,#d6a64e,var(--amber))}
 .verdict.bad .vlight{background:linear-gradient(150deg,#c4694b,var(--danger))}
-.vstate{font-family:var(--serif);font-weight:500;font-size:30px;margin:0;line-height:1.1;letter-spacing:-.01em}
+.vstate{font-family:var(--serif);font-weight:500;font-size:30px;margin:0;line-height:1.1;letter-spacing:-.01em;transition:color .4s var(--ease)}
 .verdict.ok .vstate{color:#3f5733}.verdict.warn .vstate{color:#7a5410}.verdict.bad .vstate{color:var(--terracotta-d)}
 .verdict.demo{background:var(--cream-2)}.verdict.demo .vstate{color:var(--muted)}.verdict.demo .vlight{color:var(--muted)}
 .vsub{font-size:13px;margin:5px 0 0;color:var(--slate-soft);line-height:1.45}

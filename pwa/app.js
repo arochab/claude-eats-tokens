@@ -539,8 +539,12 @@
     if (gz) {
       gz.innerHTML = (st.gauges || []).map(function (g) {
         var col = g.level === "red" ? "#B5563A" : g.level === "orange" ? "#C8923D" : "#7E9E6D";
+        // Canal NON-chromatique : un glyphe + suffixe pour que le niveau ne soit
+        // pas porté par la couleur seule (WCAG 1.4.1 — daltonisme).
+        var mark = g.level === "red" ? "● " : g.level === "orange" ? "⚠ " : "";
+        var suffix = g.level === "red" ? " — plein" : g.level === "orange" ? " — ça chauffe" : "";
         return '<div class="vg"><div class="vg-top"><span class="vg-lab">' + esc(g.label) + '</span>' +
-          '<span class="vg-val">' + esc(g.value) + '</span></div>' +
+          '<span class="vg-val">' + mark + esc(g.value) + suffix + '</span></div>' +
           '<div class="vg-bar"><span style="width:' + Math.max(3, g.fill) + '%;background:' + col + '"></span></div>' +
           (g.sub ? '<div class="vg-sub">' + esc(g.sub) + '</div>' : '') + '</div>';
       }).join("");
@@ -1495,7 +1499,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v24.js";
+  var SW_FILE = "sw.v25.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

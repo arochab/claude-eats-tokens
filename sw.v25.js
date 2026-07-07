@@ -1,11 +1,12 @@
-/* Service worker v24 — Claude Eats Tokens.
+/* Service worker v25 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v24 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v25 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v24 : audit grand public — wording (« le moteur »), contraste AA, a11y
-   (aria-live, focus sheet), CTA Pro sans compte, spinner honnête, Réglages. */
-const CACHE = "cet-v24";
+   v25 : audit Vague B — sheets animés (glisse + fondu), réglages avancés repliés,
+   Boîte noire glosée + « détecté auto », transition unifiée du feu + canal texte
+   non-chromatique sur les jauges, champ calage reformulé. */
+const CACHE = "cet-v25";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js",
