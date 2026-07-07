@@ -59,7 +59,7 @@ Three things no other tracker does:
   severity, ETA to throttle, and plain-language advice. A productive week
   gets a compliment, not a warning.
 
-Zero build step · zero install · cross-platform · free infra · 101 tests · MIT ·
+Zero build step · zero install · cross-platform · free infra · 146 tests · MIT ·
 [see it in action →](assets/demo.gif)
 
 ---
@@ -243,7 +243,7 @@ Chaque formule est couverte : inférence de projet depuis le `cwd`, coût pondé
 python tests/run_all.py
 ```
 
-**101 tests** au total — **60 Python** (`test_usage_core.py`, `test_server.py`, `test_statusline.py`, via `unittest`) et **41 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
+**146 tests** au total — **91 Python** (`test_usage_core.py`, `test_server.py`, `test_statusline.py`, via `unittest`) et **55 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
 
 ---
 
@@ -253,12 +253,12 @@ python tests/run_all.py
 index.html                       landing + dashboard (racine, pour le scope Pages)
 pwa/                             app.js · format.js (helpers purs) · styles.css · config.js · manifest · icônes
 sw.vN.js                         service worker à la racine (network-first shell, network-only data, purge)
-data/usage.json                  derniers chiffres (poussés, schéma v3) · usage.demo.json (échantillon)
+data/usage.json                  derniers chiffres (poussés, schéma v5) · usage.demo.json (échantillon)
 server/app.py                    serveur de push Flask (Render) + persistance Gist
 tools/usage_core.py              logique pure (cwd→projet, coût/modèle, fenêtres) — entièrement testée
 tools/push_usage.py              côté PC : stream logs → agrège → POST /push
 tools/make_demo.py               régénère le dataset de démo
-tests/                           101 tests · python tests/run_all.py (Python + Node)
+tests/                           146 tests · python tests/run_all.py (Python + Node)
 DEMARRER.bat                     lance le moteur à la main (double-clic)
 installer-demarrage-auto.ps1     crée la tâche planifiée (démarrage auto du moteur)
 desinstaller-demarrage-auto.bat  retire la tâche planifiée

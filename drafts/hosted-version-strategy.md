@@ -137,7 +137,7 @@ PC utilisateur                    Infra Adam (gratuite)
 3. Le JWT est ensuite reutilise a chaque push
 
 ### Phase 5 — Paywall (1 jour)
-1. Page Lemon Squeezy pour le plan Pro (3 EUR/mois)
+1. Page Lemon Squeezy pour le plan Pro (5 EUR/mois)
 2. Webhook Lemon Squeezy → Supabase (met a jour `users.plan`)
 3. Frontend : verifier `user.plan` et masquer les features Pro derriere un CTA
 4. Bandeau discret "Passe a Pro pour l'historique complet et les notifications"
@@ -172,7 +172,7 @@ PC utilisateur                    Infra Adam (gratuite)
 | Personne ne paie | HAUTE | Le sponsor button + la visibilite HN/Reddit compensent. Cout = 0, donc pas de perte |
 | Supabase free tier depasse | BASSE | Upgrade a 25 USD/mois = toujours rentable a 10+ users Pro |
 | Anthropic change les logs | MOYENNE | Le parser est deja robuste (corrupted lines skipped). S'adapter au cas par cas |
-| Un concurrent fait pareil | MOYENNE | Notre avantage = deja deploye, PWA solide, 101 tests. Execution > idee |
+| Un concurrent fait pareil | MOYENNE | Notre avantage = deja deploye, PWA solide, 146 tests. Execution > idee |
 
 ---
 

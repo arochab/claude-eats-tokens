@@ -16,17 +16,17 @@ Poste local (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)
    data/usage.json (repli si serveur endormi)
 ```
 
-- **Le service worker vit à la RACINE** (`sw.vN.js`, actuellement `sw.v14.js`) —
+- **Le service worker vit à la RACINE** (`sw.vN.js`, actuellement `sw.v29.js`) —
   jamais dans `pwa/`, sinon le scope ne couvre pas toute l'app. Network-first sur
   l'app-shell, network-ONLY sur `usage.json`/Render, purge tout cache != version
   courante. Pour invalider proprement un déploiement bloqué en cache : monter la
-  version (renommer en `sw.v15.js`, bumper `CACHE`/commentaires dedans) + mettre à
+  version (renommer en `sw.v30.js`, bumper `CACHE`/commentaires dedans) + mettre à
   jour `SW_FILE` dans `pwa/app.js`.
 - **Le front lit dans cet ordre** : `window.CLAUDE_EATS_TOKENS_SERVER` (Render) →
   `data/usage.json` (Pages) → `data/usage.demo.json` (démo). Réglé dans
   `pwa/config.js`, qui en **localhost** ignore Render et lit directement le
   fichier local (dev sans serveur).
-- **Schéma `usage.json` = v3** (champ `schema`, additif). Calcul pur et testable dans
+- **Schéma `usage.json` = v5** (champ `schema`, additif : v4 = windowsOfficial, v5 = sessions enrichies + wasteSuspects + anomalies). Calcul pur et testable dans
   `tools/usage_core.py` (couvert par `tests/`). `push_usage.py` n'est qu'une
   coquille I/O (streaming ligne à ligne, robuste aux gros volumes/corruptions).
   Les projets sont déduits du **vrai `cwd`** (segment avant `.claude/.codex
