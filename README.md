@@ -18,7 +18,7 @@
   <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-CC785C">
   <img alt="No build step" src="https://img.shields.io/badge/build-no%20build%20step-1A1915">
   <img alt="Coût d'infra" src="https://img.shields.io/badge/infra-100%25%20gratuite-7E9E6D">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-101%20%E2%9C%93-7E9E6D">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-146%20%E2%9C%93-7E9E6D">
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-D4A27F">
 </p>
 
@@ -85,7 +85,7 @@ Une PWA statique + un mini-serveur de push, reliés par les propres habitudes al
                                 │  POST /push  (secret partagé)
                                 ▼
                 ┌───────────────────────┐      ┌──────────────────────┐
-                │   Render (Flask)      │ ───► │  Gist privée         │
+                │   Render (Flask)      │ ───► │  Supabase (Postgres) │
                 │   serveur de push     │      │  (store durable)     │
                 └───────────┬───────────┘      └──────────────────────┘
                             │  GET /usage.json
@@ -102,10 +102,10 @@ Une PWA statique + un mini-serveur de push, reliés par les propres habitudes al
 ```
 
 1. **Le poste local est la seule source de vérité.** `tools/push_usage.py` lit les logs JSONL de Claude Code en streaming ligne à ligne (robuste aux gros volumes et aux lignes corrompues, qui sont comptées et non avalées en silence), déduplique les entrées, fusionne les modèles par famille, et agrège par jour, modèle, projet et fenêtres glissantes. **Il n'existe aucune API cloud pour l'usage Max — les logs *sont* la donnée.** Sous Windows, une tâche planifiée pousse les totaux en continu, sans terminal ouvert.
-2. **Un serveur gratuit garde les derniers chiffres.** Une app **Flask sur Render** reçoit le push (protégé par secret partagé, comparaison à temps constant) et le recopie dans une **Gist GitHub privée**, pour que les chiffres survivent à la mise en veille du plan gratuit.
+2. **Un serveur gratuit garde les derniers chiffres.** Une app **Flask sur Render** reçoit le push et le persiste dans **Supabase** (Postgres gratuit) en mode hébergé multi-utilisateur — chaque utilisateur a sa clé de connexion. Un mode legacy single-user (secret partagé + Gist GitHub privée) reste disponible pour le self-host.
 3. **La PWA affiche où vous en êtes.** Installable depuis **GitHub Pages**, elle lit la source la plus fraîche disponible (Render → `data/usage.json` → dataset de démo embarqué) et rend le verdict, les jauges, la heatmap et les tendances. En `localhost`, le front ignore Render et lit directement le fichier local (dev sans serveur).
 
-Le calcul vit dans `tools/usage_core.py` — **logique pure et testée** ; `push_usage.py` n'est qu'une coquille d'I/O. Le format d'échange est documenté dans [`SCHEMA.md`](SCHEMA.md) (schéma `usage.json` v4).
+Le calcul vit dans `tools/usage_core.py` — **logique pure et testée** ; `push_usage.py` n'est qu'une coquille d'I/O. Le format d'échange est documenté dans [`SCHEMA.md`](SCHEMA.md) (schéma `usage.json` v5).
 
 ---
 
@@ -248,7 +248,7 @@ Ce projet assume ses limites — c'est ce qui le rend digne de confiance :
 | **PWA** | Service worker à la racine (`sw.vN.js`), manifest, shell hors-ligne |
 | **Moteur** | Python pur (`usage_core.py` logique testable + `push_usage.py` coquille I/O streaming) |
 | **Serveur** | Flask sur Render, `gunicorn`, auth à temps constant |
-| **Store** | Gist GitHub privée (contourne le disque éphémère du plan gratuit) |
+| **Store** | Supabase (multi-tenant hébergé) · Gist GitHub privée en repli legacy self-host |
 | **CI/CD** | GitHub Actions → déploiement Pages à chaque push |
 | **Design** | Charte Anthropic en CSS pur — crème `#F0EEE6`, slate `#1A1915`, terracotta `#CC785C`, clay `#D4A27F` ; serif éditoriale pour les chiffres clés, sans-serif pour l'UI |
 
@@ -273,7 +273,7 @@ index.html                       landing + dashboard (racine, pour le scope Page
 pwa/                             app.js · format.js (helpers purs) · styles.css · config.js · manifest · icônes
 sw.vN.js                         service worker à la racine (network-first shell, network-only data, purge)
 data/usage.json                  derniers chiffres (poussés, schéma v5) · usage.demo.json (échantillon)
-server/app.py                    serveur de push Flask (Render) + persistance Gist
+server/app.py                    serveur de push Flask (Render) + persistance Supabase (+ Gist legacy)
 tools/usage_core.py              logique pure (cwd→projet, coût/modèle, fenêtres) — entièrement testée
 tools/push_usage.py              côté PC : stream logs → agrège → POST /push
 tools/make_demo.py               régénère le dataset de démo

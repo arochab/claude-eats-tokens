@@ -10,7 +10,7 @@ Audience : usage perso d'Adam + pièce de portfolio. Mobile-first.
 ## Architecture (réglée — ne pas re-dériver)
 
 ```
-Poste local (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  ─►  Gist (store durable)
+Poste local (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  ─►  Supabase (multi-tenant) / Gist (legacy)
                                                               │
    PWA (GitHub Pages)  ◄── GET /usage.json ─────────────────┘
    data/usage.json (repli si serveur endormi)
