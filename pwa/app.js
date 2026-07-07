@@ -1621,7 +1621,16 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v30.js";
+
+  // Beacon d'instrumentation GTM (0-PII) : si l'URL a un ?ref=, on ping une
+  // fois le serveur (comptage par canal). Fire-and-forget, sans bloquer, sans
+  // erreur si offline/pas de serveur. Aucune donnée perso, aucun cookie.
+  try {
+    var _ref = (new URLSearchParams(location.search).get("ref") || "").toLowerCase();
+    if (PUSH_SERVER && /^[a-z0-9-]{1,32}$/.test(_ref)) new Image().src = PUSH_SERVER.replace(/\/$/, "") + "/beacon?ref=" + _ref;
+  } catch (e) {}
+
+  var SW_FILE = "sw.v31.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

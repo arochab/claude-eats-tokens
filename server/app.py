@@ -67,6 +67,8 @@ CORS(app, resources={
     r"/usage.json": {"origins": "*", "methods": ["GET"]},
     r"/auth/*": {"origins": "*", "methods": ["GET", "POST"]},
     r"/api/*": {"origins": "*", "methods": ["GET", "POST"]},
+    # Beacon d'instrumentation : ping GET fire-and-forget depuis le navigateur.
+    r"/beacon": {"origins": "*", "methods": ["GET"]},
 })
 
 # Cache mémoire legacy (rapide) + Gist (durable).
@@ -131,6 +133,117 @@ def _sb_update_user(user_id, fields):
         f"{SUPABASE_URL}/rest/v1/users?id=eq.{user_id}",
         headers=_sb_headers(), json=fields, timeout=10)
     return r.ok
+
+
+# ---------------------------------------------------------------------------
+# Instrumentation GTM (agrégats 0-PII : activation + comptage par canal)
+# ---------------------------------------------------------------------------
+def _mark_activation(user_id):
+    """ACTIVATION : marque last_push_at (toujours) + first_push_at (si NULL).
+
+    Best-effort : toute erreur est avalée — l'instrumentation ne doit JAMAIS
+    faire échouer un /push. On utilise COALESCE côté PostgREST pour ne pas
+    écraser first_push_at une fois posé (première activation figée).
+    """
+    if not MULTI_TENANT or not user_id:
+        return
+    try:
+        _sb_update_user(user_id, {
+            "last_push_at": "now()",
+            "first_push_at": "COALESCE(first_push_at, now())",
+        })
+    except Exception:  # noqa: BLE001 — jamais throw : stat best-effort
+        pass
+
+
+_REF_RE = None  # compilé paresseusement (voir _sanitize_ref)
+
+
+def _sanitize_ref(ref):
+    """Valide/normalise un canal ?ref= : [a-z0-9-] minuscules, max 32 car.
+
+    Retourne le ref propre ou None si invalide (ex "../etc", vide, trop long).
+    """
+    global _REF_RE
+    if not ref or not isinstance(ref, str):
+        return None
+    ref = ref.strip().lower()
+    if _REF_RE is None:
+        import re
+        _REF_RE = re.compile(r"^[a-z0-9-]{1,32}$")
+    return ref if _REF_RE.match(ref) else None
+
+
+def _sb_count(table, filt=""):
+    """Nombre de lignes d'une table (0-PII) via Prefer: count=exact.
+
+    Retourne un int (0 en cas d'erreur). On lit le Content-Range renvoyé par
+    PostgREST : `0-24/25` → 25. Best-effort, jamais throw.
+    """
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/{table}?select=id" + (f"&{filt}" if filt else "")
+        r = requests.get(
+            url,
+            headers={**_sb_headers(), "Prefer": "count=exact", "Range": "0-0"},
+            timeout=10)
+        cr = r.headers.get("Content-Range", "")
+        if "/" in cr:
+            total = cr.split("/", 1)[1]
+            if total.isdigit():
+                return int(total)
+    except Exception:  # noqa: BLE001
+        pass
+    return 0
+
+
+def _sb_visits():
+    """Retourne le comptage par canal {ref: count, ...} (0-PII). Best-effort."""
+    out = {}
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/visits?select=ref,count",
+            headers=_sb_headers(), timeout=10)
+        if r.ok and isinstance(r.json(), list):
+            for row in r.json():
+                ref = row.get("ref")
+                if ref is not None:
+                    out[ref] = row.get("count", 0)
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def _sb_bump_visit(ref):
+    """Incrémente le compteur du canal `ref` (upsert : GET count puis PATCH/POST).
+
+    Le ref est déjà sanitizé par l'appelant. Best-effort : jamais throw.
+    """
+    if not MULTI_TENANT or not ref:
+        return
+    try:
+        # Lit le compteur actuel (si la ligne existe).
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/visits?ref=eq.{ref}&select=count",
+            headers=_sb_headers(), timeout=10)
+        rows = r.json() if r.ok else []
+        if rows:
+            current = rows[0].get("count", 0) or 0
+            requests.patch(
+                f"{SUPABASE_URL}/rest/v1/visits?ref=eq.{ref}",
+                headers=_sb_headers(),
+                json={"count": current + 1, "updated_at": "now()"},
+                timeout=10)
+        else:
+            # Première visite de ce canal : insert (merge-duplicates au cas où
+            # deux pings arrivent en concurrence sur la clé primaire `ref`).
+            requests.post(
+                f"{SUPABASE_URL}/rest/v1/visits",
+                headers={**_sb_headers(),
+                         "Prefer": "resolution=merge-duplicates,return=minimal"},
+                json={"ref": ref, "count": 1},
+                timeout=10)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +434,8 @@ def push():
         # Multi-tenant : stockage Supabase
         user_id = auth["user"]["id"]
         ok = _sb_save_usage(user_id, payload)
+        if ok:
+            _mark_activation(user_id)  # best-effort, ne casse jamais le push
         status = 200 if ok else 500
         return jsonify({"ok": ok, "received": payload["totals"].get("total", 0)}), status
     else:
@@ -370,6 +485,52 @@ def usage():
     out["serverAgeSeconds"] = round(time.time() - _cache["ts"]) if _cache["ts"] else None
     resp = jsonify(out)
     resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# Instrumentation GTM — /stats (funnel agrégé) + /beacon (comptage par canal)
+# ---------------------------------------------------------------------------
+# GIF transparent 1×1 (43 octets) : réponse la plus légère possible pour un
+# pixel de tracking déclenché via <img>. Zéro corps de sens, aucune donnée.
+_PIXEL_GIF = base64.b64decode(
+    "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
+
+
+@app.get("/stats")
+def stats():
+    """Funnel GTM agrégé, 0-PII. Protégé par PUSH_SECRET (?key=).
+
+    Retourne {accounts, activated, pro, visits}. Aucune donnée personnelle :
+    uniquement des compteurs. 401 si mauvais key, 501 si pas multi-tenant.
+    """
+    key = request.args.get("key", "")
+    if not (key and PUSH_SECRET and hmac.compare_digest(key, PUSH_SECRET)):
+        return jsonify({"error": "unauthorized"}), 401
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    return jsonify({
+        "accounts": _sb_count("users"),
+        "activated": _sb_count("users", "first_push_at=not.is.null"),
+        "pro": _sb_count("users", "plan=eq.pro"),
+        "visits": _sb_visits(),
+    })
+
+
+@app.get("/beacon")
+def beacon():
+    """Pixel d'instrumentation : incrémente le compteur du canal ?ref=.
+
+    0-PII : on ne stocke qu'un compteur par canal (pas d'IP, pas d'UA, pas de
+    timestamp par visite). Best-effort : renvoie toujours un GIF 1×1 (204-like)
+    même si le ref est invalide ou si le store échoue.
+    """
+    ref = _sanitize_ref(request.args.get("ref", ""))
+    if ref and MULTI_TENANT:
+        _sb_bump_visit(ref)  # best-effort, jamais throw
+    resp = app.response_class(_PIXEL_GIF, mimetype="image/gif")
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     return resp
 
 

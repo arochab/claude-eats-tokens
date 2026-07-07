@@ -13,6 +13,7 @@ import os
 import sys
 import unittest
 from unittest import mock
+from urllib.parse import quote as up_quote
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "server"))
 
@@ -345,6 +346,142 @@ class TestBillingCheckout(_MultiTenantBase):
              mock.patch.object(self.srv, "LS_CHECKOUT_URL", ""):
             r = self.c.get("/billing/checkout?key=cet_good")
         self.assertEqual(r.status_code, 501)
+
+
+# ---------------------------------------------------------------------------
+# Instrumentation GTM (Bloc B) — /stats, /beacon, activation
+# ---------------------------------------------------------------------------
+class TestStatsSingleTenant(unittest.TestCase):
+    """/stats en mode legacy (le module de tête est single-tenant)."""
+
+    def setUp(self):
+        server.app.testing = True
+        self.c = server.app.test_client()
+
+    def test_stats_bad_key_401(self):
+        r = self.c.get("/stats?key=nope")
+        self.assertEqual(r.status_code, 401)
+
+    def test_stats_no_key_401(self):
+        r = self.c.get("/stats")
+        self.assertEqual(r.status_code, 401)
+
+    def test_stats_good_key_but_not_multitenant_501(self):
+        r = self.c.get("/stats?key=test-secret-123")
+        self.assertEqual(r.status_code, 501)
+
+
+class TestBeaconSingleTenant(unittest.TestCase):
+    """/beacon reste dispo même sans multi-tenant (best-effort no-op)."""
+
+    def setUp(self):
+        server.app.testing = True
+        self.c = server.app.test_client()
+
+    def test_beacon_returns_gif_no_multitenant(self):
+        r = self.c.get("/beacon?ref=hn")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.mimetype, "image/gif")
+
+    def test_sanitize_ref_unit(self):
+        self.assertEqual(server._sanitize_ref("hn"), "hn")
+        self.assertEqual(server._sanitize_ref("reddit-cc"), "reddit-cc")
+        self.assertEqual(server._sanitize_ref("HN"), "hn")  # normalisé minuscule
+        for bad in ("../etc", "a b", "x" * 33, "", None, "a/b", "réf", 42):
+            self.assertIsNone(server._sanitize_ref(bad), msg=f"devrait rejeter {bad!r}")
+
+
+class TestStatsMultiTenant(_MultiTenantBase):
+    """/stats en multi-tenant : counts + visits mockés, JSON agrégé 0-PII."""
+
+    def test_stats_returns_aggregates(self):
+        with mock.patch.object(self.srv, "_sb_count",
+                               side_effect=[12, 5, 3]) as cnt, \
+             mock.patch.object(self.srv, "_sb_visits",
+                               return_value={"hn": 40, "reddit-cc": 7}):
+            r = self.c.get("/stats?key=test-secret-123")
+        self.assertEqual(r.status_code, 200)
+        body = r.get_json()
+        self.assertEqual(body["accounts"], 12)
+        self.assertEqual(body["activated"], 5)
+        self.assertEqual(body["pro"], 3)
+        self.assertEqual(body["visits"], {"hn": 40, "reddit-cc": 7})
+        # 3 counts : users, activated (first_push_at not null), pro
+        self.assertEqual(cnt.call_count, 3)
+
+    def test_stats_bad_key_401_multitenant(self):
+        r = self.c.get("/stats?key=wrong")
+        self.assertEqual(r.status_code, 401)
+
+
+class TestBeaconMultiTenant(_MultiTenantBase):
+    """/beacon en multi-tenant : upsert appelé, ref invalide ignoré."""
+
+    def test_beacon_valid_ref_bumps(self):
+        with mock.patch.object(self.srv, "_sb_bump_visit") as bump:
+            r = self.c.get("/beacon?ref=hn")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.mimetype, "image/gif")
+        bump.assert_called_once_with("hn")
+
+    def test_beacon_invalid_ref_ignored_no_crash(self):
+        with mock.patch.object(self.srv, "_sb_bump_visit") as bump:
+            r = self.c.get("/beacon?ref=" + up_quote("../etc"))
+        self.assertEqual(r.status_code, 200)   # toujours un GIF, pas de crash
+        self.assertEqual(r.mimetype, "image/gif")
+        bump.assert_not_called()
+
+    def test_beacon_no_ref_ignored(self):
+        with mock.patch.object(self.srv, "_sb_bump_visit") as bump:
+            r = self.c.get("/beacon")
+        self.assertEqual(r.status_code, 200)
+        bump.assert_not_called()
+
+    def test_bump_visit_never_throws_on_error(self):
+        # Le store échoue (réseau) : best-effort, aucune exception ne remonte.
+        with mock.patch.object(self.srv.requests, "get",
+                               side_effect=Exception("boom")):
+            self.srv._sb_bump_visit("hn")  # ne doit pas lever
+
+
+class TestActivationOnPush(_MultiTenantBase):
+    """/push réussi en multi-tenant marque first_push_at/last_push_at."""
+
+    def test_push_marks_activation(self):
+        # Un utilisateur résolu par API key + save Supabase OK -> _mark_activation.
+        with mock.patch.object(self.srv, "_sb_get_user_by_api_key",
+                               return_value={"id": "user-9", "email": "a@b.c"}), \
+             mock.patch.object(self.srv, "_sb_save_usage", return_value=True), \
+             mock.patch.object(self.srv, "_sb_update_user",
+                               return_value=True) as up:
+            r = self.c.post("/push", json=GOOD, headers={"X-Api-Key": "cet_ok"})
+        self.assertEqual(r.status_code, 200)
+        up.assert_called_once()
+        called_uid, fields = up.call_args[0]
+        self.assertEqual(called_uid, "user-9")
+        self.assertEqual(fields["last_push_at"], "now()")
+        # first_push_at posé seulement s'il est NULL (COALESCE, pas écrasé).
+        self.assertEqual(fields["first_push_at"], "COALESCE(first_push_at, now())")
+
+    def test_push_no_activation_when_save_fails(self):
+        # Si le save échoue, on ne marque pas l'activation (et 500).
+        with mock.patch.object(self.srv, "_sb_get_user_by_api_key",
+                               return_value={"id": "user-9", "email": "a@b.c"}), \
+             mock.patch.object(self.srv, "_sb_save_usage", return_value=False), \
+             mock.patch.object(self.srv, "_sb_update_user") as up:
+            r = self.c.post("/push", json=GOOD, headers={"X-Api-Key": "cet_ok"})
+        self.assertEqual(r.status_code, 500)
+        up.assert_not_called()
+
+    def test_activation_best_effort_never_breaks_push(self):
+        # _sb_update_user qui plante ne doit PAS faire échouer le /push (200).
+        with mock.patch.object(self.srv, "_sb_get_user_by_api_key",
+                               return_value={"id": "user-9", "email": "a@b.c"}), \
+             mock.patch.object(self.srv, "_sb_save_usage", return_value=True), \
+             mock.patch.object(self.srv, "_sb_update_user",
+                               side_effect=Exception("boom")):
+            r = self.c.post("/push", json=GOOD, headers={"X-Api-Key": "cet_ok"})
+        self.assertEqual(r.status_code, 200)
 
 
 if __name__ == "__main__":
