@@ -1415,7 +1415,7 @@
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
         .then(function (res) {
-          $("auth-submit").textContent = "Obtenir ma clé API";
+          $("auth-submit").textContent = "Obtenir mon code de connexion";
           $("auth-submit").disabled = false;
           if (!res.ok) {
             $("auth-error").textContent = res.data.error || "Erreur.";
@@ -1430,7 +1430,7 @@
           load();  // recharger les données avec la clé
         })
         .catch(function () {
-          $("auth-submit").textContent = "Obtenir ma clé API";
+          $("auth-submit").textContent = "Obtenir mon code de connexion";
           $("auth-submit").disabled = false;
           $("auth-error").textContent = "Erreur réseau. Le serveur dort peut-être (~50s).";
           $("auth-error").style.display = "block";
@@ -1500,7 +1500,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v26.js";
+  var SW_FILE = "sw.v27.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

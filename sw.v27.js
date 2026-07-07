@@ -1,12 +1,12 @@
-/* Service worker v26 — Claude Eats Tokens.
+/* Service worker v27 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v26 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v27 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v26 : B1 — le feu tricolore est désormais RÉEL en démo (calculé par CET.status,
-   badge « Exemple », « Voilà le verdict que tu verras ») pour faire ressentir la
-   valeur avant l'install, sans fabriquer d'urgence. */
-const CACHE = "cet-v26";
+   v27 : C1 court-terme — « clé API » → « code de connexion » partout, modèle
+   mental d'install posé (« copié ici → collé une fois sur ton ordinateur »).
+   Débloqué par DEMARRER.bat qui accepte désormais CET_API_KEY. */
+const CACHE = "cet-v27";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js",

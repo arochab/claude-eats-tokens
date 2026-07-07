@@ -253,14 +253,14 @@
         <div class="field"><label>Email<small>ton adresse email</small></label><input type="email" id="auth-email" placeholder="toi@exemple.com" /></div>
       </div>
       <div id="auth-error" style="color:var(--danger);font-size:13px;margin:8px 0;display:none"></div>
-      <button class="btn" id="auth-submit">Obtenir ma clé API</button>
-      <p class="about-txt" style="margin-top:12px">Tu recevras une <b>clé API</b> à coller dans le moteur sur ton PC. Pas de mot de passe.</p>
+      <button class="btn" id="auth-submit">Obtenir mon code de connexion</button>
+      <p class="about-txt" style="margin-top:12px">Tu recevras un <b>code de connexion</b> (il commence par <code>cet_</code>) à coller une fois dans le moteur, sur ton ordinateur. Pas de mot de passe. Garde cette page ouverte : on te demandera de coller ce code à l'installation.</p>
 
-      <div class="grouplabel" style="margin-top:24px">J'ai déjà une clé API</div>
+      <div class="grouplabel" style="margin-top:24px">J'ai déjà un code de connexion</div>
       <div class="fieldgroup">
-        <div class="field"><label>Clé API<small>cet_...</small></label><input type="text" id="auth-key-input" placeholder="cet_..." /></div>
+        <div class="field"><label>Code de connexion<small>cet_...</small></label><input type="text" id="auth-key-input" placeholder="cet_..." /></div>
       </div>
-      <button class="btn ghost" id="auth-key-submit">Me connecter avec ma clé</button>
+      <button class="btn ghost" id="auth-key-submit">Me connecter avec mon code</button>
     </div>
 
     <div id="auth-success" style="display:none">
@@ -268,11 +268,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
         <div>
           <b>Compte créé !</b>
-          <span class="why">Ta clé API est ci-dessous. Copie-la maintenant — elle ne sera plus affichée.</span>
+          <span class="why">Ton code de connexion est ci-dessous. Copie-le maintenant — il ne sera plus affiché. Tu le colleras dans le moteur, sur ton ordinateur.</span>
         </div>
       </div>
       <div class="fieldgroup" style="margin-top:12px">
-        <div class="field"><label>Ta clé API<small>à garder précieusement</small></label><input type="text" id="auth-key-display" readonly style="font-family:var(--mono);font-size:11px;width:200px" /></div>
+        <div class="field"><label>Ton code de connexion<small>à garder précieusement</small></label><input type="text" id="auth-key-display" readonly style="font-family:var(--mono);font-size:11px;width:200px" /></div>
       </div>
       <button class="btn" id="auth-copy-key">Copier la clé</button>
       <button class="btn ghost" id="auth-done">C'est bon, j'ai copié</button>
