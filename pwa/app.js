@@ -387,10 +387,18 @@
     var warnP = settings.warnPct || 80;
     var opusBar = (pOpus != null && pOpus >= warnP)
       ? bar("Cette semaine · Opus", pOpus, "se remet à zéro " + weekReset, "#CC785C") : "";
-    $("forfait-bars").innerHTML =
+    var fb = $("forfait-bars");
+    fb.innerHTML =
       bar("Limite de 5 heures", p5h, reset5h) +
       bar("Cette semaine · tous les modèles", pAll, "se remet à zéro " + weekReset) +
       opusBar;
+    // Animer le remplissage au PREMIER affichage seulement (flag sur le conteneur
+    // stable), pas à chaque tick de polling — sinon lecture nerveuse (B3).
+    if (!fb.dataset.filled) {
+      fb.classList.add("bars-animate");
+      fb.dataset.filled = "1";
+      setTimeout(function () { fb.classList.remove("bars-animate"); }, 700);
+    }
 
     // mention d'honnêteté
     $("forfait-note").innerHTML = "Estimation d'après ce que tu as déjà consommé — pas le chiffre exact d'Anthropic (ils ne le partagent pas avec les applis), mais un bon repère.";
@@ -1492,6 +1500,113 @@
     }
   })();
 
+  /* ---------- Onboarding à étapes (#setup-sheet) ----------
+     5 étapes, une seule visible. Réutilise openSheet/closeSheet (focus-trap +
+     Échap + retour focus). L'étape 2 rappelle le MÊME endpoint que l'auth
+     (POST /auth/register) et le même window.CET_setApiKey — pas de 2e sheet. */
+  (function initSetupWizard() {
+    var sheet = $("setup-sheet");
+    if (!sheet) return;
+
+    var TOTAL = 5, step = 1;
+    var steps = [].slice.call(sheet.querySelectorAll(".setup-step"));
+    var barFill = $("setup-bar-fill"), bar = $("setup-bar"), stepno = $("setup-stepno");
+    var prevBtn = $("setup-prev"), nextBtn = $("setup-next"), finishBtn = $("setup-finish");
+    var live = $("setup-live");
+
+    function announce(msg) { if (live) live.textContent = msg || ""; }
+
+    function show(n) {
+      step = Math.max(1, Math.min(TOTAL, n));
+      steps.forEach(function (el) {
+        el.hidden = (+el.getAttribute("data-step") !== step);
+      });
+      var pct = Math.round(step / TOTAL * 100);
+      if (barFill) barFill.style.width = pct + "%";
+      if (bar) bar.setAttribute("aria-valuenow", String(step));
+      if (stepno) stepno.textContent = "Étape " + step + "/" + TOTAL;
+      prevBtn.disabled = (step === 1);
+      var last = (step === TOTAL);
+      nextBtn.hidden = last;
+      finishBtn.hidden = !last;
+      var cur = steps[step - 1];
+      if (cur && cur.focus) cur.focus();
+    }
+
+    function open() { show(1); openSheet("setup-sheet"); }
+    function close() { closeSheet("setup-sheet"); }
+    window.CET_openSetup = open;
+
+    nextBtn.addEventListener("click", function () { show(step + 1); });
+    prevBtn.addEventListener("click", function () { show(step - 1); });
+    finishBtn.addEventListener("click", close);
+    if ($("close-setup")) $("close-setup").addEventListener("click", close);
+    sheet.addEventListener("click", function (e) { if (e.target === sheet) close(); });
+
+    var server = (window.CLAUDE_EATS_TOKENS_SERVER || "").replace(/\/$/, "");
+
+    function showKey(key) {
+      window.CET_setApiKey(key);
+      if ($("setup-key-value")) $("setup-key-value").textContent = key;
+      if ($("setup-auth-form")) $("setup-auth-form").hidden = true;
+      if ($("setup-auth-done")) $("setup-auth-done").hidden = false;
+      announce("Compte prêt. Ton code de connexion est affiché.");
+      if (DATA) load();
+    }
+
+    if ($("setup-auth-submit")) $("setup-auth-submit").addEventListener("click", function () {
+      var email = ($("setup-email").value || "").trim();
+      if (!email || email.indexOf("@") < 0) { announce("Email invalide."); $("setup-email").focus(); return; }
+      var btn = this;
+      btn.disabled = true; btn.textContent = "Création…"; announce("Création du compte…");
+      fetch(server + "/auth/register", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email }),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+          btn.disabled = false; btn.textContent = "Obtenir mon code de connexion";
+          if (!res.ok || !res.data.api_key) { announce(res.data && res.data.error ? res.data.error : "Erreur, réessaie."); return; }
+          showKey(res.data.api_key);
+        })
+        .catch(function () {
+          btn.disabled = false; btn.textContent = "Obtenir mon code de connexion";
+          announce("Pas de réponse. Le serveur dort peut-être ; réessaie dans un instant.");
+        });
+    });
+
+    if ($("setup-have-key")) $("setup-have-key").addEventListener("click", function () {
+      var f = $("setup-have-key-form");
+      if (f) { f.hidden = !f.hidden; if (!f.hidden) $("setup-key-input").focus(); }
+    });
+    if ($("setup-key-submit")) $("setup-key-submit").addEventListener("click", function () {
+      var key = ($("setup-key-input").value || "").trim();
+      if (key.indexOf("cet_") !== 0) { announce("Le code doit commencer par cet_"); $("setup-key-input").focus(); return; }
+      showKey(key);
+    });
+
+    if ($("setup-copy-key")) $("setup-copy-key").addEventListener("click", function () {
+      var btn = this, key = $("setup-key-value").textContent;
+      function ok() { btn.textContent = "Copié ✓"; btn.classList.add("done"); announce("Code copié."); }
+      if (navigator.clipboard) navigator.clipboard.writeText(key).then(ok).catch(ok);
+      else { try { var r = document.createRange(); r.selectNode($("setup-key-value")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); s.removeAllRanges(); } catch (e) {} ok(); }
+    });
+
+    if (window.CET_API_KEY && $("setup-key-value")) {
+      $("setup-key-value").textContent = window.CET_API_KEY;
+      if ($("setup-auth-form")) $("setup-auth-form").hidden = true;
+      if ($("setup-auth-done")) $("setup-auth-done").hidden = false;
+    }
+  })();
+
+  // Ouvertures de l'onboarding depuis le bandeau démo et les réglages.
+  if ($("firstrun-setup")) $("firstrun-setup").addEventListener("click", function () {
+    if (window.CET_openSetup) window.CET_openSetup();
+  });
+  if ($("settings-setup")) $("settings-setup").addEventListener("click", function () {
+    closeSheet("settings"); if (window.CET_openSetup) window.CET_openSetup();
+  });
+
   ensureNotifPermission();
   loadEurRate();
   load();
@@ -1500,7 +1615,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v27.js";
+  var SW_FILE = "sw.v28.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

@@ -1,12 +1,13 @@
-/* Service worker v27 — Claude Eats Tokens.
+/* Service worker v28 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v27 à
+   network-ONLY sur les données (usage.json, Render). Purge tout cache != v28 à
    l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
    depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v27 : C1 court-terme — « clé API » → « code de connexion » partout, modèle
-   mental d'install posé (« copié ici → collé une fois sur ton ordinateur »).
-   Débloqué par DEMARRER.bat qui accepte désormais CET_API_KEY. */
-const CACHE = "cet-v27";
+   v28 : C1 volet 2 — sheet d'onboarding à 5 étapes (#setup-sheet) qui guide
+   compte → code → coller → lancer → branché, ouverte depuis le bandeau démo et
+   les réglages. + B3 jauges du forfait animées au premier affichage. + voile des
+   sheets renforcé et surface élevée en mode sombre. */
+const CACHE = "cet-v28";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js",

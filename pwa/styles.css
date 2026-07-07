@@ -303,11 +303,11 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 /* settings sheet */
 /* Sheets : overlay toujours présent, animé au compositor (0 layout shift).
    Le voile fond, le panneau glisse depuis le bas (convention Material/Apple, B2). */
-.sheet{position:fixed;inset:0;background:rgba(26,25,21,.4);display:flex;z-index:50;align-items:flex-end;justify-content:center;
+.sheet{position:fixed;inset:0;background:rgba(20,19,15,.58);display:flex;z-index:50;align-items:flex-end;justify-content:center;
   opacity:0;visibility:hidden;transition:opacity .25s var(--ease),visibility 0s linear .25s}
 .sheet.open{opacity:1;visibility:visible;transition-delay:0s}
 .sheet-inner{background:var(--cream);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:var(--r-xl) var(--r-xl) 0 0;padding:22px 18px calc(28px + env(safe-area-inset-bottom));
-  transform:translateY(16px);transition:transform .28s var(--ease)}
+  box-shadow:0 -8px 40px rgba(20,19,15,.28);transform:translateY(16px);transition:transform .28s var(--ease)}
 .sheet.open .sheet-inner{transform:none}
 .sheet h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 4px;display:flex;justify-content:space-between;align-items:center}
 .sheet .lead{font-size:13px;color:var(--muted);margin:0 0 18px}
@@ -322,6 +322,40 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .btn{display:block;width:100%;border:none;background:var(--terracotta);color:#fff;font-family:var(--sans);font-size:15px;font-weight:600;padding:14px;border-radius:14px;cursor:pointer;margin-top:8px;transition:.15s}
 .btn:active{transform:scale(.99);background:var(--terracotta-d)}
 .btn.ghost{background:transparent;color:var(--muted);font-weight:500;margin-top:4px}
+
+/* ===== Onboarding à étapes (#setup-sheet) ===== */
+.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.setup-progress{margin:2px 0 20px}
+.setup-stepno{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 7px}
+.setup-bar{height:5px;background:var(--cream-2);border-radius:99px;overflow:hidden}
+.setup-bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--clay),var(--terracotta));border-radius:99px;transition:width .32s var(--ease)}
+.setup-step:focus{outline:none}
+.setup-step[hidden]{display:none}
+.setup-lead{font-size:13.5px;color:var(--slate-soft);line-height:1.55;margin:0 0 6px}
+.setup-lead b,.setup-body b{font-weight:600;color:var(--slate)}
+.setup-body{font-size:14px;color:var(--slate-soft);line-height:1.6;margin:10px 0}
+.setup-body--sep{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.setup-body code,.setup-hint code,.setup-lead code{font-family:var(--mono);font-size:12.5px;background:var(--cream-2);color:var(--terracotta-d);padding:1px 6px;border-radius:6px}
+.setup-hint{font-size:12px;color:var(--muted);line-height:1.55;margin:10px 0 0}
+.setup-linkbtn{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border:1px solid var(--line-strong)}
+.setup-code{font-family:var(--mono);font-size:12.5px;line-height:1.5;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;margin:12px 0;overflow-x:auto;color:var(--slate);white-space:pre}
+.setup-code-dim{color:var(--muted)}
+.setup-keybox{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+.setup-keybox code{font-family:var(--mono);font-size:12px;color:var(--slate);word-break:break-all;flex:1}
+.setup-copy{flex:0 0 auto;border:none;background:var(--terracotta);color:#fff;font-family:var(--sans);font-size:12px;font-weight:600;border-radius:8px;padding:7px 13px;cursor:pointer}
+.setup-copy:active{background:var(--terracotta-d)}
+.setup-copy.done{background:var(--sage)}
+.setup-textlink{display:inline-block;background:none;border:none;color:var(--terracotta-d);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;padding:10px 0 2px}
+.setup-textlink:hover{text-decoration:underline}
+.setup-done-ic{width:44px;height:44px;border-radius:12px;background:rgba(126,158,109,.16);color:#4e6b41;display:grid;place-items:center;margin:0 0 4px}
+.setup-done-ic svg{width:24px;height:24px}
+.setup-nav{display:flex;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.setup-nav .btn{margin-top:0}
+.setup-nav .setup-prev{flex:0 0 auto;width:auto;padding-left:22px;padding-right:22px}
+.setup-nav .setup-next,.setup-nav .setup-finish{flex:1}
+.setup-nav .setup-prev[disabled]{opacity:.35;pointer-events:none}
+.fr-cta{background:none;border:none;color:var(--terracotta-d);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;padding:8px 0 0;margin:0}
+.fr-cta:hover{text-decoration:underline}
 
 /* active projects editor */
 .proj-edit{display:flex;align-items:center;gap:9px;padding:10px 0;border-top:1px solid var(--line)}
@@ -355,6 +389,9 @@ button.proj:hover{background:rgba(204,120,92,.05)}
   .field input,.field select{background:#2A2925}
   /* squelette de chargement visible sur fond sombre */
   .sk{background:linear-gradient(90deg,#2A2925 25%,#33312c 50%,#2A2925 75%);background-size:200% 100%}
+  /* Sheets : surface élevée légèrement plus claire que le fond, pour se détacher
+     nettement du dashboard en mode sombre (sinon crème sombre ≈ fond). */
+  .sheet-inner{background:#2A2824;box-shadow:0 -8px 44px rgba(0,0,0,.55)}
 }
 
 /* live pulse */
@@ -425,6 +462,11 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 /* Bouton rafraîchir : tourne tant que ça charge, s'arrête à la donnée reçue (A8). */
 .spinning svg{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* Jauges du forfait : remplissage animé au premier affichage seulement (B3).
+   scaleX au compositor (0 reflow). transform-origin gauche pour partir du bord. */
+.bars-animate .fbar-track>span{animation:barGrow .55s var(--ease) both;transform-origin:left}
+@keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
