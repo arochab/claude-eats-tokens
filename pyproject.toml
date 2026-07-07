@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-eats-tokens"
+version = "1.0.0"
+description = "Pousse ta consommation de tokens Claude (Claude Code) vers la PWA Claude Eats Tokens."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Adam Chabbi" }]
+keywords = ["claude", "tokens", "usage", "anthropic", "claude-code"]
+
+# `requests` DOIT être ici (et pas en PEP 723 # /// script) : le bloc PEP 723
+# n'est pas lu par un projet installé via uv tool install / pip install.
+dependencies = [
+    "requests>=2.25",
+]
+
+[project.urls]
+Homepage = "https://github.com/arochab/claude-eats-tokens"
+Repository = "https://github.com/arochab/claude-eats-tokens"
+
+# La commande exposée après installation : `claude-push` -> claude_eats.cli:main.
+[project.scripts]
+claude-push = "claude_eats.cli:main"
+
+[tool.hatch.build.targets.wheel]
+# Seul le package moteur est empaqueté (pas tools/, server/, pwa/…).
+packages = ["claude_eats"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "claude_eats",
+    "README.md",
+    "pyproject.toml",
+]

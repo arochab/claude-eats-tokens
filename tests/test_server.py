@@ -484,5 +484,186 @@ class TestActivationOnPush(_MultiTenantBase):
         self.assertEqual(r.status_code, 200)
 
 
+# ---------------------------------------------------------------------------
+# Device pairing (appairage CLI ↔ compte, façon Stripe CLI / RFC 8628)
+# ---------------------------------------------------------------------------
+class TestPairingSingleTenant(unittest.TestCase):
+    """Sans Supabase : les 3 routes /pair/* renvoient 501."""
+
+    def setUp(self):
+        server.app.testing = True
+        self.c = server.app.test_client()
+
+    def test_pair_start_501(self):
+        r = self.c.post("/pair/start")
+        self.assertEqual(r.status_code, 501)
+
+    def test_pair_poll_501(self):
+        r = self.c.get("/pair/poll?code=ABCD-EFGH")
+        self.assertEqual(r.status_code, 501)
+
+    def test_pair_confirm_501(self):
+        r = self.c.post("/pair/confirm", json={"code": "ABCD-EFGH", "api_key": "cet_x"})
+        self.assertEqual(r.status_code, 501)
+
+    def test_gen_pair_code_format_and_alphabet(self):
+        # Format XXXX-XXXX, uniquement l'alphabet sûr (aucun 0/O/1/I/L).
+        alphabet = set(server._PAIR_ALPHABET)
+        for ambiguous in "01OIL":
+            self.assertNotIn(ambiguous, alphabet, msg=ambiguous)
+        for _ in range(200):
+            code = server._gen_pair_code()
+            self.assertRegex(code, r"^[A-Z2-9]{4}-[A-Z2-9]{4}$")
+            for ch in code.replace("-", ""):
+                self.assertIn(ch, alphabet, msg=f"{ch} hors alphabet dans {code}")
+
+
+class TestPairingMultiTenant(_MultiTenantBase):
+    """Flow complet /pair/start → /pair/confirm → /pair/poll, Supabase mocké."""
+
+    # --- /pair/start ---
+    def test_start_returns_code_and_urls(self):
+        with mock.patch.object(self.srv, "_sb_pair_insert", return_value=True) as ins:
+            r = self.c.post("/pair/start")
+        self.assertEqual(r.status_code, 201)
+        body = r.get_json()
+        self.assertRegex(body["code"], r"^[A-Z2-9]{4}-[A-Z2-9]{4}$")
+        self.assertIn("confirm_url", body)
+        self.assertIn("poll_url", body)
+        self.assertEqual(body["expires_in"], 600)
+        # confirm_url ouvre la PWA sur ?pair=CODE ; poll_url pointe /pair/poll.
+        self.assertIn("?pair=" + body["code"], body["confirm_url"])
+        self.assertIn("/pair/poll?code=" + body["code"], body["poll_url"])
+        ins.assert_called_once()
+
+    def test_start_rate_limited_429(self):
+        # 11e démarrage depuis la même IP dans la fenêtre → 429.
+        self.srv._pair_starts.clear()
+        with mock.patch.object(self.srv, "_sb_pair_insert", return_value=True):
+            for _ in range(server._PAIR_START_MAX):
+                ok = self.c.post("/pair/start", headers={"X-Forwarded-For": "9.9.9.9"})
+                self.assertEqual(ok.status_code, 201)
+            blocked = self.c.post("/pair/start", headers={"X-Forwarded-For": "9.9.9.9"})
+        self.assertEqual(blocked.status_code, 429)
+        self.srv._pair_starts.clear()
+
+    # --- /pair/poll ---
+    def test_poll_unknown_code_404_expired(self):
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=None):
+            r = self.c.get("/pair/poll?code=WDJB-MJHT")
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.get_json()["status"], "expired")
+
+    def test_poll_pending(self):
+        row = {"status": "pending", "api_key": None,
+               "expires_at": self.srv._iso_in(300)}
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row):
+            r = self.c.get("/pair/poll?code=WDJB-MJHT")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["status"], "pending")
+
+    def test_poll_expired_410(self):
+        row = {"status": "pending", "api_key": None,
+               "expires_at": self.srv._iso_in(-10)}  # déjà passé
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row), \
+             mock.patch.object(self.srv, "_sb_pair_update", return_value=True):
+            r = self.c.get("/pair/poll?code=WDJB-MJHT")
+        self.assertEqual(r.status_code, 410)
+        self.assertEqual(r.get_json()["status"], "expired")
+
+    def test_poll_confirmed_serves_key_once_then_consumed(self):
+        row = {"status": "confirmed", "api_key": "cet_secret_key",
+               "expires_at": self.srv._iso_in(300)}
+        # 1er poll : confirmed → ready + api_key, et marque consumed.
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row), \
+             mock.patch.object(self.srv, "_sb_pair_update",
+                               return_value=True) as upd:
+            r1 = self.c.get("/pair/poll?code=WDJB-MJHT")
+        self.assertEqual(r1.status_code, 200)
+        b1 = r1.get_json()
+        self.assertEqual(b1["status"], "ready")
+        self.assertEqual(b1["api_key"], "cet_secret_key")
+        # Le marquage consumed efface la clé (api_key=None) → jamais re-servie.
+        upd.assert_called_once()
+        _, fields = upd.call_args[0]
+        self.assertEqual(fields["status"], "consumed")
+        self.assertIsNone(fields["api_key"])
+
+        # 2e poll (ligne désormais consumed) → 410 + jamais la clé.
+        consumed_row = {"status": "consumed", "api_key": None,
+                        "expires_at": self.srv._iso_in(300)}
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=consumed_row):
+            r2 = self.c.get("/pair/poll?code=WDJB-MJHT")
+        self.assertEqual(r2.status_code, 410)
+        self.assertEqual(r2.get_json()["status"], "consumed")
+        self.assertNotIn("api_key", r2.get_json())
+
+    def test_poll_missing_code_400(self):
+        r = self.c.get("/pair/poll")
+        self.assertEqual(r.status_code, 400)
+
+    # --- /pair/confirm ---
+    def test_confirm_valid_marks_confirmed_and_stores_key(self):
+        row = {"status": "pending", "api_key": None,
+               "expires_at": self.srv._iso_in(300)}
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row), \
+             mock.patch.object(self.srv, "_sb_get_user_by_api_key",
+                               return_value={"id": "u-1", "email": "a@b.c"}), \
+             mock.patch.object(self.srv, "_sb_pair_update",
+                               return_value=True) as upd:
+            r = self.c.post("/pair/confirm",
+                            json={"code": "WDJB-MJHT", "api_key": "cet_good"})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.get_json()["ok"])
+        _, fields = upd.call_args[0]
+        self.assertEqual(fields["status"], "confirmed")
+        self.assertEqual(fields["api_key"], "cet_good")
+
+    def test_confirm_invalid_api_key_400(self):
+        row = {"status": "pending", "api_key": None,
+               "expires_at": self.srv._iso_in(300)}
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row), \
+             mock.patch.object(self.srv, "_sb_get_user_by_api_key",
+                               return_value=None), \
+             mock.patch.object(self.srv, "_sb_pair_update") as upd:
+            r = self.c.post("/pair/confirm",
+                            json={"code": "WDJB-MJHT", "api_key": "cet_bad"})
+        self.assertEqual(r.status_code, 400)
+        upd.assert_not_called()
+
+    def test_confirm_unknown_code_404(self):
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=None):
+            r = self.c.post("/pair/confirm",
+                            json={"code": "WDJB-MJHT", "api_key": "cet_good"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_confirm_expired_code_410(self):
+        row = {"status": "pending", "api_key": None,
+               "expires_at": self.srv._iso_in(-10)}
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row), \
+             mock.patch.object(self.srv, "_sb_pair_update", return_value=True):
+            r = self.c.post("/pair/confirm",
+                            json={"code": "WDJB-MJHT", "api_key": "cet_good"})
+        self.assertEqual(r.status_code, 410)
+
+    def test_confirm_already_confirmed_410(self):
+        # Un code déjà confirmé ne peut pas être re-confirmé (pas de ré-armement).
+        row = {"status": "confirmed", "api_key": "cet_x",
+               "expires_at": self.srv._iso_in(300)}
+        with mock.patch.object(self.srv, "_sb_pair_get", return_value=row), \
+             mock.patch.object(self.srv, "_sb_get_user_by_api_key",
+                               return_value={"id": "u-1"}), \
+             mock.patch.object(self.srv, "_sb_pair_update") as upd:
+            r = self.c.post("/pair/confirm",
+                            json={"code": "WDJB-MJHT", "api_key": "cet_good"})
+        self.assertEqual(r.status_code, 410)
+        upd.assert_not_called()
+
+    def test_confirm_missing_fields_400(self):
+        for bad in ({"code": "WDJB-MJHT"}, {"api_key": "cet_x"}, {}):
+            r = self.c.post("/pair/confirm", json=bad)
+            self.assertEqual(r.status_code, 400, msg=f"devrait rejeter {bad}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -67,6 +67,8 @@ CORS(app, resources={
     r"/usage.json": {"origins": "*", "methods": ["GET"]},
     r"/auth/*": {"origins": "*", "methods": ["GET", "POST"]},
     r"/api/*": {"origins": "*", "methods": ["GET", "POST"]},
+    # Device pairing (Stripe-CLI-like) : la PWA (autre origine) confirme un code.
+    r"/pair/*": {"origins": "*", "methods": ["GET", "POST"]},
     # Beacon d'instrumentation : ping GET fire-and-forget depuis le navigateur.
     r"/beacon": {"origins": "*", "methods": ["GET"]},
 })
@@ -244,6 +246,117 @@ def _sb_bump_visit(ref):
                 timeout=10)
     except Exception:  # noqa: BLE001
         pass
+
+
+# ---------------------------------------------------------------------------
+# Device pairing helpers (appairage CLI ↔ compte, façon Stripe CLI / RFC 8628)
+# ---------------------------------------------------------------------------
+# Alphabet SÛR pour le code affiché : base32-ish SANS caractères ambigus
+# (pas de 0/O, 1/I/L). 8 caractères → 32^8 ≈ 40 bits d'entropie.
+_PAIR_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # ni 0,O,1,I,L
+_PAIR_TTL_SECONDS = 600  # 10 minutes
+
+# Rate-limit best-effort EN MÉMOIRE (Render free redémarre → compteur perdu ;
+# c'est une protection basique anti-abus, pas une garantie forte). Fenêtre
+# glissante par IP : { ip: [timestamps...] }. Voir _pair_rate_ok().
+_PAIR_START_MAX = 10          # /pair/start : max 10 démarrages
+_PAIR_START_WINDOW = 3600     # par heure et par IP
+_pair_starts = {}             # ip -> list[float] (timestamps epoch)
+
+
+def _gen_pair_code():
+    """Génère un code d'appairage lisible "XXXX-XXXX" (alphabet sans ambigus)."""
+    raw = "".join(secrets.choice(_PAIR_ALPHABET) for _ in range(8))
+    return f"{raw[:4]}-{raw[4:]}"
+
+
+def _pair_rate_ok(ip):
+    """True si l'IP peut encore démarrer un appairage (best-effort en mémoire).
+
+    Purge les timestamps hors fenêtre puis compare au plafond. Sans IP → autorisé
+    (on ne bloque pas faute d'info). Render redémarre → compteur remis à zéro :
+    c'est assumé, protection basique seulement.
+    """
+    if not ip:
+        return True
+    now = time.time()
+    hits = [t for t in _pair_starts.get(ip, []) if now - t < _PAIR_START_WINDOW]
+    if len(hits) >= _PAIR_START_MAX:
+        _pair_starts[ip] = hits
+        return False
+    hits.append(now)
+    _pair_starts[ip] = hits
+    return True
+
+
+def _client_ip():
+    """IP client best-effort (X-Forwarded-For posé par Render devant gunicorn)."""
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.remote_addr or ""
+
+
+def _sb_pair_insert(code):
+    """Insère un code d'appairage (status=pending, expires_at = now + TTL).
+
+    Retourne True si l'insert a réussi. expires_at est calculé côté serveur en
+    ISO-8601 UTC (pas de dépendance à l'horloge Postgres pour la cohérence des
+    comparaisons faites en Python dans /pair/poll).
+    """
+    body = {
+        "code": code,
+        "status": "pending",
+        "expires_at": _iso_in(_PAIR_TTL_SECONDS),
+    }
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/pairing_codes",
+        headers=_sb_headers(), json=body, timeout=10)
+    return r.ok
+
+
+def _sb_pair_get(code):
+    """Lit une ligne pairing_codes par code. Retourne le dict ou None."""
+    r = requests.get(
+        f"{SUPABASE_URL}/rest/v1/pairing_codes?code=eq.{urllib.parse.quote(code)}"
+        "&select=code,status,api_key,expires_at",
+        headers=_sb_headers(), timeout=10)
+    if r.ok and r.json():
+        return r.json()[0]
+    return None
+
+
+def _sb_pair_update(code, fields):
+    """PATCH partiel d'une ligne pairing_codes (code=eq.{code}). Retourne r.ok."""
+    r = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/pairing_codes?code=eq.{urllib.parse.quote(code)}",
+        headers=_sb_headers(), json=fields, timeout=10)
+    return r.ok
+
+
+def _iso_in(seconds):
+    """ISO-8601 UTC (suffixe Z) à `seconds` dans le futur. Pour expires_at."""
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + seconds))
+
+
+def _pair_expired(row):
+    """True si la ligne pairing_codes est expirée (expires_at < maintenant).
+
+    Robuste aux formats ISO renvoyés par PostgREST (avec/sans microsecondes,
+    suffixe Z ou +00:00). En cas de parse impossible → considérée expirée (sûr).
+    """
+    exp = (row or {}).get("expires_at")
+    if not exp:
+        return True
+    try:
+        s = exp.replace("Z", "+00:00")
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt < datetime.now(timezone.utc)
+    except Exception:  # noqa: BLE001 — parse hostile → traité comme expiré
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -604,6 +717,137 @@ def me():
         "plan_status": user.get("plan_status", "none"),
         "plan_renews_at": user.get("plan_renews_at"),
     })
+
+
+# ---------------------------------------------------------------------------
+# Device pairing (appairage CLI ↔ compte, façon Stripe CLI / RFC 8628)
+# ---------------------------------------------------------------------------
+# Flow : le CLI démarre (/pair/start) et affiche un code court ; l'utilisateur
+# confirme ce code dans la PWA déjà connectée (/pair/confirm) ; le CLI récupère
+# sa clé cet_ en poll (/pair/poll) SANS jamais copier-coller de clé.
+#
+# ANTI-PHISHING : le MÊME code s'affiche dans le CLI ET dans la PWA. L'utilisateur
+# vérifie visuellement la correspondance avant de confirmer. C'est la mitigation
+# de RFC 8628 contre le phishing de code d'appairage (cf. Storm-2372) : sans voir
+# le code dans SON propre terminal, il ne confirmera pas celui d'un attaquant.
+@app.post("/pair/start")
+def pair_start():
+    """Le CLI démarre un appairage : renvoie un code court à afficher.
+
+    Non authentifié (le CLI n'a pas encore de clé — c'est le but). Rate-limit
+    best-effort par IP. Le code est inséré en 'pending' avec un TTL de 10 min.
+    """
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    if not _pair_rate_ok(_client_ip()):
+        return jsonify({"error": "rate limited"}), 429
+
+    # Génère un code unique (retry en cas de collision — extrêmement rare à 40 bits).
+    code = None
+    for _ in range(5):
+        candidate = _gen_pair_code()
+        if _sb_pair_insert(candidate):
+            code = candidate
+            break
+    if code is None:
+        return jsonify({"error": "could not create pairing code"}), 500
+
+    confirm_url = f"{FRONTEND_URL}/?pair={code}"
+    poll_url = f"{request.host_url.rstrip('/')}/pair/poll?code={code}"
+    return jsonify({
+        "code": code,
+        "confirm_url": confirm_url,
+        "poll_url": poll_url,
+        "expires_in": _PAIR_TTL_SECONDS,
+    }), 201
+
+
+@app.get("/pair/poll")
+def pair_poll():
+    """Le CLI poll ici (toutes les ~2s) jusqu'à récupérer sa clé.
+
+    - code inconnu → 404 {status:expired} (indiscernable d'un code périmé : on ne
+      distingue pas pour ne pas fuiter l'existence d'un code).
+    - expiré → {status:expired}.
+    - confirmé → {status:ready, api_key} UNE SEULE FOIS, puis status → 'consumed'
+      et api_key effacée (NULL) : la clé n'est JAMAIS re-servie.
+    - sinon → {status:pending}.
+    """
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    code = (request.args.get("code") or "").strip().upper()
+    if not code:
+        return jsonify({"error": "code required"}), 400
+
+    row = _sb_pair_get(code)
+    if not row:
+        return jsonify({"status": "expired"}), 404
+
+    if _pair_expired(row):
+        # Marque expiré (best-effort) pour la purge, mais réponse cohérente.
+        _sb_pair_update(code, {"status": "expired", "api_key": None})
+        return jsonify({"status": "expired"}), 410
+
+    status = row.get("status")
+    if status == "confirmed":
+        api_key = row.get("api_key")
+        # Consomme AVANT de répondre : la clé n'est servie qu'une fois. Si le
+        # marquage échoue, on refuse de servir (évite une double-livraison).
+        if not _sb_pair_update(code, {"status": "consumed", "api_key": None}):
+            return jsonify({"status": "pending"}), 200
+        return jsonify({"status": "ready", "api_key": api_key}), 200
+
+    if status == "consumed":
+        # Déjà servie : on ne redonne jamais la clé.
+        return jsonify({"status": "consumed"}), 410
+
+    # pending (ou tout autre état non terminal)
+    return jsonify({"status": "pending"}), 200
+
+
+@app.post("/pair/confirm")
+def pair_confirm():
+    """La PWA (déjà authentifiée) confirme un code et transmet sa clé cet_.
+
+    Body : {code, api_key}. La PWA connaît la clé en clair côté client
+    (window.CET_API_KEY) — c'est elle qui la fournit ici. Le serveur :
+      - vérifie que le code existe, est 'pending' et non expiré ;
+      - vérifie que api_key est valide (résout un utilisateur) ;
+      - marque 'confirmed' et STOCKE la clé en clair (TTL court, effacée dès le
+        premier service par /pair/poll — cf. commentaire migration 0004).
+    Codes retour : 200 {ok}, 400 (input/clé invalide), 404 (code inconnu),
+    410 (code expiré ou déjà utilisé).
+    """
+    if not MULTI_TENANT:
+        return jsonify({"error": "multi-tenant not enabled"}), 501
+
+    body = request.get_json(force=True, silent=True) or {}
+    code = (body.get("code") or "").strip().upper()
+    api_key = body.get("api_key") or ""
+    if not code or not api_key:
+        return jsonify({"error": "code and api_key required"}), 400
+
+    row = _sb_pair_get(code)
+    if not row:
+        return jsonify({"error": "unknown code"}), 404
+    if _pair_expired(row):
+        _sb_pair_update(code, {"status": "expired", "api_key": None})
+        return jsonify({"error": "code expired"}), 410
+    if row.get("status") != "pending":
+        # Déjà confirmé/consommé/expiré : on ne ré-arme pas un code.
+        return jsonify({"error": "code not pending"}), 410
+
+    # La clé doit correspondre à un utilisateur réel.
+    user = _sb_get_user_by_api_key(api_key)
+    if not user:
+        return jsonify({"error": "invalid api key"}), 400
+
+    if not _sb_pair_update(code, {"status": "confirmed", "api_key": api_key}):
+        return jsonify({"error": "could not confirm"}), 500
+
+    return jsonify({"ok": True}), 200
 
 
 # ---------------------------------------------------------------------------
