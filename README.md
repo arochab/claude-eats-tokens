@@ -176,29 +176,48 @@ Ouvrez l'URL GitHub Pages depuis le téléphone, puis **Ajouter à l'écran d'ac
 
 ### Le moteur local (PC) — la source des chiffres
 
-Le moteur lit vos logs Claude Code et pousse les totaux vers le serveur.
+Le moteur lit vos logs Claude Code et pousse les totaux vers le serveur. Depuis
+la v1, l'installation tient en **trois commandes** — pas de Python à installer,
+pas de fichier à éditer, **pas de clé à recopier**.
 
 ```bash
-# Lancer une fois, à la main
-set PUSH_URL=https://votre-serveur.onrender.com
-set PUSH_SECRET=un-secret-long
-python tools/push_usage.py --once
+# 1. installer uv une fois (gère Python et le CLI pour vous)
+#    macOS/Linux :
+curl -LsSf https://astral.sh/uv/install.sh | sh
+#    Windows (PowerShell) :
+#    irm https://astral.sh/uv/install.ps1 | iex
 
-# Ou en boucle (push silencieux régulier)
+# 2. installer le moteur
+uv tool install "git+https://github.com/arochab/claude-eats-tokens@v1"
+
+# 3. brancher cet ordinateur à votre compte (device-pairing, aucune clé à copier)
+claude-push pair
+#    → un code « XXXX-XXXX » s'affiche ; ouvrez l'app, vérifiez qu'il correspond,
+#      cliquez « Confirmer ». Le moteur récupère votre clé tout seul.
+
+# 4. que ça tourne au démarrage, sans terminal ouvert (per-user, sans admin)
+claude-push install-service
+```
+
+`claude-push doctor` diagnostique tout (clé, logs Claude trouvés, serveur, service).
+`claude-push uninstall` retire le service en une commande (kill-switch).
+
+Le **device-pairing** suit le pattern des CLI modernes (Stripe CLI, `gh auth
+login`) : le code identique côté terminal et côté app, vérifié à l'œil, empêche
+tout hameçonnage (RFC 8628). La clé vit dans `~/.config/claude-eats/config.json`.
+
+<details><summary>Voie historique (scripts <code>.bat</code>, self-host, sans uv)</summary>
+
+```bash
+set PUSH_URL=https://votre-serveur.onrender.com
+set CET_API_KEY=cet_votre_code_de_connexion   # (ou PUSH_SECRET en self-host)
 python tools/push_usage.py --interval 60
 ```
 
-Le secret de push se met dans `secret.local.bat` (modèle fourni : `secret.local.example.bat`).
-
-Sous **Windows**, pas besoin de garder un terminal ouvert :
-
-| Script | Rôle |
-|---|---|
-| **`DEMARRER.bat`** | Lancer le moteur à la main (double-clic, boucle de push visible). |
-| **`installer-demarrage-auto.ps1`** | Démarrage auto (PowerShell admin) : crée une **tâche planifiée** qui lance le moteur au boot **et** au login, le relance s'il plante, sans limite de durée, fenêtre cachée. |
-| **`desinstaller-demarrage-auto.bat`** | Retire cette tâche planifiée. |
-
-En interne, la tâche lance `demarrer-silencieux.vbs` → `moteur.bat` (la boucle de push). Vous n'avez pas à y toucher.
+Sous **Windows**, `DEMARRER.bat` (double-clic) et
+`installer-demarrage-auto.ps1` (tâche planifiée) restent disponibles. Le code de
+connexion se met dans `secret.local.bat` (modèle : `secret.local.example.bat`).
+</details>
 
 ### Déploiement (gratuit de bout en bout)
 
