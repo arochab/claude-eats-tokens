@@ -21,8 +21,14 @@ if "%PUSH_URL%"=="" (
   pause
   goto :eof
 )
-if "%PUSH_SECRET%"=="" (
-  echo   PUSH_SECRET est vide dans secret.local.bat — corrige-le.
+REM Deux facons de s'authentifier : un code de connexion (CET_API_KEY, version
+REM hebergee) OU un secret perso (PUSH_SECRET, version self-hosted). Il en faut UN.
+if "%CET_API_KEY%%PUSH_SECRET%"=="" (
+  echo.
+  echo   Il manque ton code de connexion.
+  echo   Ouvre "secret.local.bat" et colle-le apres  set CET_API_KEY=
+  echo   (tu l'obtiens dans l'app, bouton Compte. Il commence par "cet_".)
+  echo.
   pause
   goto :eof
 )

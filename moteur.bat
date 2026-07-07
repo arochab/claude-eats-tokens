@@ -2,7 +2,7 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 if not exist "secret.local.bat" (
-  echo secret.local.bat introuvable — definis PUSH_URL et PUSH_SECRET. Voir .env.example.
+  echo secret.local.bat introuvable — definis PUSH_URL et ton code de connexion (CET_API_KEY) ou PUSH_SECRET. Voir secret.local.example.bat.
   exit /b 1
 )
 call "secret.local.bat"
