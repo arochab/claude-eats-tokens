@@ -38,13 +38,13 @@
     </div>
   </header>
 
-  <div class="status" id="status"><span class="dot"></span><span id="status-txt">Chargement…</span></div>
+  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="status-txt">Chargement…</span></div>
 
   <div class="firstrun" id="firstrun" hidden>
     <div class="fr-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/><circle cx="12" cy="12" r="3"/></svg></div>
     <div class="fr-body">
-      <p class="fr-t">Données de démonstration</p>
-      <p class="fr-h">Pour voir tes vrais chiffres, lance le moteur sur ton PC : double-clic sur <b>DEMARRER.bat</b>. Il lit tes logs Claude Code et les envoie ici.</p>
+      <p class="fr-t">Tu vois un exemple</p>
+      <p class="fr-h">Ces chiffres sont une démo. Pour suivre <b>ta</b> vraie conso, il faut lancer un petit outil sur ton ordinateur (pas sur le téléphone) : il lit l'activité de Claude Code et l'envoie ici, en privé. Sans ça, tu vois un exemple, pas tes chiffres.</p>
     </div>
   </div>
 
@@ -184,17 +184,18 @@
       <div class="field"><label>Caler sur ma vraie barre 5 h<small>le % que Claude t'affiche, là, maintenant</small></label><input type="number" id="b-calib" inputmode="numeric" placeholder="ex. 11" min="1" max="100" /></div>
     </div>
 
-    <div class="grouplabel">Budgets de tokens</div>
+    <div class="grouplabel">Repères perso <span style="font-weight:400;opacity:.7">(facultatif)</span></div>
     <div class="fieldgroup">
-      <div class="field"><label>Par jour<small>plafond quotidien</small></label><input type="number" id="b-day" inputmode="numeric" /></div>
-      <div class="field"><label>Par semaine<small>plafond hebdomadaire</small></label><input type="number" id="b-week" inputmode="numeric" /></div>
-      <div class="field"><label>Par mois<small>plafond mensuel</small></label><input type="number" id="b-month" inputmode="numeric" /></div>
+      <div class="field"><label>Par jour<small>laisse vide si tu ne sais pas</small></label><input type="number" id="b-day" inputmode="numeric" placeholder="ex. 5 000 000" /></div>
+      <div class="field"><label>Par semaine<small>laisse vide si tu ne sais pas</small></label><input type="number" id="b-week" inputmode="numeric" placeholder="ex. 30 000 000" /></div>
+      <div class="field"><label>Par mois<small>laisse vide si tu ne sais pas</small></label><input type="number" id="b-month" inputmode="numeric" placeholder="ex. 120 000 000" /></div>
     </div>
 
-    <div class="grouplabel">Fenêtres glissantes (réalité Max)</div>
+    <div class="grouplabel">Tes limites Max</div>
+    <p class="grouphint" style="margin:-4px 2px 10px;font-size:13px;color:var(--muted);line-height:1.5">Claude Max compte ta conso sur des tranches de temps : 5 h et 7 jours. Quand une tranche est pleine, Claude ralentit un moment, puis ça repart.</p>
     <div class="fieldgroup">
-      <div class="field"><label>Fenêtre 5 h<small>limite Max sur 5 heures</small></label><input type="number" id="b-w5h" inputmode="numeric" /></div>
-      <div class="field"><label>Fenêtre 7 jours<small>limite Max hebdomadaire</small></label><input type="number" id="b-w7d" inputmode="numeric" /></div>
+      <div class="field"><label>Limite sur 5 heures<small>ta tranche de 5 h</small></label><input type="number" id="b-w5h" inputmode="numeric" /></div>
+      <div class="field"><label>Limite sur 7 jours<small>ta tranche hebdomadaire</small></label><input type="number" id="b-w7d" inputmode="numeric" /></div>
     </div>
 
     <div class="grouplabel">Crédits API</div>
@@ -310,8 +311,8 @@
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><b>Vois plus loin.</b> 30 jours et tout l'historique, pas seulement les 7 derniers.</li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></span><b>Anticipe la fin de mois.</b> La projection te dit où tu atterris à ce rythme.</li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><b>Fouille tes projets.</b> Ouvre chaque projet : modèles, sessions, coût détaillé.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b>Waste Radar.</b> Découvre où tu gâches ton Opus — et ce que tu pourrais récupérer.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b>Boîte noire.</b> Comprends pourquoi ta fenêtre fond — sous-agents, cache, projet en cause.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b>Waste Radar.</b> Repère où part ton Opus (le modèle premium, donc le plus cher) quand un modèle plus léger aurait suffi — et ce que tu aurais pu économiser.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b>Boîte noire.</b> Comprends enfin pourquoi ta fenêtre fond si vite — et quel projet est en cause.</li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><b>Exporte tout.</b> CSV et PNG pour garder tes chiffres ou les partager.</li>
     </ul>
 

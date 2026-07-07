@@ -4,7 +4,7 @@
 :root {
   /* DA Anthropic « side project » : papier crème chaud, grille, accent dosé */
   --cream:#EDEAE2; --cream-2:#E4E0D5; --paper:#FBFAF6; --slate:#1A1915;
-  --slate-soft:#3A3833; --muted:#8C887C; --muted-2:#9A9588;
+  --slate-soft:#3A3833; --muted:#676358; --muted-2:#676358; --muted-soft:#8C887C;
   --terracotta:#C15F3C; --terracotta-d:#A8432F; --terracotta-l:#F3E4DC; --clay:#D9A878;
   --sky:#6A8CAF; --sage:#7E9466; --amber:#C8923D;
   --danger:#A8432F; --line:#DEDACE; --line-strong:#CFC9BA;
@@ -404,6 +404,10 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 }
 
 /* respect du mouvement réduit (corrige A3-8) */
+/* Bouton rafraîchir : tourne tant que ça charge, s'arrête à la donnée reçue (A8). */
+.spinning svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
   .dot.live::after{display:none}

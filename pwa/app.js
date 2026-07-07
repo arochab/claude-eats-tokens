@@ -163,7 +163,7 @@
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var fr = $("firstrun"); if (fr) fr.hidden = !demo;
     if (demo) {
-      setStatus("Démonstration — lance la synchro pour tes vrais chiffres", "demo");
+      setStatus("Démonstration — lance le moteur sur ton PC pour voir tes vrais chiffres", "demo");
     } else {
       // alerte de fraîcheur : si les données du serveur sont vieilles (>1h), on le dit.
       var stale = (typeof d.serverAgeSeconds === "number" && d.serverAgeSeconds > 3600);
@@ -294,7 +294,7 @@
     // badge coloré : la fiabilité du chiffre = la valeur de l'app. Vert = officiel
     // (ton PC tourne), terracotta = estimation (moteur endormi) -> impossible à rater.
     if (hint) {
-      hint.textContent = w.stale ? "estimation · moteur endormi" : "officiel";
+      hint.textContent = w.stale ? "estimation · en pause" : "chiffre exact";
       hint.className = w.stale ? "hint hint--est" : "hint hint--off";
     }
 
@@ -776,7 +776,7 @@
     var projects = (d.projects || []).slice();
     if (!projects.length) {
       pbox.innerHTML = emptyState("Aucun projet détecté",
-        "Lance la synchro (push_usage.py) pour voir tes projets Claude Code regroupés ici.");
+        "Lance le moteur sur ton PC (double-clic sur DEMARRER.bat) : tes projets Claude Code apparaîtront ici, regroupés.");
       return;
     }
     // tri
@@ -995,7 +995,7 @@
             if (!silent) setStatus(
               navigator.onLine === false ? "Hors-ligne — aucune donnée en cache."
               : sawRemoteTimeout ? "Serveur endormi et aucune donnée locale. Réessaie dans ~1 min."
-              : "Aucune donnée à afficher. Lance la synchro sur ton PC.", "err");
+              : "Aucune donnée pour l'instant. Vérifie que le moteur tourne sur ton PC.", "err");
           });
       }
       var src = sources[i];
@@ -1053,7 +1053,12 @@
     var next = e.key === "ArrowRight" ? (cur + 1) % btns.length : (cur - 1 + btns.length) % btns.length;
     btns[next].focus(); selectPeriod(btns[next]);
   });
-  $("refresh").addEventListener("click", function () { this.style.transform = "rotate(360deg)"; var s = this; setTimeout(function () { s.style.transform = ""; }, 400); load(); });
+  $("refresh").addEventListener("click", function () {
+    // Tourne TANT que ça charge (Render peut dormir ~50 s), s'arrête à la donnée
+    // reçue — pas un timeout fixe qui ment sur la durée réelle.
+    var s = this; s.classList.add("spinning");
+    Promise.resolve(load()).finally(function () { s.classList.remove("spinning"); });
+  });
   if ($("export-csv")) $("export-csv").addEventListener("click", exportCSV);
   if ($("export-png")) $("export-png").addEventListener("click", exportPNG);
 
@@ -1064,7 +1069,11 @@
     if (server && key) {
       window.open(server.replace(/\/$/, "") + "/billing/checkout?key=" + encodeURIComponent(key), "_blank", "noopener");
     } else {
-      banner && setStatus("Connecte-toi d'abord (bouton Compte) pour passer à Pro.", "warn");
+      // Pas de compte : ne jamais router le feedback dans .status (invisible
+      // derrière la sheet ouverte). On enchaîne directement vers la connexion.
+      if (typeof closeSheet === "function") closeSheet("pro-sheet");
+      if (typeof window.CET_openAuth === "function") window.CET_openAuth();
+      else if ($("auth-sheet")) $("auth-sheet").classList.add("open");
     }
   };
   if ($("pro-checkout")) $("pro-checkout").addEventListener("click", window.CET_startCheckout);
@@ -1098,8 +1107,10 @@
     var sheet = $(id);
     _sheetReturnFocus = document.activeElement;
     sheet.classList.add("open");
-    var f = _focusables(sheet);
-    if (f.length) f[0].focus();
+    // Focus sur le dialogue lui-même (pas le bouton Fermer) pour que le lecteur
+    // d'écran lise le titre du sheet à l'ouverture (A8).
+    sheet.setAttribute("tabindex", "-1");
+    sheet.focus();
     sheet._keyHandler = function (e) {
       if (e.key === "Escape") { closeSheet(id); return; }
       if (e.key === "Tab") {
@@ -1332,6 +1343,8 @@
 
     function openAuth() { sheet.classList.add("open"); updateAuthUI(); }
     function closeAuth() { sheet.classList.remove("open"); }
+    // Exposé pour que le CTA "Passer à Pro" sans compte enchaîne vers la connexion (A5).
+    window.CET_openAuth = openAuth;
 
     function updateAuthUI() {
       var apiKey = window.CET_API_KEY;
@@ -1482,7 +1495,7 @@
   // radar-hero.js (defer) s'auto-monte aussi sur #hero-radar ; mount() est
   // idempotent, donc cet appel précoce est sans risque s'il existe déjà.
   if (window.CETRadar) { try { window.CETRadar.mount(document.getElementById("hero-radar")); } catch (e) {} }
-  var SW_FILE = "sw.v23.js";
+  var SW_FILE = "sw.v24.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;
