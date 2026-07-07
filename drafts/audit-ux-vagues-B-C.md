@@ -110,17 +110,20 @@ divergent (vert JS #7E9E6D ≠ --sage #7E9466 ; rouge JS #B5563A ≠ --danger).
 - ✅ B1 — feu réel en démo + badge « Exemple » (`ed1e626`)
 - ✅ C1 court-terme — « clé API » → « code de connexion » + modèle mental (`236162b`)
 
-**RESTE (à valider/faire avec Adam) :**
-- ⏳ **B3** — jauges animées (poser 0% → reflow → cible). NON fait : `innerHTML`
-  recrée les spans à chaque tick de polling 30s → risque de clignotement. Demande
-  de porter `dataset.filled` sur un conteneur stable (refonte du cycle de rendu
-  des cartes). À faire avec soin + test visuel.
-- ⏳ **C1 volet 2** — sheet `#setup-sheet` à 5 étapes. Le pré-requis (volet 1) est
-  fait, donc c'est désormais honnête à construire. Nouvelle UI substantielle → à
-  concevoir/valider visuellement avec Adam (parcours qu'il n'a pas encore vu).
-- ⏳ **C2** — consolidation des tokens design system (~40 sélecteurs). Le rapport
-  le met explicitement EN DERNIER, « sans restyler », « avec tests visuels mobile ».
-  Risque de régression diffuse élevé en autonomie → réservé à un passage avec Adam.
+**MAJ 7 juil (fin de session autonome) — quasiment tout est FAIT :**
+- ✅ **B3** — jauges du forfait animées au premier affichage (scaleX compositor,
+  flag `dataset.filled` sur conteneur stable → pas de clignotement au polling). Fait.
+- ✅ **C1 volet 2** — sheet `#setup-sheet` 5 étapes construite (compte→code→coller→
+  lancer→branché), form email intégré, ouverte depuis bandeau démo + réglages. Fait.
+  ⚠️ À VÉRIFIER sur vrai appareil : le rendu de la sheet (headless + virtual-time
+  fige l'opacité de transition, impossible à confirmer en capture ; le composant
+  est identique aux sheets auth/réglages/pro éprouvés en prod). Voile renforcé +
+  surface élevée dark ajoutés par sécurité.
+- ✅ **C2 NOYAU** — couleurs sémantiques unifiées (CET_COLORS), rayon CTA unique
+  (--r-btn), transitions explicites. Fait.
+- ⏳ **C2 RESTE** — rabattre les ~21 tailles typo + grille d'espacement base-4.
+  SEUL morceau NON fait : diffus, « sans restyler », risque de régression
+  invisible en headless. À faire avec l'œil d'Adam + tests visuels mobile.
 
 ## Recommandation d'ordre (de l'audit)
 
