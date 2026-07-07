@@ -100,15 +100,35 @@ divergent (vert JS #7E9E6D ≠ --sage #7E9466 ; rouge JS #B5563A ≠ --danger).
 
 ---
 
+## AVANCEMENT (mode autonome, 7 juil)
+
+**FAIT + commité local (non poussé) :**
+- ✅ Vague A complète (`417e85e`)
+- ✅ C1 volet 1 — DEMARRER.bat accepte CET_API_KEY (`b75b4c6`) — débloquait tout
+- ✅ Vague B : B2 (sheets animés), B4 (réglages avancés repliés), B5 (transition
+  feu + canal texte), B6 (Boîte noire glosée) — `ca970a0`
+- ✅ B1 — feu réel en démo + badge « Exemple » (`ed1e626`)
+- ✅ C1 court-terme — « clé API » → « code de connexion » + modèle mental (`236162b`)
+
+**RESTE (à valider/faire avec Adam) :**
+- ⏳ **B3** — jauges animées (poser 0% → reflow → cible). NON fait : `innerHTML`
+  recrée les spans à chaque tick de polling 30s → risque de clignotement. Demande
+  de porter `dataset.filled` sur un conteneur stable (refonte du cycle de rendu
+  des cartes). À faire avec soin + test visuel.
+- ⏳ **C1 volet 2** — sheet `#setup-sheet` à 5 étapes. Le pré-requis (volet 1) est
+  fait, donc c'est désormais honnête à construire. Nouvelle UI substantielle → à
+  concevoir/valider visuellement avec Adam (parcours qu'il n'a pas encore vu).
+- ⏳ **C2** — consolidation des tokens design system (~40 sélecteurs). Le rapport
+  le met explicitement EN DERNIER, « sans restyler », « avec tests visuels mobile ».
+  Risque de régression diffuse élevé en autonomie → réservé à un passage avec Adam.
+
 ## Recommandation d'ordre (de l'audit)
 
-1. **Vague A — FAIT** (commit `417e85e`).
-2. **B4, B6** (wording/réglages, faible risque) — pourraient rejoindre A.
-3. **B1** (démo qui vend) — fort impact conversion, à valider (dataset démo).
-4. **B2, B3, B5** (motion) — le poli « grande marque », à tester (focus-trap).
-5. **C1 volet 1** (outillage clé PC) — débloque le vrai onboarding grand public.
-6. **C1 volet 2** (sheet setup) — une fois le volet 1 fait.
-7. **C2** (tokens) — chantier de fond, en dernier.
+1. **Vague A — FAIT**.
+2. **B4, B6, B2, B5, B1, C1v1, C1-CT — FAITS**.
+3. **B3** (jauges) — à faire avec soin (anti-clignotement).
+4. **C1 volet 2** (sheet setup 5 étapes) — fort impact onboarding, à concevoir avec Adam.
+5. **C2** (tokens) — chantier de fond, en dernier, avec tests visuels.
 
 ## Ce qu'il ne faut PAS toucher (garde-fou anti-sur-correction)
 Le ton (tutoiement, français simple), les garde-fous d'honnêteté (« candidats à
