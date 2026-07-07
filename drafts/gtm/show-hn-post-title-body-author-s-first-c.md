@@ -31,7 +31,9 @@ How it works:
 - That gets POSTed to a tiny Flask server on Render (free tier). The durable store is Supabase (free Postgres), keyed by a per-user API key; a shared-secret + HMAC path also exists for the single-user self-host case.
 - The frontend is a vanilla-JS PWA on GitHub Pages that pulls usage.json. No build step, no framework, no bundler. It falls back to a cached copy when the server is asleep (Render free tier cold-starts take ~50s), and to a demo dataset if you have nothing yet. Add-to-home-screen and it behaves like a native app; it pushes a phone notification when a 5h window fills up (earlier heads-ups at 25/50/75/90% are a Pro thing).
 
-Total infra cost: 0€. GitHub Pages + Render free + a Gist.
+Total infra cost: 0€. GitHub Pages + Render free + Supabase free.
+
+Setup, because the "run a Python script forever" part is usually where these tools lose people: it's a proper CLI now. `uv tool install "git+https://github.com/arochab/claude-eats-tokens@v1"`, then `claude-push pair` — which prints a short code, opens the app, you eyeball that the code matches (device-flow, à la Stripe CLI / `gh auth login`, so there's no API key to copy-paste), and confirm. Then `claude-push install-service` registers a per-user background task (schtasks / launchd / systemd --user, no admin) and `claude-push uninstall` rips it back out in one command. No Python to install (uv handles it), no file to edit, no key to paste, no terminal to babysit.
 
 The design choice I care most about: it doesn't show you a wall of numbers. It answers one question — "can I keep going, or am I about to get throttled?" — with a traffic light and an ETA. A big usage week gets a "nice, you're ramping up" message instead of a scary red bar, because on Max the weekly/monthly totals are mostly noise; the 5h window is the real throttle.
 
