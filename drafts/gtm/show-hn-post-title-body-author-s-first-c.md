@@ -28,8 +28,8 @@ I'm on Claude Max, and the thing that kept biting me is that there's no usage AP
 How it works:
 
 - A small Python engine streams the JSONL logs line by line (they get big, and occasionally corrupt, so it's streaming + defensive rather than json.load the whole file), aggregates tokens by model and by project, weights a rough cost per model, and emits a single usage.json.
-- That gets POSTed to a tiny Flask server on Render (free tier). Render's disk is ephemeral, so the durable store is a private GitHub Gist — a cheap, zero-ops key/value that survives restarts. Auth is a shared secret + HMAC.
-- The frontend is a vanilla-JS PWA on GitHub Pages that pulls usage.json. No build step, no framework, no bundler. It falls back to a cached copy when the server is asleep (Render free tier cold-starts take ~50s), and to a demo dataset if you have nothing yet. Add-to-home-screen and it behaves like a native app, with push notifications at 75/90% of your 5h window.
+- That gets POSTed to a tiny Flask server on Render (free tier). The durable store is Supabase (free Postgres), keyed by a per-user API key; a shared-secret + HMAC path also exists for the single-user self-host case.
+- The frontend is a vanilla-JS PWA on GitHub Pages that pulls usage.json. No build step, no framework, no bundler. It falls back to a cached copy when the server is asleep (Render free tier cold-starts take ~50s), and to a demo dataset if you have nothing yet. Add-to-home-screen and it behaves like a native app; it pushes a phone notification when a 5h window fills up (earlier heads-ups at 25/50/75/90% are a Pro thing).
 
 Total infra cost: 0€. GitHub Pages + Render free + a Gist.
 
