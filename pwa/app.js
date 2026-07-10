@@ -12,6 +12,15 @@
      Ordre d'essai : serveur Render -> data/usage.json (GitHub Pages) -> démo. */
   var PUSH_SERVER = window.CLAUDE_EATS_TOKENS_SERVER || ""; // ex: "https://claude-eats-tokens.onrender.com"
 
+  /* Wake-up Render dès le boot : Render free s'endort après 15 min d'inactivité,
+     le cold start prend ~40-50s. On fire-and-forget un ping sur "/" dès que l'IIFE
+     démarre, avant même que load() ne tente la vraie requête. Comme ça, quand le
+     timeout de 25s de load() commence à tourner, Render est déjà en train de
+     chauffer et répond dans les temps. */
+  if (PUSH_SERVER && window.CET_API_KEY) {
+    try { fetch(PUSH_SERVER.replace(/\/$/, "") + "/", { method: "GET", mode: "cors" }).catch(function(){}); } catch (e) {}
+  }
+
   /* ---------- Réglages (localStorage) ---------- */
   // Seuils d'alerte OPTIONNELS (0 = pas de seuil = pas d'alerte inventée).
   // Plus aucun budget auto-calibré : le jury scientifique l'a supprimé.
@@ -1013,6 +1022,22 @@
     function tryAt(i) {
       if (i >= sources.length) {
         // dernier repli : démo. On nuance le message selon ce qu'on a vu.
+        // Si on avait une clé mais que le serveur n'a pas répondu, on réessaie
+        // une fois avec un timeout plus long avant de tomber en démo.
+        if (sawRemoteTimeout && apiKey && PUSH_SERVER) {
+          return fetchTimeout(PUSH_SERVER.replace(/\/$/, "") + "/usage.json?key=" + encodeURIComponent(apiKey), 45000, { headers: { "X-Api-Key": apiKey } })
+            .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+            .then(function (d) {
+              if (!d || !d.totals || !d.totals.total) throw new Error("empty");
+              DATA = d; render(); try { checkThresholds(d); } catch (e) {}
+            })
+            .catch(function () {
+              return fetchTimeout("data/usage.demo.json", 8000)
+                .then(function (r) { return r.json(); })
+                .then(function (d) { DATA = d; render(); })
+                .catch(function () { if (!silent) setStatus(t("app.status.sleeping"), "err"); });
+            });
+        }
         return fetchTimeout("data/usage.demo.json", 8000)
           .then(function (r) { return r.json(); })
           .then(function (d) { DATA = d; render(); /* render() pose le bandeau démo */ })
@@ -1027,7 +1052,7 @@
       var fetchOpts = {};
       // Passer l'API key en header aussi (pour les requêtes multi-tenant)
       if (src.withKey && apiKey) fetchOpts.headers = { "X-Api-Key": apiKey };
-      return fetchTimeout(src.url, src.remote ? 12000 : 8000, fetchOpts)
+      return fetchTimeout(src.url, src.remote ? 25000 : 8000, fetchOpts)
         .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
         .then(function (d) {
           if (!d || !d.totals || !d.totals.total) throw new Error("empty");
