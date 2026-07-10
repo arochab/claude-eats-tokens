@@ -48,6 +48,8 @@
      Les helpers PURS vivent dans pwa/format.js (window.CET, testé sous Node).
      Ici on garde des alias fins, dont ceux qui dépendent de `settings`. */
   var CET = window.CET;
+  /* t(key, vars) — proxy vers CETI18N.t ; si pas encore chargé, renvoie la clé */
+  function t(key, vars) { return window.CETI18N ? window.CETI18N.t(key, vars) : key; }
   var TONE = { input: "#6A8CAF", output: "#CC785C", cacheCreate: "#D4A27F", cacheRead: "#7E9E6D" };
   var modelColor = CET.modelColor, fmt = CET.fmt, fmtFull = CET.fmtFull,
       pct = CET.pct, esc = CET.esc, dayLabel = CET.dayLabel, ringSVG = CET.ringSVG;
@@ -77,16 +79,18 @@
   }
   function rateValue() { return (eurState.rate && eurState.rate > 0) ? eurState.rate : 0; }
   function rateFreshness() {
-    if (!eurState.rate) return "taux indisponible";
-    if (eurState.manual) return "taux manuel " + eurState.rate.toFixed(3);
+    if (!eurState.rate) return t("app.rate.unavail");
+    if (eurState.manual) return t("app.rate.manual", { r: eurState.rate.toFixed(3) });
     var age = Date.now() - eurState.fetchedAt;
     var old = age > 86400000;
-    return "taux " + eurState.rate.toFixed(3) + " · " + (old ? "⚠ en cache, " : "") + "maj " + ago(new Date(eurState.fetchedAt).toISOString());
+    var freshness = eurState.rate.toFixed(3) + " · " + (old ? t("app.rate.cached", { ago: ago(new Date(eurState.fetchedAt).toISOString()) }) : "maj " + ago(new Date(eurState.fetchedAt).toISOString()));
+    return t("app.rate.fresh", { freshness: freshness });
   }
+  function _loc() { return window.CETI18N ? window.CETI18N.locale() : "fr-FR"; }
   function eur(usd) {
     var rate = rateValue();
-    if (!rate) return "≈ $" + (usd || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 });  // pas de taux -> on reste en $
-    return (usd * rate).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+    if (!rate) return "≈ $" + (usd || 0).toLocaleString(_loc(), { maximumFractionDigits: 0 });  // pas de taux -> on reste en $
+    return (usd * rate).toLocaleString(_loc(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
   }
   function money(usd) { return "≈ " + eur(usd); }
   function ago(iso) { return CET.ago(iso); }
@@ -169,12 +173,12 @@
     var demo = !!d.demo || (d.source && d.source.claudeCodeDir === null);
     var fr = $("firstrun"); if (fr) fr.hidden = !demo;
     if (demo) {
-      setStatus("Démonstration — lance le moteur sur ton PC pour voir tes vrais chiffres", "demo");
+      setStatus(t("app.status.demo"), "demo");
     } else {
       // alerte de fraîcheur : si les données du serveur sont vieilles (>1h), on le dit.
       var stale = (typeof d.serverAgeSeconds === "number" && d.serverAgeSeconds > 3600);
-      var msg = "Synchronisé " + ago(d.generatedAt) + " · " + fmtFull(d.source.messages) + " messages";
-      if (stale) msg = "⚠ Données possiblement périmées (" + ago(d.generatedAt) + ")";
+      var msg = t("app.status.synced", { ago: ago(d.generatedAt), n: fmtFull(d.source.messages) });
+      if (stale) msg = t("app.status.stale", { ago: ago(d.generatedAt) });
       setStatus(msg, stale ? "err" : null);
     }
 
@@ -186,16 +190,16 @@
        d'habitude". Le RADAR (3 fenêtres) remplace l'anneau mensuel. */
     var ratio3m = (d.month && typeof d.month.ratio3m === "number") ? d.month.ratio3m : null;
     var median3m = d.month ? d.month.median3m : null;
-    $("hero-lab").textContent = "Ce mois-ci";
+    $("hero-lab").textContent = t("app.hero.lab");
     if (ratio3m != null) {
       var rMx = ratio3m / 100;  // 1 = comme d'habitude
-      $("hero-rest").textContent = "D'habitude tu fais : " + fmt(median3m || 0);
+      $("hero-rest").textContent = t("app.hero.compare", { median: fmt(median3m || 0) });
     } else {
-      $("hero-rest").textContent = "Pas encore de mois précédent pour comparer";
+      $("hero-rest").textContent = t("app.hero.nohistory");
     }
     $("hero-used").classList.remove("sk");
     $("hero-used").textContent = fmt(month) + " tokens";
-    if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> Jour ' + d.month.dayOfMonth + " / " + d.month.daysInMonth;
+    if (d.month) $("hero-reset").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg> ' + t("app.hero.day", { d: d.month.dayOfMonth, total: d.month.daysInMonth });
 
     /* forfait d'abord (calcule les %, expose CET_FORFAIT_PCT pour le radar de repli),
        puis « Mes fenêtres » (officiel) qui peut masquer le forfait, puis le feu. */
@@ -222,17 +226,18 @@
     drawTrend(rows);
     // libellé de période + total (pour que le sélecteur ait un effet VISIBLE)
     var ptot = rows.reduce(function (a, r) { return a + r.total; }, 0);
-    var plabel = { today: "aujourd'hui", "7": "7 jours", "30": "30 jours", all: "tout l'historique" }[period] || "";
+    var plabel = { today: t("html.chart.today"), "7": t("html.chart.7d"), "30": t("html.chart.30d"), all: t("html.chart.all") }[period] || "";
     if ($("chart-hint")) $("chart-hint").textContent = plabel + " · " + fmt(ptot) + " tokens";
 
     /* projets — MÊME source que le reste du dashboard (respecte le filtre projet) */
     renderProjects(filteredData());
 
-    var src = demo ? "démonstration" : (d.source.claudeCodeDir || "logs locaux");
-    var asOf = (d.source && d.source.pricingAsOf) ? (" (tarifs " + d.source.pricingAsOf + ")") : "";
-    var rateInfo = rateValue() ? (" · " + rateFreshness()) : " · coût en $ (taux €/$ indisponible)";
-    $("foot").innerHTML = "Source : <b>" + esc(short(src)) + "</b>" + (d.source && d.source.apiConnected ? " · API connectée" : "") +
-      "<br/>Valeur théorique au tarif API" + asOf + " — sur Max tu paies un forfait fixe" + rateInfo + ".";
+    var src = demo ? t("app.status.demo").split(" — ")[0] : (d.source.claudeCodeDir || "logs locaux");
+    var asOf = (d.source && d.source.pricingAsOf) ? (" (" + d.source.pricingAsOf + ")") : "";
+    var rateInfo = rateValue() ? (" · " + rateFreshness()) : (" · " + t("app.rate.unavail"));
+    $("foot").innerHTML = t("app.foot.source", { src: "<b>" + esc(short(src)) + "</b>" }) +
+      (d.source && d.source.apiConnected ? " · " + t("app.foot.api") : "") +
+      "<br/>" + t("app.foot.cost", { asOf: asOf, rateInfo: rateInfo });
 
     updateChartA11y(d, month);
 
@@ -248,18 +253,15 @@
     var sum = sumRows(rows);
     var ratio = (d.month && d.month.ratio3m != null) ? (d.month.ratio3m + "% de ta médiane 3 mois") : "pas de comparaison";
     // radar des fenêtres : décrit les 3 arcs (5 h / semaine / mois) si dispo
-    var rad = "Radar des fenêtres. Ce mois : " + fmt(month) + " tokens, " + ratio + ".";
-    var wo = d.windowsOfficial;
-    if (wo) {
-      if (typeof wo.w5hPct === "number") rad += " Fenêtre 5 h : " + Math.round(wo.w5hPct) + "%.";
-      if (typeof wo.w7dPct === "number") rad += " Cette semaine : " + Math.round(wo.w7dPct) + "%.";
-    }
+    var rad = t("html.radar.aria");
     setLabel("hero-radar", rad);
-    setLabel("trend", "Évolution : " + fmt(sum.total) + " tokens sur la période sélectionnée (" + rows.length + " jours).");
+    setLabel("trend", t("app.chart.aria", { total: fmt(sum.total), days: rows.length }));
     var tot = sum.total || 1;
-    setLabel("donut", "Répartition : entrée " + Math.round(sum.input / tot * 100) + "%, sortie " +
-      Math.round(sum.output / tot * 100) + "%, cache créé " + Math.round(sum.cacheCreate / tot * 100) +
-      "%, cache lu " + Math.round(sum.cacheRead / tot * 100) + "%.");
+    var donutLabels = [t("app.drill.input"), t("app.drill.output"), t("app.drill.cacheWrite"), t("app.drill.cacheRead")];
+    setLabel("donut", donutLabels[0] + " " + Math.round(sum.input / tot * 100) + "%, " +
+      donutLabels[1] + " " + Math.round(sum.output / tot * 100) + "%, " +
+      donutLabels[2] + " " + Math.round(sum.cacheCreate / tot * 100) + "%, " +
+      donutLabels[3] + " " + Math.round(sum.cacheRead / tot * 100) + "%.");
   }
   function short(s) { s = String(s); return s.length > 40 ? "…" + s.slice(-38) : s; }
 
@@ -300,7 +302,7 @@
     // badge coloré : la fiabilité du chiffre = la valeur de l'app. Vert = officiel
     // (ton PC tourne), terracotta = estimation (moteur endormi) -> impossible à rater.
     if (hint) {
-      hint.textContent = w.stale ? "estimation · en pause" : "chiffre exact";
+      hint.textContent = w.stale ? t("app.windows.badge.stale") : t("app.windows.badge.exact");
       hint.className = w.stale ? "hint hint--est" : "hint hint--off";
     }
 
@@ -309,8 +311,8 @@
       var resetTxt = "";
       if (r.resetAt) {
         var u = until(new Date(r.resetAt).toISOString(), now);
-        resetTxt = /réinitialis/i.test(u) ? "vient de se remettre à zéro"
-                 : "se remet à zéro " + u.replace(/^reset /, "");
+        resetTxt = /réinitialis|reset$/i.test(u) ? t("app.windows.zero")
+                 : t("app.windows.in", { until: u.replace(/^reset /, "") });
       }
       return '<div class="win">' +
         '<div class="win-top"><span class="win-lab">' + esc(r.label) + '</span>' +
@@ -322,8 +324,8 @@
 
     // périmé : on garde les valeurs MAIS on prévient honnêtement
     if (w.stale) {
-      var capTxt = w.capturedAt ? ago(new Date(w.capturedAt).toISOString(), now) : "il y a un moment";
-      html += '<p class="win-note">estimation — dernière capture ' + esc(capTxt) + '</p>';
+      var capTxt = w.capturedAt ? ago(new Date(w.capturedAt).toISOString(), now) : ago(new Date(0).toISOString());
+      html += '<p class="win-note">' + esc(t("app.windows.freshness", { ago: capTxt })) + '</p>';
     }
     // le conseil utile du forfait (masqué quand l'officiel prime) atterrit ici :
     // on garde la meilleure ligne d'action, sans dupliquer les barres.
@@ -372,14 +374,14 @@
     var reset5h;
     if (win.w5hResetAt) {
       var u = until(win.w5hResetAt);
-      reset5h = /réinitialis/i.test(u) ? "vient de se remettre à zéro"
-              : "se remet à zéro " + u.replace(/^reset /, "");
-    } else { reset5h = "se remet à zéro à la fin de la fenêtre"; }
+      reset5h = /réinitialis|reset$/i.test(u) ? t("app.windows.zero")
+              : t("app.windows.in", { until: u.replace(/^reset /, "") });
+    } else { reset5h = t("app.windows.in", { until: t("until.done") }); }
 
     function bar(label, p, resetTxt, accent) {
       if (p == null) {
         return '<div class="fbar"><div class="fbar-top"><span class="fbar-lab">' + esc(label) +
-          '</span><button class="fbar-set" type="button">définir ma limite</button></div>' +
+          '</span><button class="fbar-set" type="button">' + esc(t("app.forfait.set")) + '</button></div>' +
           '<div class="fbar-track"><span style="width:0"></span></div></div>';
       }
       var col = p >= 100 ? CET_COLORS.danger : p >= (settings.warnPct || 80) ? CET_COLORS.warn : (accent || CET_COLORS.ok);
@@ -391,12 +393,13 @@
     // la barre Opus ne s'affiche QUE si Opus chauffe vraiment (sinon 3e barre
     // inutile à lire en régime vert ; le conseil la fait ressortir au bon moment).
     var warnP = settings.warnPct || 80;
+    var weekResetTxt = t("app.forfait.reset.week", { date: weekReset });
     var opusBar = (pOpus != null && pOpus >= warnP)
-      ? bar("Cette semaine · Opus", pOpus, "se remet à zéro " + weekReset, "#CC785C") : "";
+      ? bar(t("app.forfait.opus"), pOpus, weekResetTxt, "#CC785C") : "";
     var fb = $("forfait-bars");
     fb.innerHTML =
-      bar("Limite de 5 heures", p5h, reset5h) +
-      bar("Cette semaine · tous les modèles", pAll, "se remet à zéro " + weekReset) +
+      bar(t("app.forfait.5h"), p5h, reset5h) +
+      bar(t("app.forfait.7d"), pAll, weekResetTxt) +
       opusBar;
     // Animer le remplissage au PREMIER affichage seulement (flag sur le conteneur
     // stable), pas à chaque tick de polling — sinon lecture nerveuse (B3).
@@ -407,7 +410,7 @@
     }
 
     // mention d'honnêteté
-    $("forfait-note").innerHTML = "Estimation d'après ce que tu as déjà consommé — pas le chiffre exact d'Anthropic (ils ne le partagent pas avec les applis), mais un bon repère.";
+    $("forfait-note").innerHTML = t("app.forfait.note");
 
     // UN conseil smart selon la barre la plus haute (toujours calculé)
     var adviceHTML = forfaitAdvice(p5h, pAll, pOpus, reset5h, weekReset);
@@ -432,22 +435,22 @@
     var tone, msg;
     if (worst >= 100) {
       tone = "bad";
-      msg = "Tu as atteint une de tes limites. Pas de panique : ça se débloque tout seul. En attendant, lève le pied ou passe sur un modèle plus léger (Sonnet) pour avancer.";
+      msg = t("app.advice.max");
     } else if ((pOpus || 0) >= 95 && (p5h || 0) < warn) {
       tone = "bad";
-      msg = "Attendre ta limite courte ne changera rien cette fois : c'est ta limite de la semaine sur Opus qui est au bout. Elle repart " + weekReset + ". D'ici là, Sonnet reste dispo si tu veux continuer.";
+      msg = t("app.advice.opus", { reset: weekReset });
     } else if ((pOpus || 0) === worst && (pOpus || 0) >= 70) {
       tone = "warn";
-      msg = "C'est Opus qui chauffe cette semaine — ta ressource la plus rare. Pour le débroussaillage et les tâches carrées, Sonnet fait pareil et te garde Opus pour quand ça compte vraiment.";
+      msg = t("app.advice.opus70");
     } else if ((p5h || 0) === worst && (p5h || 0) >= warn) {
       tone = "warn";
-      msg = "Tu pousses fort depuis un moment. Pas de panique : ta limite courte " + reset5h + ". Si ce n'est pas urgent, une petite pause et tu repars à neuf.";
+      msg = t("app.advice.5h", { reset: reset5h });
     } else if (worst >= 50) {
       tone = "warn";
-      msg = "Ça monte tranquillement, tu es encore loin du plafond. Rien à changer — juste un œil de temps en temps si tu enchaînes les grosses sessions.";
+      msg = t("app.advice.mid");
     } else {
       tone = "ok";
-      msg = "Tu es large partout. Aucune limite proche, Opus tranquille. Rien à surveiller — vas-y franchement.";
+      msg = t("app.advice.ok");
     }
     return banner(tone, msg);
   }
@@ -466,11 +469,13 @@
     if (!p) { card.hidden = true; return; }
     card.hidden = false;
 
-    var tiers = CET.POSITION_TIERS;  // ["Découverte","Régulier","Intensif","Power-user"]
+    var i18n = window.CETI18N;
+    var tiers = CET.POSITION_TIERS;  // clés i18n : ["html.pos.tiers.0", ...]
     // spectre : 4 segments + un marqueur positionné à markerPct
-    var segs = tiers.map(function (t, i) {
+    var segs = tiers.map(function (key, i) {
       var on = i === p.tierIndex;
-      return '<div class="pos-seg' + (on ? " on" : "") + '"><span>' + esc(t) + '</span></div>';
+      var label = i18n ? i18n.t(key) : key;
+      return '<div class="pos-seg' + (on ? " on" : "") + '"><span>' + esc(label) + '</span></div>';
     }).join("");
     $("pos-spectrum").innerHTML =
       '<div class="pos-track">' + segs +
@@ -480,11 +485,12 @@
 
     // verdict : honnête et POSITIF (intensif = bonne nouvelle)
     var verdict;
+    var tierLabel = i18n ? i18n.t(p.tierLabel) : p.tierLabel;
     if (p.tierIndex >= 2) {       // Intensif / Power-user
-      verdict = "Tu es dans les utilisateurs <b>" + esc(p.tierLabel.toLowerCase()) + "s</b> de Claude Max — tu sors vraiment la valeur de ton forfait. "
-        + "C'est une bonne nouvelle, pas une alerte : tu utilises à plein ce que tu paies déjà. Rien ne se bloque tant que la fenêtre de 5 h ne sature pas.";
+      verdict = i18n ? i18n.t("app.pos.verdict.heavy", { tier: esc(tierLabel.toLowerCase()) })
+        : "Tu es dans les utilisateurs <b>" + esc(tierLabel.toLowerCase()) + "s</b> de Claude Max — tu sors vraiment la valeur de ton forfait.";
     } else {                      // Découverte / Régulier
-      verdict = "Tu utilises Claude tranquillement, dans la norme. De la marge partout — tu peux y aller plus franchement si tu veux.";
+      verdict = i18n ? i18n.t("app.pos.verdict.light") : "Tu utilises Claude tranquillement, dans la norme.";
     }
     $("pos-verdict").innerHTML = verdict;
 
@@ -492,10 +498,12 @@
     var rep = [];
     if (p.ratioMedian >= 1.5) {
       var rr = p.ratioMedian < 10 ? Math.round(p.ratioMedian * 10) / 10 : Math.round(p.ratioMedian);
-      rep.push("≈ " + String(rr).replace(".", ",") + "× ta semaine habituelle — tu montes en puissance");
+      rep.push(i18n ? i18n.t("app.pos.repere.ratio", { r: String(rr).replace(".", ",") })
+        : "≈ " + String(rr).replace(".", ",") + "× ta semaine habituelle");
     }
-    if (p.brushes5h) rep.push("Ton pic sur 5 h frôle la limite Max estimée : c'est le seul moment où Claude peut te ralentir un peu.");
-    rep.push("≈ " + p.pctEnveloppe + " % de l'enveloppe hebdo estimée « tous modèles » d'un forfait Max — il te reste de la marge.");
+    if (p.brushes5h) rep.push(i18n ? i18n.t("app.pos.repere.5h") : "Ton pic sur 5 h frôle la limite Max estimée.");
+    rep.push(i18n ? i18n.t("app.pos.repere.envel", { pct: p.pctEnveloppe })
+      : "≈ " + p.pctEnveloppe + " % de l'enveloppe hebdo estimée.");
     $("pos-reperes").innerHTML = rep.map(function (r) { return "<li>" + r + "</li>"; }).join("");
   }
 
@@ -516,11 +524,11 @@
     var f = FORFAIT_LAST, fWorst = Math.max(f.p5h, f.pAll, f.pOpus);
     var warn = settings.warnPct || 80;
     if (fWorst >= 100 && st.level !== "red") {
-      st = { level: "red", title: "Lève le pied un moment",
-        msg: "Tu as atteint une de tes limites Max. Ça se débloque tout seul — en attendant, lève le pied ou passe sur un modèle plus léger.", gauges: st.gauges };
+      st = { level: "red", title: t("status.title.red"),
+        msg: t("app.advice.max"), gauges: st.gauges };
     } else if (fWorst >= warn && st.level === "green") {
-      st = { level: "orange", title: "Tu y vas fort — garde un œil",
-        msg: "Tu approches d'une de tes limites Max. Regarde la section « Utilisation du forfait » juste en dessous.", gauges: st.gauges };
+      st = { level: "orange", title: t("status.title.orange"),
+        msg: t("app.advice.mid"), gauges: st.gauges };
     }
     // mapping feu -> tons du design system
     var toneMap = { green: "ok", orange: "warn", red: "bad" };
@@ -535,19 +543,19 @@
     // En démo : badge « Exemple » sur le titre pour que ce vrai verdict ne soit
     // jamais pris pour celui de l'utilisateur.
     if (demo) {
-      $("vstate").innerHTML = esc(st.title) + ' <span class="demo-badge">Exemple</span>';
+      $("vstate").innerHTML = esc(st.title) + ' <span class="demo-badge">' + esc(t("app.verdict.badge.demo")) + '</span>';
     } else {
       $("vstate").textContent = st.title;
     }
     // quand le feu n'est pas vert, la vraie question est "jusqu'à quand ?" :
     // on colle l'heure de reset 5h direct dans la phrase, sans scroller.
     var sub = st.msg;
-    if (st.level !== "green" && d.windows && d.windows.w5hResetAt && !/remet à zéro|repart/i.test(sub)) {
+    if (st.level !== "green" && d.windows && d.windows.w5hResetAt && !/remet à zéro|repart|resets/i.test(sub)) {
       var u = until(d.windows.w5hResetAt, Date.now());
-      if (/réinitialis/i.test(u)) sub += " Ça repart maintenant.";
-      else sub += " Ça repart " + u.replace(/^reset /, "") + ".";
+      if (/réinitialis|^reset$/i.test(u)) sub += " " + t("app.verdict.reset.now");
+      else sub += " " + t("app.verdict.reset.in", { u: u.replace(/^reset /, "") });
     }
-    if (demo) sub = "Voilà le verdict que tu verras avec tes vraies données. " + sub;
+    if (demo) sub = t("app.verdict.demo") + " " + sub;
     $("vsub").textContent = sub;
     // 3 jauges : fenêtre 5h / semaine / mois
     var gz = $("vgauges");
@@ -557,7 +565,7 @@
         // Canal NON-chromatique : un glyphe + suffixe pour que le niveau ne soit
         // pas porté par la couleur seule (WCAG 1.4.1 — daltonisme).
         var mark = g.level === "red" ? "● " : g.level === "orange" ? "⚠ " : "";
-        var suffix = g.level === "red" ? " — plein" : g.level === "orange" ? " — ça chauffe" : "";
+        var suffix = g.level === "red" ? " — " + t("app.gauge.full") : g.level === "orange" ? " — " + t("app.gauge.hot") : "";
         return '<div class="vg"><div class="vg-top"><span class="vg-lab">' + esc(g.label) + '</span>' +
           '<span class="vg-val">' + mark + esc(g.value) + suffix + '</span></div>' +
           '<div class="vg-bar"><span style="width:' + Math.max(3, g.fill) + '%;background:' + col + '"></span></div>' +
@@ -585,11 +593,11 @@
     // gratuite, cache 24h) couvre quasi tous les cas ; le bref instant où il
     // n'est pas encore chargé, on montre "~€" sans inventer de taux figé — le
     // montant exact apparaît dès que loadEurRate() a résolu (re-render).
-    var nTxt = w.count + (w.count > 1 ? " tâches" : " tâche");
+    var nTxt = w.count + " " + t(w.count > 1 ? "app.proj.sessions.many" : "app.proj.sessions.one");
     var moneyTxt = w.hasRate
-      ? w.totalEur.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " €"
-      : "quelques € (taux en cours)";
-    $("waste-verdict").textContent = moneyTxt + " récupérables cette semaine · " + nTxt;
+      ? w.totalEur.toLocaleString(_loc(), { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " €"
+      : t("app.waste.noRate");
+    $("waste-verdict").textContent = t("app.waste.verdict", { money: moneyTxt, n: nTxt });
   }
 
   // tâches marquées "justifiées" localement (masquées de la liste) — localStorage
@@ -603,22 +611,22 @@
     var list = $("waste-list");
     var visible = w.top.filter(function (t) { return !(t.sessionId && okSet[t.sessionId]); });
     if (!visible.length) {
-      list.innerHTML = emptyState("Tout est validé",
-        "Tu as marqué toutes ces tâches comme justifiées. Rien à revoir.");
+      list.innerHTML = emptyState(t("app.waste.empty.title"), t("app.waste.empty.hint"));
     } else {
-      list.innerHTML = visible.map(function (t) {
-        var m = t.savingEur;
+      list.innerHTML = visible.map(function (item) {
+        var m = item.savingEur;
         var moneyTxt = w.hasRate
-          ? "≈ " + m.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
-          : "≈ $" + t.savingUsd.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
-        var meta = [t.project ? esc(t.project) : "", "Opus",
-                    t.outputTokens ? fmt(t.outputTokens) + " sortie" : ""].filter(Boolean).join(" · ");
-        return '<div class="waste-row" data-id="' + esc(t.sessionId || "") + '">' +
-          '<div class="waste-row-top"><span class="waste-row-title">' + esc(t.title) + '</span>' +
+          ? "≈ " + m.toLocaleString(_loc(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
+          : "≈ $" + item.savingUsd.toLocaleString(_loc(), { maximumFractionDigits: 2 });
+        var outputLbl = item.outputTokens ? fmt(item.outputTokens) + " " + t("app.drill.output").toLowerCase() : "";
+        var meta = [item.project ? esc(item.project) : "", "Opus",
+                    outputLbl].filter(Boolean).join(" · ");
+        return '<div class="waste-row" data-id="' + esc(item.sessionId || "") + '">' +
+          '<div class="waste-row-top"><span class="waste-row-title">' + esc(item.title) + '</span>' +
           '<span class="waste-row-money">' + moneyTxt + '</span></div>' +
           (meta ? '<div class="waste-row-meta">' + meta + '</div>' : '') +
-          (t.reason ? '<div class="waste-row-reason">' + esc(t.reason) + '</div>' : '') +
-          '<button type="button" class="waste-ok" data-id="' + esc(t.sessionId || "") + '">c\'était justifié</button>' +
+          (item.reason ? '<div class="waste-row-reason">' + esc(item.reason) + '</div>' : '') +
+          '<button type="button" class="waste-ok" data-id="' + esc(item.sessionId || "") + '">' + esc(t("app.waste.justified")) + '</button>' +
           '</div>';
       }).join("");
       [].forEach.call(list.querySelectorAll(".waste-ok"), function (b) {
@@ -669,8 +677,8 @@
     ov.className = "pro-overlay";
     ov.innerHTML =
       '<span class="pro-badge">PRO</span>' +
-      '<span class="pro-pitch">' + esc(opts.pitch || "Débloque cette vue avec Pro.") + '</span>' +
-      '<button type="button" class="pro-unlock">' + esc(opts.cta || "Passer à Pro") + '</button>';
+      '<span class="pro-pitch">' + esc(opts.pitch || t("app.pro.pitch.default")) + '</span>' +
+      '<button type="button" class="pro-unlock">' + esc(opts.cta || t("app.pro.cta")) + '</button>';
     ov.querySelector(".pro-unlock").addEventListener("click", function (e) {
       e.stopPropagation(); openSheet("pro-sheet");
     });
@@ -684,15 +692,15 @@
     document.body.classList.toggle("is-free", !isPro());
     // projection fin de mois : teaser flou
     gateProFeature($("pace-banner"), { mode: "blur",
-      pitch: "Vois où tu atterris en fin de mois.", cta: "Passer à Pro" });
+      pitch: t("app.pro.pitch.pace"), cta: t("app.pro.cta") });
     // Waste Radar & Boîte noire : teaser flou (seulement si la carte est visible)
     var wc = $("waste-card");
     if (wc && !wc.hidden) gateProFeature(wc, { mode: "blur",
-      pitch: "Découvre où part ton Opus — et ce que tu pourrais récupérer.", cta: "Passer à Pro" });
+      pitch: t("app.pro.pitch.waste"), cta: t("app.pro.cta") });
     else if (wc) gateProFeature(wc, {});  // masquée -> nettoyage
     var bc = $("boite-card");
     if (bc && !bc.hidden) gateProFeature(bc, { mode: "blur",
-      pitch: "Comprends pourquoi ta fenêtre fond.", cta: "Passer à Pro" });
+      pitch: t("app.pro.pitch.boite"), cta: t("app.pro.cta") });
     else if (bc) gateProFeature(bc, {});
   }
 
@@ -728,15 +736,15 @@
     function check(name, used, threshold) {
       if (!threshold || threshold <= 0) return;
       var p = pct(used, threshold);
-      if (p >= 100) perso.push({ t: "bad", m: "<b>" + name + "</b> : ton repère dépassé (" + p + "%)." });
-      else if (p >= warn) perso.push({ t: "warn", m: "<b>" + name + "</b> : " + p + "% de ton repère perso." });
+      if (p >= 100) perso.push({ t: "bad", m: "<b>" + name + "</b> : " + t("app.alert.over", { p: p }) });
+      else if (p >= warn) perso.push({ t: "warn", m: "<b>" + name + "</b> : " + t("app.alert.pct", { p: p }) });
     }
-    check("Aujourd'hui", dayU, settings.day);
-    check("Ce mois", d.month ? d.month.currentMonth : 0, settings.month);
+    check(t("app.ms.today"), dayU, settings.day);
+    check(t("app.hero.lab"), d.month ? d.month.currentMonth : 0, settings.month);
     if (perso.length && !html) {
       // un seul repère perso, le plus grave (bad avant warn)
       perso.sort(function (a, b) { return (a.t === "bad" ? 0 : 1) - (b.t === "bad" ? 0 : 1); });
-      html += '<p class="alerts-sub">Ton repère perso (pas une limite Claude)</p>' + banner(perso[0].t, perso[0].m);
+      html += '<p class="alerts-sub">' + esc(t("app.pos.repere.perso")) + '</p>' + banner(perso[0].t, perso[0].m);
     }
     // rien de neuf à dire -> on ne met RIEN (le verdict suffit). Plus de filler.
     $("alerts").innerHTML = html;
@@ -750,10 +758,10 @@
     var tl = d.timeline || [];
     var today = tl.length ? tl[tl.length - 1].total : 0;
     var yest = tl.length > 1 ? tl[tl.length - 2].total : 0;
-    setTrend("t-today", today, yest, "vs hier");
+    setTrend("t-today", today, yest, t("app.ms.vs.yesterday"));
     var thisW = d.weekly ? d.weekly.currentWeek : 0;
     var prevW = sumRows(tl.slice(-14, -7)).total;
-    setTrend("t-week", thisW, prevW, "vs sem. préc.");
+    setTrend("t-week", thisW, prevW, t("app.ms.vs.lastweek"));
   }
   function setTrend(id, cur, prev, lbl) {
     var el = $(id);
@@ -772,21 +780,20 @@
     if (!ps) {
       // pas assez d'historique pour projeter -> chiffre brut, zéro invention
       if ($("s-pace")) $("s-pace").textContent = fmt(month);
-      var tp0 = $("t-pace"); if (tp0) { tp0.className = "trend"; tp0.textContent = "ce mois"; }
+      var tp0 = $("t-pace"); if (tp0) { tp0.className = "trend"; tp0.textContent = t("app.ms.month"); }
       if (paceBox) paceBox.innerHTML = "";
       return;
     }
     // mini-stat "au rythme actuel" = projection fin de mois (pente 7 derniers j)
     if ($("s-pace")) $("s-pace").textContent = fmt(ps.projection);
     var tp = $("t-pace");
-    if (tp) { tp.className = "trend"; tp.textContent = "±" + fmt(ps.marginHigh - ps.projection) + " selon régularité"; }
+    if (tp) { tp.className = "trend"; tp.textContent = "±" + fmt(ps.marginHigh - ps.projection); }
     // bandeau honnête : fourchette + comparaison au mois précédent RÉEL
     var prevMonth = d.month.median3m;  // médiane des mois précédents (réelle)
-    var cmp = prevMonth ? (" Mois précédents (médiane) : <b>" + fmt(prevMonth) + "</b>.") : "";
-    var verdict = "Au rythme des 7 derniers jours (" + fmt(ps.slope) + "/j) : " +
-      "<b>~" + fmt(ps.projection) + "</b> fin de mois (entre " + fmt(ps.marginLow) + " et " + fmt(ps.marginHigh) + ")." + cmp;
+    var cmp = prevMonth ? (" " + t("app.pace.prev", { median: fmt(prevMonth) })) : "";
+    var verdict = t("app.pace.banner", { slope: fmt(ps.slope), proj: fmt(ps.projection), lo: fmt(ps.marginLow), hi: fmt(ps.marginHigh), prev: cmp });
     if (paceBox) paceBox.innerHTML = banner("ok", verdict +
-      " <span style='opacity:.75'>Valable si le rythme reste constant ; Max = fenêtres 5 h, pas de plafond mensuel officiel.</span>");
+      " <span style='opacity:.75'>" + esc(t("app.pace.caveat")) + "</span>");
   }
 
   var projSort = "tokens";
@@ -794,8 +801,7 @@
     var pbox = $("projects"); pbox.innerHTML = "";
     var projects = (d.projects || []).slice();
     if (!projects.length) {
-      pbox.innerHTML = emptyState("Aucun projet détecté",
-        "Lance le moteur sur ton PC (double-clic sur DEMARRER.bat) : tes projets Claude Code apparaîtront ici, regroupés.");
+      pbox.innerHTML = emptyState(t("app.proj.empty.title"), t("app.proj.empty.hint"));
       return;
     }
     // tri
@@ -809,15 +815,15 @@
     var grand = projects.reduce(function (s, p) { return s + (p.total || 0); }, 0) || 1;
     projects.forEach(function (p, i) {
       var share = Math.round((p.total / grand) * 100);
-      var name = p.name || p.project || "Sans projet";
+      var name = p.name || p.project || t("app.proj.noname");
       var isOthers = !!p.isOthers;
-      var sessTxt = p.sessionCount != null ? p.sessionCount + (p.sessionCount > 1 ? " sessions" : " session") : "";
+      var sessTxt = p.sessionCount != null ? p.sessionCount + " " + t(p.sessionCount > 1 ? "app.proj.sessions.many" : "app.proj.sessions.one") : "";
       var lastTxt = p.lastActivity ? " · " + ago(p.lastActivity) : "";
       var el = document.createElement(isOthers ? "div" : "button");
       el.className = "proj" + (isOthers ? " others" : "");
       if (!isOthers) {
         el.setAttribute("type", "button");
-        el.setAttribute("aria-label", "Détails du projet " + name + ", " + fmt(p.total) + " tokens");
+        el.setAttribute("aria-label", t("app.proj.aria", { name: name, total: fmt(p.total) }));
         el.dataset.idx = i;
         el.addEventListener("click", function () {
           // GATING : le drill-down projet est Pro. En Free -> sheet, pas d'ouverture.
@@ -837,7 +843,7 @@
   }
 
   function openProjSheet(p) {
-    var name = p.name || p.project || "Sans projet";
+    var name = p.name || p.project || t("app.proj.noname");
     $("projsheet-title").childNodes[0].nodeValue = name + " ";
     var body = $("projsheet-body");
     var models = (p.models || []).map(function (m) {
@@ -855,16 +861,16 @@
     // donut "où partent les tokens" pour CE projet (fusion AXE 4)
     var hasBreakdown = (p.input || p.output || p.cacheCreate || p.cacheRead);
     var donutBlock = hasBreakdown
-      ? '<div class="grouplabel">Où partent les tokens</div>' +
-        '<div class="donut-wrap" style="margin:0 auto 4px"><canvas id="proj-donut" role="img" aria-label="Répartition des tokens du projet"></canvas></div>' +
+      ? '<div class="grouplabel">' + esc(t("app.drill.where")) + '</div>' +
+        '<div class="donut-wrap" style="margin:0 auto 4px"><canvas id="proj-donut" role="img" aria-label="' + esc(t("app.drill.aria")) + '"></canvas></div>' +
         '<div class="legend" id="proj-donut-legend"></div>' : '';
     body.innerHTML =
-      '<div class="psum"><div><p class="k">Total</p><p class="vbig">' + fmt(p.total) + '</p></div>' +
-      '<div><p class="k">Valeur (théorique)</p><p class="vbig">' + eur(p.cost) + '</p></div>' +
-      '<div><p class="k">Sessions</p><p class="vbig">' + (p.sessionCount || 0) + '</p></div></div>' + paths +
-      (models ? '<div class="grouplabel">Modèles utilisés</div>' + models : '') +
+      '<div class="psum"><div><p class="k">' + esc(t("app.drill.total")) + '</p><p class="vbig">' + fmt(p.total) + '</p></div>' +
+      '<div><p class="k">' + esc(t("app.drill.value")) + '</p><p class="vbig">' + eur(p.cost) + '</p></div>' +
+      '<div><p class="k">' + esc(t("app.drill.sessions")) + '</p><p class="vbig">' + (p.sessionCount || 0) + '</p></div></div>' + paths +
+      (models ? '<div class="grouplabel">' + esc(t("app.drill.models")) + '</div>' + models : '') +
       donutBlock +
-      (sessions ? '<div class="grouplabel">Discussions récentes</div>' + sessions : '');
+      (sessions ? '<div class="grouplabel">' + esc(t("app.drill.recent")) + '</div>' + sessions : '');
     var filterBtn = $("projsheet-filter");
     filterBtn.onclick = function () { setProjectFilter(name); closeProjSheet(); };
     openSheet("projsheet");
@@ -874,7 +880,7 @@
   function drawProjDonut(p) {
     var cv = $("proj-donut"); if (!cv) return;
     var data = [p.input || 0, p.output || 0, p.cacheCreate || 0, p.cacheRead || 0];
-    var labels = ["Entrée", "Sortie", "Cache créé", "Cache lu"];
+    var labels = [t("app.drill.input"), t("app.drill.output"), t("app.drill.cacheWrite"), t("app.drill.cacheRead")];
     var cols = [TONE.input, TONE.output, TONE.cacheCreate, TONE.cacheRead];
     if (projDonutChart) { try { projDonutChart.destroy(); } catch (e) {} projDonutChart = null; }
     projDonutChart = new Chart(cv.getContext("2d"), {
@@ -965,7 +971,7 @@
       navigator.share(data).catch(function () {});
     } else if (navigator.clipboard) {
       navigator.clipboard.writeText(url).then(function () {
-        setStatus("Lien copié dans le presse-papier ✓", null);
+        setStatus(t("app.share.copied"), null);
         setTimeout(function () { if (DATA) render(); }, 1800);
       }).catch(function () {});
     }
@@ -1012,9 +1018,9 @@
           .then(function (d) { DATA = d; render(); /* render() pose le bandeau démo */ })
           .catch(function () {
             if (!silent) setStatus(
-              navigator.onLine === false ? "Hors-ligne — aucune donnée en cache."
-              : sawRemoteTimeout ? "Serveur endormi et aucune donnée locale. Réessaie dans ~1 min."
-              : "Aucune donnée pour l'instant. Vérifie que le moteur tourne sur ton PC.", "err");
+              navigator.onLine === false ? t("app.status.offline")
+              : sawRemoteTimeout ? t("app.status.sleeping")
+              : t("app.status.nodata"), "err");
           });
       }
       var src = sources[i];
@@ -1031,7 +1037,7 @@
           var sc = d.schema || 1;
           DATA = d; render(); try { checkThresholds(d); } catch (e) {}
           if (sc > SUPPORTED_SCHEMA) {
-            setStatus("Une mise à jour de l'app est disponible (format " + sc + ").", "warn");
+            setStatus(t("app.status.update", { sc: sc }), "warn");
           }
         })
         .catch(function (e) {
@@ -1055,7 +1061,7 @@
     // libellé clair + total de la période, pour qu'on VOIE l'effet du clic
     var rows = periodRows();
     var tot = rows.reduce(function (a, r) { return a + r.total; }, 0);
-    var label = { today: "aujourd'hui", "7": "7 jours", "30": "30 jours", all: "tout l'historique" }[period] || "";
+    var label = { today: t("html.chart.today"), "7": t("html.chart.7d"), "30": t("html.chart.30d"), all: t("html.chart.all") }[period] || "";
     $("chart-hint").textContent = label + " · " + fmt(tot) + " tokens";
     if (DATA) { drawTrend(rows); }
   }
@@ -1188,7 +1194,20 @@
     $("b-eur").value = settings.eurRate; $("b-warn").value = settings.warnPct;
     $("b-calib").value = "";
     markPlanSeg(settings.plan || "20x");
+    if (window.CETI18N) window.CETI18N.markLangButtons();
     renderProjEditor();
+  }
+  // sélecteur de langue EN/FR
+  var langSeg = $("lang-seg");
+  if (langSeg) {
+    langSeg.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-lang]");
+      if (!btn) return;
+      if (window.CETI18N) {
+        window.CETI18N.switchLang(btn.getAttribute("data-lang"));
+        if (DATA) render();
+      }
+    });
   }
   // toggle de plan (Max 5x / 20x) -> pré-remplit les limites du forfait
   function markPlanSeg(plan) {
@@ -1267,14 +1286,14 @@
     var state = notifiedState();
     if (state._day !== today) { state = { _day: today }; } // reset quotidien
     var checks = [
-      ["mois", d.month ? d.month.currentMonth : 0, settings.month],
-      ["jour", d.today ? d.today.total : 0, settings.day],
-      ["semaine", d.weekly ? d.weekly.currentWeek : 0, settings.week]
+      [t("app.notif.period.month"), d.month ? d.month.currentMonth : 0, settings.month],
+      [t("app.notif.period.day"),   d.today ? d.today.total : 0, settings.day],
+      [t("app.notif.period.week"),  d.weekly ? d.weekly.currentWeek : 0, settings.week]
     ];
     if (d.windows) {
       // défensif : un payload tronqué (windows sans w5h/w7d) ne doit pas planter
-      if (d.windows.w5h) checks.push(["fenêtre 5 h", d.windows.w5h.total || 0, settings.w5h]);
-      if (d.windows.w7d) checks.push(["fenêtre 7 j", d.windows.w7d.total || 0, settings.w7d]);
+      if (d.windows.w5h) checks.push([t("windows.alert.key.5h"), d.windows.w5h.total || 0, settings.w5h]);
+      if (d.windows.w7d) checks.push([t("app.notif.period.7d"),  d.windows.w7d.total || 0, settings.w7d]);
     }
     // GATING NOTIFS : en Free, on ne garde que le palier >=100 % (le mur).
     // Les paliers d'anticipation (25/50/75/90) sont la valeur Pro.
@@ -1288,10 +1307,10 @@
       var key = name + ":" + hit;
       if (state[key]) return;
       state[key] = 1;
-      var msg = hit >= 100 ? "Plafond atteint (" + p + "%)." : hit + "% du budget consommé (" + p + "%).";
+      var msg = hit >= 100 ? t("app.notif.body.hit100", { p: p }) : t("app.notif.body.hitMark", { hit: hit, p: p });
       // en Free, la notif du mur invite à anticiper avec Pro.
-      if (!pro && hit >= 100) msg += " Pro te prévient dès 75 % — avant le mur.";
-      fireNotif("Tokens — " + name, msg);
+      if (!pro && hit >= 100) msg += " " + t("app.notif.hint.free");
+      fireNotif(t("app.notif.title.budget", { name: name }), msg);
     });
     setNotified(state);
 
@@ -1304,13 +1323,12 @@
       try { fired = JSON.parse(localStorage.getItem(firedKey) || "{}"); } catch (e) {}
       var res = CET.windowAlerts(d, fired);
       res.alerts.forEach(function (a) {
-        if (a.mark >= 100) fireNotif("⛔ " + a.label + " — plein",
-          "Tu es à " + a.pct + "%. Claude risque de te ralentir. Ça repart au reset." +
-          (!pro ? " Pro te prévient dès 75 % — avant le mur." : ""));
+        if (a.mark >= 100) fireNotif(t("app.notif.win.full.title", { label: a.label }),
+          pro ? t("app.notif.win.full.body", { pct: a.pct }) : t("app.notif.win.full.body.free", { pct: a.pct }));
         else if (!pro) return;  // Free : aucun palier d'anticipation
-        else if (a.mark >= 90) fireNotif("🔴 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "%. Lève le pied, tu approches du plafond.");
-        else if (a.mark >= 75) fireNotif("🟠 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "%. Garde un œil dessus.");
-        else fireNotif("🟢 " + a.label + " — " + a.mark + "%", "Tu es à " + a.pct + "% de ta fenêtre.");
+        else if (a.mark >= 90) fireNotif(t("app.notif.win.90.title", { label: a.label, mark: a.mark }), t("app.notif.win.90.body", { pct: a.pct }));
+        else if (a.mark >= 75) fireNotif(t("app.notif.win.75.title", { label: a.label, mark: a.mark }), t("app.notif.win.75.body", { pct: a.pct }));
+        else fireNotif(t("app.notif.win.low.title", { label: a.label, mark: a.mark }), t("app.notif.win.low.body", { pct: a.pct }));
       });
       try { localStorage.setItem(firedKey, JSON.stringify(res.fired)); } catch (e) {}
     }
@@ -1325,9 +1343,9 @@
         try { anomFired = JSON.parse(localStorage.getItem(anomKey) || "{}"); } catch (e) {}
         if (!anomFired[b.window]) {
           anomFired[b.window] = 1;
-          var who = b.share != null && b.share > 50 ? "ce sont tes sous-agents, pas toi" : "regarde la Boîte noire";
-          fireNotif("Ta fenêtre fond ×" + b.zStr + " la normale",
-            who.charAt(0).toUpperCase() + who.slice(1) + ". Ouvre pour voir.");
+          var who = b.share != null && b.share > 50 ? t("app.notif.anomaly.body.agents") : t("app.notif.anomaly.body.generic");
+          fireNotif(t("app.notif.anomaly.title", { z: b.zStr }),
+            who.charAt(0).toUpperCase() + who.slice(1));
           try { localStorage.setItem(anomKey, JSON.stringify(anomFired)); } catch (e) {}
         }
       }
@@ -1347,11 +1365,11 @@
 
   var _enb = $("enable-notif");
   if (_enb) _enb.addEventListener("click", function () {
-    if (!("Notification" in window)) { this.textContent = "Non supporté"; return; }
+    if (!("Notification" in window)) { this.textContent = t("app.notif.unsupported"); return; }
     var btn = this;
     Notification.requestPermission().then(function (p) {
-      btn.textContent = p === "granted" ? "Activées ✓" : (p === "denied" ? "Refusées" : "Activer");
-      if (p === "granted") fireNotif("Tokens", "Notifications activées. Tu seras prévenu aux seuils.");
+      btn.textContent = p === "granted" ? t("app.notif.perm.granted") : (p === "denied" ? t("app.notif.perm.denied") : t("html.settings.notif.enable"));
+      if (p === "granted") fireNotif(t("app.notif.activated.title"), t("app.notif.activated.body"));
     }).catch(function () {});
   });
 
@@ -1388,8 +1406,8 @@
                 if (d.plan_status === "cancelled" && d.plan_renews_at) {
                   var dt = new Date(d.plan_renews_at);
                   if (!isNaN(dt.getTime())) {
-                    extra = " — actif jusqu'au " + dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
-                  } else extra = " — résiliation programmée";
+                    extra = " " + t("app.auth.status.until", { date: dt.toLocaleDateString(_loc(), { day: "2-digit", month: "2-digit" }) });
+                  } else extra = " " + t("app.auth.status.cancel");
                 } else if (d.plan_status && d.plan_status !== "active") {
                   extra = " (" + d.plan_status + ")";
                 }
@@ -1414,12 +1432,12 @@
     if ($("auth-submit")) $("auth-submit").addEventListener("click", function () {
       var email = ($("auth-email").value || "").trim();
       if (!email || email.indexOf("@") < 0) {
-        $("auth-error").textContent = "Email invalide.";
+        $("auth-error").textContent = t("app.auth.error.email");
         $("auth-error").style.display = "block";
         return;
       }
       $("auth-error").style.display = "none";
-      $("auth-submit").textContent = "Création…";
+      $("auth-submit").textContent = t("app.auth.creating");
       $("auth-submit").disabled = true;
 
       fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/register", {
@@ -1429,10 +1447,10 @@
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
         .then(function (res) {
-          $("auth-submit").textContent = "Obtenir mon code de connexion";
+          $("auth-submit").textContent = t("html.auth.submit");
           $("auth-submit").disabled = false;
           if (!res.ok) {
-            $("auth-error").textContent = res.data.error || "Erreur.";
+            $("auth-error").textContent = res.data.error || t("app.auth.error.generic");
             $("auth-error").style.display = "block";
             return;
           }
@@ -1444,9 +1462,9 @@
           load();  // recharger les données avec la clé
         })
         .catch(function () {
-          $("auth-submit").textContent = "Obtenir mon code de connexion";
+          $("auth-submit").textContent = t("html.auth.submit");
           $("auth-submit").disabled = false;
-          $("auth-error").textContent = "Erreur réseau. Le serveur dort peut-être (~50s).";
+          $("auth-error").textContent = t("app.auth.error.network");
           $("auth-error").style.display = "block";
         });
     });
@@ -1456,12 +1474,12 @@
       var key = $("auth-key-display").value;
       if (navigator.clipboard) {
         navigator.clipboard.writeText(key).then(function () {
-          $("auth-copy-key").textContent = "Copié ✓";
+          $("auth-copy-key").textContent = t("app.auth.copied");
         });
       } else {
         $("auth-key-display").select();
         document.execCommand("copy");
-        $("auth-copy-key").textContent = "Copié ✓";
+        $("auth-copy-key").textContent = t("app.auth.copied");
       }
     });
 
@@ -1475,7 +1493,7 @@
     if ($("auth-key-submit")) $("auth-key-submit").addEventListener("click", function () {
       var key = ($("auth-key-input").value || "").trim();
       if (!key || key.indexOf("cet_") !== 0) {
-        $("auth-error").textContent = "La clé doit commencer par cet_";
+        $("auth-error").textContent = t("app.auth.error.keyformat");
         $("auth-error").style.display = "block";
         return;
       }
@@ -1530,7 +1548,7 @@
       var pct = Math.round(step / TOTAL * 100);
       if (barFill) barFill.style.width = pct + "%";
       if (bar) bar.setAttribute("aria-valuenow", String(step));
-      if (stepno) stepno.textContent = "Étape " + step + "/" + TOTAL;
+      if (stepno) stepno.textContent = t("app.setup.stepno", { step: step, total: TOTAL });
       prevBtn.disabled = (step === 1);
       var last = (step === TOTAL);
       nextBtn.hidden = last;
@@ -1556,28 +1574,28 @@
       if ($("setup-key-value")) $("setup-key-value").textContent = key;
       if ($("setup-auth-form")) $("setup-auth-form").hidden = true;
       if ($("setup-auth-done")) $("setup-auth-done").hidden = false;
-      announce("Compte prêt. Ton code de connexion est affiché.");
+      announce(t("app.setup.key.ready"));
       if (DATA) load();
     }
 
     if ($("setup-auth-submit")) $("setup-auth-submit").addEventListener("click", function () {
       var email = ($("setup-email").value || "").trim();
-      if (!email || email.indexOf("@") < 0) { announce("Email invalide."); $("setup-email").focus(); return; }
+      if (!email || email.indexOf("@") < 0) { announce(t("app.auth.error.email")); $("setup-email").focus(); return; }
       var btn = this;
-      btn.disabled = true; btn.textContent = "Création…"; announce("Création du compte…");
+      btn.disabled = true; btn.textContent = t("app.auth.creating"); announce(t("app.setup.creating"));
       fetch(server + "/auth/register", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email }),
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
         .then(function (res) {
-          btn.disabled = false; btn.textContent = "Obtenir mon code de connexion";
-          if (!res.ok || !res.data.api_key) { announce(res.data && res.data.error ? res.data.error : "Erreur, réessaie."); return; }
+          btn.disabled = false; btn.textContent = t("html.auth.submit");
+          if (!res.ok || !res.data.api_key) { announce(res.data && res.data.error ? res.data.error : t("app.auth.error.generic")); return; }
           showKey(res.data.api_key);
         })
         .catch(function () {
-          btn.disabled = false; btn.textContent = "Obtenir mon code de connexion";
-          announce("Pas de réponse. Le serveur dort peut-être ; réessaie dans un instant.");
+          btn.disabled = false; btn.textContent = t("html.auth.submit");
+          announce(t("app.auth.error.network"));
         });
     });
 
@@ -1587,13 +1605,13 @@
     });
     if ($("setup-key-submit")) $("setup-key-submit").addEventListener("click", function () {
       var key = ($("setup-key-input").value || "").trim();
-      if (key.indexOf("cet_") !== 0) { announce("Le code doit commencer par cet_"); $("setup-key-input").focus(); return; }
+      if (key.indexOf("cet_") !== 0) { announce(t("app.auth.error.keyformat")); $("setup-key-input").focus(); return; }
       showKey(key);
     });
 
     if ($("setup-copy-key")) $("setup-copy-key").addEventListener("click", function () {
       var btn = this, key = $("setup-key-value").textContent;
-      function ok() { btn.textContent = "Copié ✓"; btn.classList.add("done"); announce("Code copié."); }
+      function ok() { btn.textContent = t("app.auth.copied"); btn.classList.add("done"); announce(t("app.setup.key.copied")); }
       if (navigator.clipboard) navigator.clipboard.writeText(key).then(ok).catch(ok);
       else { try { var r = document.createRange(); r.selectNode($("setup-key-value")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand("copy"); s.removeAllRanges(); } catch (e) {} ok(); }
     });
@@ -1710,12 +1728,12 @@
     if ($("pair-confirm-btn")) $("pair-confirm-btn").addEventListener("click", function () {
       clearError();
       var code = currentCode();
-      if (!code) { showError("Entre le code affiché sur ton ordinateur (format XXXX-XXXX)."); return; }
+      if (!code) { showError(t("app.pair.error.missing")); return; }
       // sécurité : sans compte on ne peut rien lier -> on renvoie vers l'auth
       if (!window.CET_API_KEY) { pending = code; showState("pair-need-auth"); return; }
-      if (!server) { showError("Pas de serveur configuré. Le branchement se fait depuis la version en ligne de l'app."); return; }
+      if (!server) { showError(t("app.pair.error.noserver")); return; }
       var btn = this;
-      btn.disabled = true; btn.textContent = "Branchement…"; announce("Branchement en cours…");
+      btn.disabled = true; btn.textContent = t("app.pair.pending"); announce(t("app.pair.pending"));
       fetch(server + "/pair/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Api-Key": window.CET_API_KEY },
@@ -1725,22 +1743,22 @@
           return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
         })
         .then(function (res) {
-          btn.disabled = false; btn.textContent = "Confirmer — c'est bien mon ordinateur";
+          btn.disabled = false; btn.textContent = t("app.pair.confirm.btn");
           if (res.ok && res.data && res.data.ok) {
             pending = null;
             showState("pair-success");
-            announce("C'est branché. Tes chiffres vont apparaître.");
+            announce(t("app.pair.success"));
             return;
           }
           // messages clairs selon le code HTTP
-          if (res.status === 404) showError("Ce code n'existe pas (ou plus). Relance la commande sur ton ordinateur pour en obtenir un nouveau.");
-          else if (res.status === 410) showError("Ce code a expiré. Relance la commande sur ton ordinateur : un code neuf s'affichera.");
-          else if (res.status === 400) showError("Code invalide. Vérifie qu'il correspond exactement à celui de ton terminal.");
-          else showError((res.data && res.data.error) || "Le branchement a échoué. Réessaie dans un instant.");
+          if (res.status === 404) showError(t("app.pair.error.404"));
+          else if (res.status === 410) showError(t("app.pair.error.410"));
+          else if (res.status === 400) showError(t("app.pair.error.400"));
+          else showError((res.data && res.data.error) || t("app.pair.error.generic"));
         })
         .catch(function () {
-          btn.disabled = false; btn.textContent = "Confirmer — c'est bien mon ordinateur";
-          showError("Pas de réponse du serveur (il dort peut-être ~50 s). Réessaie dans un instant.");
+          btn.disabled = false; btn.textContent = t("app.pair.confirm.btn");
+          showError(t("app.pair.error.network"));
         });
     });
 
@@ -1757,6 +1775,9 @@
   if ($("setup-pair-link")) $("setup-pair-link").addEventListener("click", function () {
     closeSheet("setup-sheet"); if (window.CET_openPair) window.CET_openPair();
   });
+
+  // Expose render pour que CETI18N.switchLang() puisse re-render après changement de langue.
+  window.CET_RERENDER = function () { if (DATA) render(); };
 
   ensureNotifPermission();
   loadEurRate();
@@ -1789,7 +1810,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v32.js";
+  var SW_FILE = "sw.v33.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

@@ -23,7 +23,7 @@
     return String(Math.round(n));
   }
 
-  function fmtFull(n) { return (n || 0).toLocaleString("fr-FR"); }
+  function fmtFull(n) { return (n || 0).toLocaleString(_locale()); }
 
   // Pourcentage borné [0..999] ; 0 si budget nul.
   function pct(a, b) { return b ? Math.min(999, Math.round((a / b) * 100)) : 0; }
@@ -43,15 +43,37 @@
     return p >= 100 ? "bad" : p >= warnPct ? "bad" : (p >= 50 ? "warn" : "ok");
   }
 
+  // t() — accès au moteur i18n (window.CETI18N ou globalThis.CETI18N).
+  // Fail-open : si non disponible, retourne la clé (ne plante jamais).
+  function t(key, vars) {
+    var i18n = (typeof window !== "undefined" ? window : globalThis).CETI18N;
+    if (i18n && typeof i18n.t === "function") return i18n.t(key, vars);
+    // Fallback minimal si i18n pas encore chargé (tests unitaires sans setup)
+    var fr = (typeof window !== "undefined" ? window : globalThis).CET_LANG_FR;
+    if (fr && fr[key] != null) {
+      var s = fr[key];
+      if (!vars) return s;
+      return s.replace(/\{(\w+)\}/g, function (_, k) { return vars[k] != null ? String(vars[k]) : "{" + k + "}"; });
+    }
+    return key;
+  }
+
+  // locale courante pour toLocaleString
+  function _locale() {
+    var i18n = (typeof window !== "undefined" ? window : globalThis).CETI18N;
+    if (i18n && typeof i18n.locale === "function") return i18n.locale();
+    return "fr-FR";
+  }
+
   // "il y a X min/h/j" à partir d'un ISO et d'un now (ms) injectable (testable).
   function ago(iso, nowMs) {
     if (!iso) return "—";
     var now = nowMs == null ? Date.now() : nowMs;
     var m = (now - new Date(iso).getTime()) / 60000;
-    if (m < 1) return "à l'instant";
-    if (m < 60) return "il y a " + Math.round(m) + " min";
-    if (m < 1440) return "il y a " + Math.round(m / 60) + " h";
-    return "il y a " + Math.round(m / 1440) + " j";
+    if (m < 1) return t("ago.now");
+    if (m < 60) return t("ago.min", { n: Math.round(m) });
+    if (m < 1440) return t("ago.h", { n: Math.round(m / 60) });
+    return t("ago.d", { n: Math.round(m / 1440) });
   }
 
   // "reset dans X" à partir d'un ISO futur et d'un now injectable.
@@ -59,13 +81,13 @@
     if (!iso) return "";
     var now = nowMs == null ? Date.now() : nowMs;
     var m = (new Date(iso).getTime() - now) / 60000;
-    if (m <= 0) return "réinitialisée";
-    if (m < 60) return "reset dans " + Math.round(m) + " min";
-    return "reset dans " + Math.round(m / 60) + " h " + Math.round(m % 60) + " min";
+    if (m <= 0) return t("until.done");
+    if (m < 60) return t("until.min", { n: Math.round(m) });
+    return t("until.h", { n: Math.round(m / 60), m: Math.round(m % 60) });
   }
 
   function dayLabel(iso) {
-    return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    return new Date(iso + "T00:00:00").toLocaleDateString(_locale(), { day: "numeric", month: "short" });
   }
 
   // Anneau de progression SVG. Pur : ne dépend que des arguments.
@@ -103,7 +125,7 @@
     return dt.getTime();
   }
   function weeklyResetLabel(ms) {
-    return new Date(ms).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    return new Date(ms).toLocaleDateString(_locale(), { weekday: "short", day: "numeric", month: "short" });
   }
 
   /* ---------- ASSISTANT TOKEN INTELLIGENT ----------
@@ -135,11 +157,11 @@
         var bad = (proj >= base5h.high && etaH < hoursLeft);
         out.push({
           id: "w5h", level: bad ? "bad" : "warn",
-          title: bad ? "Tu vas peut-être être ralenti" : "Tu utilises beaucoup Claude là",
-          msg: "Ces 5 dernières heures, tu utilises Claude " + xtimes(ratioFen) + ". "
-            + (bad ? "Si tu continues à ce rythme, Claude pourrait te ralentir dans ~" + hms(etaH) + " (avant que ça se remette à zéro à " + clock(resetMs) + "). Pour les grosses tâches, attends ce moment-là."
-                   : "Ça se remet à zéro à " + clock(resetMs) + "."),
-          why: "Sur Claude Max, c'est ça qui peut te ralentir : trop d'usage en 5 h. On te prévient avant.",
+          title: t(bad ? "assistant.w5h.title.bad" : "assistant.w5h.title.warn"),
+          msg: t("assistant.w5h.msg", { xtimes: xtimes(ratioFen) })
+            + t(bad ? "assistant.w5h.msg.bad" : "assistant.w5h.msg.warn",
+                { eta: hms(etaH), clock: clock(resetMs) }),
+          why: t("assistant.w5h.why"),
         });
       }
     }
@@ -151,9 +173,11 @@
       var ratioMed = med ? (pace.todayTotal || 0) / med : 0;
       out.push({
         id: "bigday", level: "info",
-        title: "Belle journée de travail",
-        msg: "Aujourd'hui tu utilises Claude " + (ratioMed ? xtimes(ratioMed) : "beaucoup") + ", et il n'est que " + hourLocal + " h. Tu avances bien.",
-        why: "C'est ton rythme du jour — rien ne te bloque.",
+        title: t("assistant.bigday.title"),
+        msg: ratioMed
+          ? t("assistant.bigday.msg", { xtimes: xtimes(ratioMed), h: hourLocal })
+          : t("assistant.bigday.msg.nomedian", { h: hourLocal }),
+        why: t("assistant.bigday.why"),
       });
     }
 
@@ -170,9 +194,10 @@
       var ratioSem = medW ? w7d / medW : 0;
       if (ratioSem >= 2) {
         out.push({
-          id: "opusweek", level: "info", title: "Tu montes en puissance avec Opus",
-          msg: "Cette semaine tu utilises Claude " + xtimes(ratioSem) + ", surtout Opus, le modèle le plus puissant. Tu prends de l'élan.",
-          why: "Bon à savoir : Opus est le modèle premium. Le seul moment où il peut te ralentir, c'est si tu satures la fenêtre de 5 h.",
+          id: "opusweek", level: "info",
+          title: t("assistant.opus.title"),
+          msg: t("assistant.opus.msg", { xtimes: xtimes(ratioSem) }),
+          why: t("assistant.opus.why"),
         });
       }
     }
@@ -182,19 +207,24 @@
     out.sort(function (a, b) { return order[a.level] - order[b.level]; });
     return out.slice(0, 3);
   }
-  function hms(h) { if (!isFinite(h)) return "—"; if (h <= 0) return "à l'instant"; if (h < 1) return Math.round(h * 60) + " min"; return Math.floor(h) + " h " + Math.round((h % 1) * 60) + " min"; }
+  function hms(h) {
+    if (!isFinite(h)) return "—";
+    if (h <= 0) return t("hms.now");
+    if (h < 1) return t("hms.min", { m: Math.round(h * 60) });
+    return t("hms.hm", { h: Math.floor(h), m: Math.round((h % 1) * 60) });
+  }
   function clock(ms) { var dt = new Date(ms); return dt.getHours() + " h" + (dt.getMinutes() ? String(dt.getMinutes()).padStart(2, "0") : ""); }
   // multiple en langage HUMAIN : "comme d'habitude" / "2 fois plus que d'habitude"
   function xtimes(ratio) {
-    if (ratio < 1.25) return "comme d'habitude";
-    if (ratio < 1.75) return "un peu plus que d'habitude";
+    if (ratio < 1.25) return t("xtimes.same");
+    if (ratio < 1.75) return t("xtimes.little");
     var r = ratio < 10 ? Math.round(ratio * 10) / 10 : Math.round(ratio);
-    return String(r).replace(".", ",") + " fois plus que d'habitude";
+    return t("xtimes.x", { r: String(r).replace(".", ",") });
   }
   function xtimesShort(ratio) {
-    if (ratio < 1.25) return "comme d'habitude";
+    if (ratio < 1.25) return t("xtimesShort.same");
     var r = ratio < 10 ? Math.round(ratio * 10) / 10 : Math.round(ratio);
-    return "×" + String(r).replace(".", ",") + " vs d'habitude";
+    return t("xtimesShort.x", { r: String(r).replace(".", ",") });
   }
 
   /* ---------- FEU TRICOLORE UNIFIÉ (user-first) ----------
@@ -217,22 +247,22 @@
       var ratio5 = w5 / base5h.base;
       var resetMs = win.w5hResetAt ? Date.parse(win.w5hResetAt) : NaN;
       var hoursLeft = isFinite(resetMs) ? Math.max(0, (resetMs - now) / 3600000) : null;
-      var resetTxt = hoursLeft != null ? (hoursLeft <= 0.02 ? " Ça se remet à zéro maintenant." : " Ça se remet à zéro dans " + hms(hoursLeft) + ".") : "";
+      var resetTxt = hoursLeft != null ? (hoursLeft <= 0.02 ? t("status.5h.reset.now") : t("status.5h.reset.in", { hms: hms(hoursLeft) })) : "";
       var lvl, msg, pctFill = Math.min(100, Math.round((w5 / base5h.high) * 100));
       if (w5 >= base5h.high * 0.85) {
-        lvl = "red"; msg = "Tu as beaucoup utilisé Claude ces 5 dernières heures — il pourrait te ralentir bientôt." + resetTxt;
+        lvl = "red"; msg = t("status.5h.red", { reset: resetTxt });
       } else if (ratio5 >= 4 || (w5 >= base5h.high * 0.6)) {
-        lvl = "orange"; msg = "Tu utilises Claude " + xtimes(ratio5) + " ces 5 dernières heures. Finis ce que tu fais, puis souffle un peu." + resetTxt;
+        lvl = "orange"; msg = t("status.5h.orange", { xtimes: xtimes(ratio5), reset: resetTxt });
       } else {
-        lvl = "green"; msg = "Rien à signaler : tu peux continuer tranquille.";
+        lvl = "green"; msg = t("status.5h.green");
       }
       // si on a le VRAI % officiel (serveur), on l'affiche tel quel — un % se lit,
       // pas un nombre de tokens bruts rempli sur un repère maison estimé.
       var off = d && d.windowsOfficial;
       var hasOffPct = off && typeof off.w5hPct === "number" && isFinite(off.w5hPct);
-      gauges.push({ key: "5h", label: "Là, maintenant",
+      gauges.push({ key: "5h", label: t("status.gauge.5h.label"),
         fill: hasOffPct ? Math.min(100, Math.round(off.w5hPct)) : pctFill, level: lvl,
-        sub: hoursLeft != null ? (hoursLeft <= 0.02 ? "se remet à zéro" : "se remet à zéro dans " + hms(hoursLeft)) : "",
+        sub: hoursLeft != null ? (hoursLeft <= 0.02 ? t("status.gauge.5h.zero") : t("status.gauge.5h.in", { hms: hms(hoursLeft) })) : "",
         value: hasOffPct ? (Math.round(off.w5hPct) + "%") : fmt(w5) });
       bump(lvl, msg);
     }
@@ -247,7 +277,7 @@
       if (medW > 0) {
         var rW = w7 / medW;
         growing = rW >= 2.5; growRatio = rW;
-        gauges.push({ key: "7d", label: "Cette semaine", fill: Math.min(100, Math.round(rW / 3 * 100)),
+        gauges.push({ key: "7d", label: t("status.gauge.7d.label"), fill: Math.min(100, Math.round(rW / 3 * 100)),
           level: "green", sub: xtimesShort(rW), value: fmt(w7) });
       }
     }
@@ -256,7 +286,7 @@
     if (d && d.month && typeof d.month.ratio3m === "number") {
       var rM = d.month.ratio3m / 100;  // ratio (1 = comme d'habitude)
       if (rM >= 2.5) { growing = true; growRatio = Math.max(growRatio, rM); }
-      gauges.push({ key: "month", label: "Ce mois", fill: Math.min(100, Math.round(rM / 3 * 100)),
+      gauges.push({ key: "month", label: t("status.gauge.month.label"), fill: Math.min(100, Math.round(rM / 3 * 100)),
         level: "green", sub: xtimesShort(rM), value: fmt(d.month.currentMonth || 0) });
     }
 
@@ -265,21 +295,16 @@
     if (worst === "green" && growing) {
       return {
         level: "green",
-        title: "Belle semaine — tu montes en puissance",
-        msg: "Tu utilises Claude " + xtimes(growRatio) + " en ce moment. C'est normal : tu prends de l'élan. Rien ne te bloque.",
+        title: t("status.title.green.rising"),
+        msg: t("status.msg.rising", { xtimes: xtimes(growRatio) }),
         gauges: gauges,
       };
     }
 
-    var titles = {
-      green: "Tout roule",
-      orange: "Ça chauffe sur les 5 dernières heures",
-      red: "Lève le pied un moment",
-    };
     return {
       level: worst,
-      title: titles[worst],
-      msg: worstSignal || (gauges.length ? "Tu peux continuer tranquille, rien ne te freine." : "Pas encore assez d'historique pour évaluer."),
+      title: t("status.title." + worst),
+      msg: worstSignal || t(gauges.length ? "status.msg.fallback.data" : "status.msg.fallback.nodata"),
       gauges: gauges,
     };
   }
@@ -302,7 +327,7 @@
     enveloppeHebdo: 9500e6,
     kCache: 0.1,
   };
-  var POSITION_TIERS = ["Découverte", "Régulier", "Intensif", "Power-user"];
+  var POSITION_TIERS = ["html.pos.tiers.0", "html.pos.tiers.1", "html.pos.tiers.2", "html.pos.tiers.3"];
 
   function position(d, bench, nowMs) {
     var b = Object.assign({}, POSITION_BENCH, bench || {});
@@ -364,9 +389,9 @@
     if (!w) return null;                       // pas de capture officielle -> état vide
     var secToMs = function (s) { return (typeof s === "number" && isFinite(s)) ? s * 1000 : null; };
     var defs = [
-      { key: "w5h", label: "Fenêtre 5 h", pct: w.w5hPct, resetAt: w.w5hResetAt },
-      { key: "w7d", label: "Cette semaine · tous modèles", pct: w.w7dPct, resetAt: w.w7dResetAt },
-      { key: "w7dOpus", label: "Cette semaine · Opus", pct: w.w7dOpusPct, resetAt: w.w7dOpusResetAt },
+      { key: "w5h", label: t("windows.row.5h"), pct: w.w5hPct, resetAt: w.w5hResetAt },
+      { key: "w7d", label: t("windows.row.7d"), pct: w.w7dPct, resetAt: w.w7dResetAt },
+      { key: "w7dOpus", label: t("windows.row.7dOpus"), pct: w.w7dOpusPct, resetAt: w.w7dOpusResetAt },
     ];
     var rows = [];
     defs.forEach(function (def) {
@@ -414,12 +439,12 @@
         }
       }
     }
-    check("w5hPct", "w5hResetAt", "fenêtre 5 h");
-    check("w7dPct", "w7dResetAt", "fenêtre hebdo");
+    check("w5hPct", "w5hResetAt", t("windows.alert.key.5h"));
+    check("w7dPct", "w7dResetAt", t("windows.alert.key.7d"));
     // purge des clés d'anciennes fenêtres (reset passé) pour ne pas gonfler indéfiniment
     var keep = {};
-    var active5 = "fenêtre 5 h:" + (off.w5hResetAt || 0);
-    var active7 = "fenêtre hebdo:" + (off.w7dResetAt || 0);
+    var active5 = t("windows.alert.key.5h") + ":" + (off.w5hResetAt || 0);
+    var active7 = t("windows.alert.key.7d") + ":" + (off.w7dResetAt || 0);
     Object.keys(fired).forEach(function (k) {
       if (k.indexOf(active5) === 0 || k.indexOf(active7) === 0) keep[k] = fired[k];
     });
@@ -506,26 +531,32 @@
     var title, sentence;
     // 1) sous-agents dominants : accroche factuelle, terme réel + glose
     if (share != null && a.sidechainShare > 0.5) {
-      title = "Ce sont tes sous-agents, pas toi";
-      sentence = "Sur " + (project ? project : "ce pic") + ", les tâches que Claude a lancées en arrière-plan (ses sous-agents) ont accaparé " + share +
-        " % de cette fenêtre. C'est pour ça qu'elle a fondu " + zStr + "× plus vite que d'habitude.";
+      title = t("boite.title.agents");
+      sentence = project
+        ? t("boite.sentence.agents", { project: project, share: share, z: zStr })
+        : t("boite.sentence.agents.noproj", { share: share, z: zStr });
     // 2) cache-miss 5 min RÉELLEMENT significatif -> on peut en parler
     } else if (miss5 != null && miss5 >= 0.3) {
       var m5 = Math.round(miss5 * 100);
-      title = "Ton contexte est reparti de zéro";
-      sentence = "Une bonne partie (" + m5 + " %) est repartie à recharger le contexte que Claude avait mis de côté quelques minutes plus tôt" +
-        (project ? " sur " + project : "") + ". Résultat : ta fenêtre a fondu " + zStr + "× plus vite.";
+      title = t("boite.title.cache5");
+      sentence = project
+        ? t("boite.sentence.cache5", { pct: m5, project: project, z: zStr })
+        : t("boite.sentence.cache5.noproj", { pct: m5, z: zStr });
     // 3) cache-miss 1 h significatif -> on parle de 1 h (jamais de 5 min si miss5≈0)
     } else if (miss1h != null && miss1h >= 0.3) {
       var m1 = Math.round(miss1h * 100);
-      title = "Beaucoup de contexte à recharger";
-      sentence = "Environ " + m1 + " % de cette fenêtre est parti à recharger le contexte mis de côté il y a plus d'une heure" +
-        (project ? " sur " + project : "") + ". Elle a fondu " + zStr + "× plus vite que ta normale.";
+      title = t("boite.title.cache1h");
+      sentence = project
+        ? t("boite.sentence.cache1h", { pct: m1, project: project, z: zStr })
+        : t("boite.sentence.cache1h.noproj", { pct: m1, z: zStr });
     // 4) fallback factuel : on constate le pic sans inventer de cause
     } else {
-      title = "Ta fenêtre a fondu plus vite";
-      sentence = (project ? "Sur " + project + ", cette" : "Cette") + " fenêtre a fondu " + zStr +
-        "× plus vite que d'habitude" + (share != null ? " (dont " + share + " % de sous-agents)" : "") + ".";
+      title = t("boite.title.fallback");
+      sentence = project
+        ? (share != null ? t("boite.sentence.fallback.proj.share", { project: project, z: zStr, share: share })
+                         : t("boite.sentence.fallback.proj", { project: project, z: zStr }))
+        : (share != null ? t("boite.sentence.fallback.noproj.share", { z: zStr, share: share })
+                         : t("boite.sentence.fallback.noproj", { z: zStr }));
     }
     return {
       window: a.window || null,

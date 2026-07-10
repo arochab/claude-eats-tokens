@@ -4,6 +4,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
+// Charger i18n AVANT format.js (même ordre que dans index.html)
+require("../pwa/i18n/fr.js");
+require("../pwa/i18n/en.js");
+const CETI18N = require("../pwa/i18n/index.js");
+// Forcer le français pour que les assertions existantes continuent de passer
+CETI18N.setLang("fr");
 const CET = require("../pwa/format.js");
 
 test("fmt — formats compacts FR", () => {
@@ -203,19 +209,19 @@ test("position — données insuffisantes -> null", () => {
 test("position — petite semaine -> Découverte", () => {
   const p = CET.position(dWeek(0.1e9), null, Date.now());
   assert.equal(p.tierIndex, 0);
-  assert.equal(p.tierLabel, "Découverte");
+  assert.equal(CETI18N.t(p.tierLabel), "Découverte");
 });
 
 test("position — semaine moyenne -> Régulier", () => {
   const p = CET.position(dWeek(1e9), null, Date.now());
   assert.equal(p.tierIndex, 1);
-  assert.equal(p.tierLabel, "Régulier");
+  assert.equal(CETI18N.t(p.tierLabel), "Régulier");
 });
 
 test("position — grosse semaine -> Intensif", () => {
   const p = CET.position(dWeek(3e9), null, Date.now());
   assert.equal(p.tierIndex, 2);
-  assert.equal(p.tierLabel, "Intensif");
+  assert.equal(CETI18N.t(p.tierLabel), "Intensif");
 });
 
 test("position — le pic 5h qui frôle la limite force Power-user", () => {
@@ -225,7 +231,7 @@ test("position — le pic 5h qui frôle la limite force Power-user", () => {
   const p = CET.position(d, null, Date.now());
   assert.equal(p.brushes5h, true);
   assert.equal(p.tierIndex, 3);
-  assert.equal(p.tierLabel, "Power-user");
+  assert.equal(CETI18N.t(p.tierLabel), "Power-user");
 });
 
 test("position — marqueur borné 2..100 et % enveloppe cohérent", () => {

@@ -18,7 +18,7 @@
   <img alt="PWA installable" src="https://img.shields.io/badge/PWA-installable-CC785C">
   <img alt="No build step" src="https://img.shields.io/badge/build-no%20build%20step-1A1915">
   <img alt="Coût d'infra" src="https://img.shields.io/badge/infra-100%25%20gratuite-7E9E6D">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-146%20%E2%9C%93-7E9E6D">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-177%20%E2%9C%93-7E9E6D">
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-D4A27F">
 </p>
 
@@ -59,7 +59,15 @@ Three things no other tracker does:
   severity, ETA to throttle, and plain-language advice. A productive week
   gets a compliment, not a warning.
 
-Zero build step · zero install · cross-platform · free infra · 146 tests · MIT ·
+**vs. cctally and other desktop trackers:**
+
+- **Windows support** — cctally is macOS/Linux only
+- **Real mobile** — true installable PWA, offline, phone push notifications
+  (not just a localhost dashboard accessed over Wi-Fi)
+- **Zero setup** — no Python, no npm, no hooks to inject in `~/.claude/settings.json`
+- **Decision assistant** — answers "can I keep going?" with ETA, not just a stats dashboard
+
+Zero build step · zero install · cross-platform · free infra · 177 tests · MIT ·
 [see it in action →](assets/demo.gif)
 
 ---
@@ -262,7 +270,7 @@ Chaque formule est couverte : inférence de projet depuis le `cwd`, coût pondé
 python tests/run_all.py
 ```
 
-**146 tests** au total — **91 Python** (`test_usage_core.py`, `test_server.py`, `test_statusline.py`, via `unittest`) et **55 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
+**177 tests** au total — **122 Python** (`test_usage_core.py`, `test_server.py`, `test_statusline.py`, via `pytest`) et **55 Node** (`test_format.mjs`, via `node:test`). Le runner lance les deux suites et n'est vert que si tout passe.
 
 ---
 
@@ -277,7 +285,7 @@ server/app.py                    serveur de push Flask (Render) + persistance Su
 tools/usage_core.py              logique pure (cwd→projet, coût/modèle, fenêtres) — entièrement testée
 tools/push_usage.py              côté PC : stream logs → agrège → POST /push
 tools/make_demo.py               régénère le dataset de démo
-tests/                           146 tests · python tests/run_all.py (Python + Node)
+tests/                           177 tests · python tests/run_all.py (Python + Node)
 DEMARRER.bat                     lance le moteur à la main (double-clic)
 installer-demarrage-auto.ps1     crée la tâche planifiée (démarrage auto du moteur)
 desinstaller-demarrage-auto.bat  retire la tâche planifiée

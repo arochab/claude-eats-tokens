@@ -33,44 +33,44 @@
   <header class="topbar">
     <div class="brand">
       <span class="glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="20" height="20"><defs><mask id="bite"><rect width="32" height="32" fill="#fff"/><circle cx="24" cy="8" r="6" fill="#000"/></mask></defs><circle cx="16" cy="16" r="11" fill="#F0EEE6" mask="url(#bite)"/><g stroke="#1A1915" stroke-width="1.6" stroke-linecap="round"><line x1="16" y1="16" x2="16" y2="9"/><line x1="16" y1="16" x2="16" y2="23"/><line x1="16" y1="16" x2="9" y2="16"/><line x1="16" y1="16" x2="23" y2="16"/><line x1="16" y1="16" x2="11" y2="11"/><line x1="16" y1="16" x2="21" y2="21"/><line x1="16" y1="16" x2="11" y2="21"/><line x1="16" y1="16" x2="21" y2="11"/></g><circle cx="16" cy="16" r="2" fill="#1A1915"/></svg></span>
-      <div><h1>Claude Eats Tokens</h1><p class="sub">à quel point Claude a faim aujourd'hui</p></div>
+      <div><h1>Claude Eats Tokens</h1><p class="sub" data-i18n="html.topbar.sub">à quel point Claude a faim aujourd'hui</p></div>
     </div>
     <div class="tophdr-actions">
-      <button class="iconbtn" id="share-app" aria-label="Partager" title="Partager">
+      <button class="iconbtn" id="share-app" aria-label="Partager" title="Partager" data-i18n="html.topbar.share" data-i18n-attr="aria-label">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
-      <button class="iconbtn" id="open-auth" aria-label="Compte" title="Compte">
+      <button class="iconbtn" id="open-auth" aria-label="Compte" title="Compte" data-i18n="html.topbar.account" data-i18n-attr="aria-label">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
-      <button class="iconbtn" id="open-settings" aria-label="Réglages">
+      <button class="iconbtn" id="open-settings" aria-label="Réglages" data-i18n="html.topbar.settings" data-i18n-attr="aria-label">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
-      <button class="iconbtn" id="refresh" aria-label="Rafraîchir">
+      <button class="iconbtn" id="refresh" aria-label="Rafraîchir" data-i18n="html.topbar.refresh" data-i18n-attr="aria-label">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
       </button>
     </div>
   </header>
 
-  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="status-txt">Chargement…</span></div>
+  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="status-txt" data-i18n="html.status.loading">Chargement…</span></div>
 
   <div class="firstrun" id="firstrun" hidden>
     <div class="fr-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/><circle cx="12" cy="12" r="3"/></svg></div>
     <div class="fr-body">
-      <p class="fr-t">Tu vois un exemple</p>
-      <p class="fr-h">Ces chiffres sont une démo. Pour suivre <b>ta</b> vraie conso, il faut lancer un petit outil sur ton ordinateur (pas sur le téléphone) : il lit l'activité de Claude Code et l'envoie ici, en privé. Sans ça, tu vois un exemple, pas tes chiffres.</p>
-      <button type="button" class="fr-cta" id="firstrun-setup">Voir comment faire →</button>
+      <p class="fr-t" data-i18n="html.firstrun.title">Tu vois un exemple</p>
+      <p class="fr-h" data-i18n="html.firstrun.body">Ces chiffres sont une démo. Pour suivre <b>ta</b> vraie conso, il faut lancer un petit outil sur ton ordinateur (pas sur le téléphone) : il lit l'activité de Claude Code et l'envoie ici, en privé. Sans ça, tu vois un exemple, pas tes chiffres.</p>
+      <button type="button" class="fr-cta" id="firstrun-setup" data-i18n="html.firstrun.cta">Voir comment faire →</button>
     </div>
   </div>
 
   <div class="projfilter" id="projfilter" hidden>
-    <span>Filtré : <b id="projfilter-name"></b></span>
-    <button id="projfilter-clear" aria-label="Retirer le filtre projet">Tout voir ✕</button>
+    <span data-i18n="html.filter.label">Filtré :</span> <b id="projfilter-name"></b>
+    <button id="projfilter-clear" data-i18n="html.filter.clear">Tout voir ✕</button>
   </div>
 
   <section class="verdict" id="verdict">
     <div class="vmain">
       <div class="vlight" id="vlight" aria-hidden="true"></div>
-      <div class="vtxt"><p class="vstate" id="vstate">Analyse…</p><p class="vsub" id="vsub"></p></div>
+      <div class="vtxt"><p class="vstate" id="vstate" data-i18n="html.verdict.loading">Analyse…</p><p class="vsub" id="vsub"></p></div>
     </div>
     <div class="vgauges" id="vgauges"></div>
   </section>
@@ -78,7 +78,7 @@
   <!-- BOÎTE NOIRE (Pro) : n'apparaît QUE si une anomalie réelle est détectée
        (z élevé). Explique POURQUOI la fenêtre fond, par template déterministe. -->
   <section class="card boite-card" id="boite-card" hidden>
-    <h2>Boîte noire <span class="hint">pro</span> <span class="hint">détecté auto</span></h2>
+    <h2><span data-i18n="html.boite.title">Boîte noire</span> <span class="hint" data-i18n="html.boite.badge.pro">pro</span> <span class="hint" data-i18n="html.boite.badge.auto">détecté auto</span></h2>
     <button type="button" class="boite-btn" id="boite-btn">
       <span class="boite-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span>
       <span class="boite-txt"><b id="boite-title"></b><span id="boite-sentence"></span></span>
@@ -88,21 +88,21 @@
   <!-- WASTE RADAR (Pro) : € récupérables cette semaine. Formulé "candidats à
        vérifier", jamais un jugement. Masqué si rien de significatif. -->
   <section class="card waste-card" id="waste-card" hidden>
-    <h2>Waste Radar <span class="hint">pro</span></h2>
+    <h2><span data-i18n="html.waste.title">Waste Radar</span> <span class="hint" data-i18n="html.waste.badge.pro">pro</span></h2>
     <button type="button" class="waste-btn" id="waste-btn">
       <span class="waste-verdict" id="waste-verdict"></span>
-      <span class="waste-sub" id="waste-sub">Des tâches où un modèle plus léger aurait sans doute suffi. À vérifier.</span>
+      <span class="waste-sub" id="waste-sub" data-i18n="html.waste.sub">Des tâches où un modèle plus léger aurait sans doute suffi. À vérifier.</span>
       <span class="waste-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
     </button>
   </section>
 
   <section class="card" id="windows-card">
-    <h2>Mes fenêtres <span class="hint" id="windows-hint">officiel</span></h2>
+    <h2><span data-i18n="html.windows.title">Mes fenêtres</span> <span class="hint" id="windows-hint" data-i18n="html.windows.badge">officiel</span></h2>
     <div id="windows-body"></div>
   </section>
 
   <section class="card" id="forfait-card">
-    <h2>Utilisation du forfait <span class="hint">estimation</span></h2>
+    <h2><span data-i18n="html.forfait.title">Utilisation du forfait</span> <span class="hint" data-i18n="html.forfait.badge">estimation</span></h2>
     <p class="forfait-note" id="forfait-note"></p>
     <div id="forfait-bars"></div>
     <div id="forfait-advice"></div>
@@ -112,12 +112,12 @@
        (la décision d'abord), car il REDIT les fenêtres et n'est pas actionnable. -->
   <section class="hero hero-radar-wrap">
     <div class="info">
-      <p class="lab" id="hero-lab">Ce mois-ci</p>
+      <p class="lab" id="hero-lab" data-i18n="app.hero.lab">Ce mois-ci</p>
       <p class="v"><span id="hero-used" class="sk">000</span></p>
       <p class="rest" id="hero-rest">—</p>
       <p class="reset" id="hero-reset"></p>
     </div>
-    <div class="hero-radar" id="hero-radar" role="img" aria-label="Radar des fenêtres : 5 heures, semaine, mois"></div>
+    <div class="hero-radar" id="hero-radar" role="img" aria-label="Radar des fenêtres : 5 heures, semaine, mois" data-i18n="html.radar.aria" data-i18n-attr="aria-label"></div>
   </section>
 
   <div id="alerts"></div>
@@ -125,17 +125,17 @@
   <!-- mini-stats : aujourd'hui · semaine · rythme/projection -->
   <div class="ministats">
     <div class="ms">
-      <p class="k">Aujourd'hui</p>
+      <p class="k" data-i18n="html.ms.today">Aujourd'hui</p>
       <p class="v" id="s-today">—</p>
       <p class="trend" id="t-today">&nbsp;</p>
     </div>
     <div class="ms">
-      <p class="k">Cette semaine</p>
+      <p class="k" data-i18n="html.ms.week">Cette semaine</p>
       <p class="v" id="s-week">—</p>
       <p class="trend" id="t-week">&nbsp;</p>
     </div>
     <div class="ms">
-      <p class="k">Au rythme actuel</p>
+      <p class="k" data-i18n="html.ms.pace">Au rythme actuel</p>
       <p class="v" id="s-pace">—</p>
       <p class="trend" id="t-pace">&nbsp;</p>
     </div>
@@ -146,111 +146,122 @@
   <!-- ↓↓↓ longue traîne (secondaire) : repère, évolution, projets ↓↓↓ -->
   <section class="card card-2" id="position-card">
     <details class="pos-details">
-      <summary><h2>Où je me situe <span class="hint">repère</span></h2></summary>
-      <p class="pos-sub" id="pos-sub">Ta semaine comparée à l'usage typique d'un abonné Claude Max.</p>
-      <div class="pos-spectrum" id="pos-spectrum" role="img" aria-label="Position de ton usage sur le spectre des abonnés Max"></div>
+      <summary><h2><span data-i18n="html.pos.title">Où je me situe</span> <span class="hint" data-i18n="html.pos.badge">repère</span></h2></summary>
+      <p class="pos-sub" id="pos-sub" data-i18n="html.pos.sub">Ta semaine comparée à l'usage typique d'un abonné Claude Max.</p>
+      <div class="pos-spectrum" id="pos-spectrum" role="img" aria-label="Position de ton usage sur le spectre des abonnés Max" data-i18n="html.pos.spectrum.aria" data-i18n-attr="aria-label"></div>
       <p class="pos-verdict" id="pos-verdict"></p>
       <ul class="pos-reperes" id="pos-reperes"></ul>
-      <p class="pos-caveat" id="pos-caveat">Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.</p>
+      <p class="pos-caveat" id="pos-caveat" data-i18n="html.pos.caveat">Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.</p>
     </details>
   </section>
 
   <section class="card card-2">
-    <h2>Évolution <span class="hint" id="chart-hint">tokens / jour</span></h2>
-    <div class="seg" id="period" role="group" aria-label="Période d'affichage">
-      <button type="button" data-p="today" aria-pressed="false">Aujourd'hui</button>
-      <button type="button" data-p="7" class="on" aria-pressed="true">7 jours</button>
-      <button type="button" data-p="30" class="pro-mini" aria-pressed="false">30 jours</button>
-      <button type="button" data-p="all" class="pro-mini" aria-pressed="false">Tout</button>
+    <h2><span data-i18n="html.chart.title">Évolution</span> <span class="hint" id="chart-hint" data-i18n="html.chart.hint">tokens / jour</span></h2>
+    <div class="seg" id="period" role="group" aria-label="Période d'affichage" data-i18n="html.chart.period.aria" data-i18n-attr="aria-label">
+      <button type="button" data-p="today" aria-pressed="false" data-i18n="html.chart.today">Aujourd'hui</button>
+      <button type="button" data-p="7" class="on" aria-pressed="true" data-i18n="html.chart.7d">7 jours</button>
+      <button type="button" data-p="30" class="pro-mini" aria-pressed="false" data-i18n="html.chart.30d">30 jours</button>
+      <button type="button" data-p="all" class="pro-mini" aria-pressed="false" data-i18n="html.chart.all">Tout</button>
     </div>
-    <div class="chart-wrap"><canvas id="trend" role="img" aria-label="Courbe de consommation de tokens par jour"></canvas></div>
+    <div class="chart-wrap"><canvas id="trend" role="img" aria-label="Courbe de consommation de tokens par jour" data-i18n="html.chart.canvas.aria" data-i18n-attr="aria-label"></canvas></div>
   </section>
 
   <section class="card card-2" id="projects-card">
-    <h2>Projets
-      <span class="proj-sort" role="group" aria-label="Trier les projets">
-        <button id="sort-tokens" class="on" data-sort="tokens" aria-pressed="true">tokens</button>
-        <button id="sort-recent" data-sort="recent" aria-pressed="false">récence</button>
+    <h2><span data-i18n="html.proj.title">Projets</span>
+      <span class="proj-sort" role="group" aria-label="Trier les projets" data-i18n="html.proj.sort.aria" data-i18n-attr="aria-label">
+        <button id="sort-tokens" class="on" data-sort="tokens" aria-pressed="true" data-i18n="html.proj.sort.tokens">tokens</button>
+        <button id="sort-recent" data-sort="recent" aria-pressed="false" data-i18n="html.proj.sort.recent">récence</button>
       </span>
     </h2>
     <div id="projects"></div>
   </section>
 
-  <p class="foot" id="foot">Données locales, jamais envoyées en ligne.<br><a href="https://github.com/sponsors/arochab" class="foot-link" target="_blank" rel="noopener">Soutenir ce projet</a> · <a href="https://github.com/arochab/claude-eats-tokens" class="foot-link" target="_blank" rel="noopener">Code source</a></p>
+  <p class="foot" id="foot"><span data-i18n="html.foot.default">Données locales, jamais envoyées en ligne.</span><br><a href="https://github.com/sponsors/arochab" class="foot-link" target="_blank" rel="noopener" data-i18n="html.foot.sponsor">Soutenir ce projet</a> · <a href="https://github.com/arochab/claude-eats-tokens" class="foot-link" target="_blank" rel="noopener" data-i18n="html.foot.source">Code source</a></p>
 </div>
 
 <!-- Réglages -->
 <div class="sheet" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
   <div class="sheet-inner">
-    <h2 id="settings-title">Réglages
-      <button class="iconbtn" id="close-settings" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="settings-title" data-i18n="html.settings.title">Réglages
+      <button class="iconbtn" id="close-settings" aria-label="Fermer" data-i18n="html.settings.close.aria" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
-    <p class="lead">Tes plafonds restent sur cet appareil. Modifie-les quand tu veux.</p>
+    <p class="lead" data-i18n="html.settings.lead">Tes plafonds restent sur cet appareil. Modifie-les quand tu veux.</p>
 
-    <button class="btn ghost" id="settings-setup" style="margin-bottom:6px">Connecter mon ordinateur (voir mes vrais chiffres)</button>
-    <button class="btn ghost" id="settings-pair" style="margin-bottom:6px">J'ai un code de branchement à confirmer</button>
+    <button class="btn ghost" id="settings-setup" style="margin-bottom:6px" data-i18n="html.settings.setup">Connecter mon ordinateur (voir mes vrais chiffres)</button>
+    <button class="btn ghost" id="settings-pair" style="margin-bottom:6px" data-i18n="html.settings.pair">J'ai un code de branchement à confirmer</button>
 
-    <div class="grouplabel">Mon forfait Claude Max</div>
+    <div class="grouplabel" data-i18n="html.settings.plan.group">Mon forfait Claude Max</div>
     <div class="fieldgroup">
-      <div class="field"><label>Mon plan<small>règle les limites estimées</small></label>
+      <div class="field"><label data-i18n="html.settings.plan.label">Mon plan<small data-i18n="html.settings.plan.hint">règle les limites estimées</small></label>
         <div class="seg" id="plan-seg" role="group" aria-label="Plan Max">
-          <button type="button" data-plan="5x">Max 5×</button>
-          <button type="button" data-plan="20x">Max 20×</button>
+          <button type="button" data-plan="5x" data-i18n="html.settings.plan.5x">Max 5×</button>
+          <button type="button" data-plan="20x" data-i18n="html.settings.plan.20x">Max 20×</button>
         </div>
       </div>
-      <div class="field"><label>Aligner sur le vrai % de Claude<small>quand Claude t'affiche un % sur ta limite, note-le ici : l'app recale ses chiffres sur cette réalité</small></label><input type="number" id="b-calib" inputmode="numeric" placeholder="ex. 11" min="1" max="100" /></div>
+      <div class="field"><label data-i18n="html.settings.calib.label">Aligner sur le vrai % de Claude<small data-i18n="html.settings.calib.hint">quand Claude t'affiche un % sur ta limite, note-le ici : l'app recale ses chiffres sur cette réalité</small></label><input type="number" id="b-calib" inputmode="numeric" placeholder="ex. 11" min="1" max="100" data-i18n="html.settings.calib.ph" data-i18n-attr="placeholder" /></div>
     </div>
 
     <details class="adv-settings">
-      <summary>Réglages avancés</summary>
+      <summary data-i18n="html.settings.adv">Réglages avancés</summary>
 
-    <div class="grouplabel">Repères perso <span style="font-weight:400;opacity:.7">(facultatif)</span></div>
+    <div class="grouplabel" data-i18n="html.settings.perso.group">Repères perso <span style="font-weight:400;opacity:.7" data-i18n="html.settings.perso.opt">(facultatif)</span></div>
     <div class="fieldgroup">
-      <div class="field"><label>Par jour<small>laisse vide si tu ne sais pas</small></label><input type="number" id="b-day" inputmode="numeric" placeholder="ex. 5 000 000" /></div>
-      <div class="field"><label>Par semaine<small>laisse vide si tu ne sais pas</small></label><input type="number" id="b-week" inputmode="numeric" placeholder="ex. 30 000 000" /></div>
-      <div class="field"><label>Par mois<small>laisse vide si tu ne sais pas</small></label><input type="number" id="b-month" inputmode="numeric" placeholder="ex. 120 000 000" /></div>
+      <div class="field"><label data-i18n="html.settings.perso.day.label">Par jour<small data-i18n="html.settings.perso.day.hint">laisse vide si tu ne sais pas</small></label><input type="number" id="b-day" inputmode="numeric" placeholder="ex. 5 000 000" data-i18n="html.settings.perso.day.ph" data-i18n-attr="placeholder" /></div>
+      <div class="field"><label data-i18n="html.settings.perso.week.label">Par semaine<small data-i18n="html.settings.perso.day.hint">laisse vide si tu ne sais pas</small></label><input type="number" id="b-week" inputmode="numeric" placeholder="ex. 30 000 000" data-i18n="html.settings.perso.week.ph" data-i18n-attr="placeholder" /></div>
+      <div class="field"><label data-i18n="html.settings.perso.month.label">Par mois<small data-i18n="html.settings.perso.day.hint">laisse vide si tu ne sais pas</small></label><input type="number" id="b-month" inputmode="numeric" placeholder="ex. 120 000 000" data-i18n="html.settings.perso.month.ph" data-i18n-attr="placeholder" /></div>
     </div>
 
-    <div class="grouplabel">Tes limites Max</div>
-    <p class="grouphint" style="margin:-4px 2px 10px;font-size:13px;color:var(--muted);line-height:1.5">Claude Max compte ta conso sur des tranches de temps : 5 h et 7 jours. Quand une tranche est pleine, Claude ralentit un moment, puis ça repart.</p>
+    <div class="grouplabel" data-i18n="html.settings.limits.group">Tes limites Max</div>
+    <p class="grouphint" style="margin:-4px 2px 10px;font-size:13px;color:var(--muted);line-height:1.5" data-i18n="html.settings.limits.hint">Claude Max compte ta conso sur des tranches de temps : 5 h et 7 jours. Quand une tranche est pleine, Claude ralentit un moment, puis ça repart.</p>
     <div class="fieldgroup">
-      <div class="field"><label>Limite sur 5 heures<small>ta tranche de 5 h</small></label><input type="number" id="b-w5h" inputmode="numeric" /></div>
-      <div class="field"><label>Limite sur 7 jours<small>ta tranche hebdomadaire</small></label><input type="number" id="b-w7d" inputmode="numeric" /></div>
+      <div class="field"><label data-i18n="html.settings.lim5h.label">Limite sur 5 heures<small data-i18n="html.settings.lim5h.hint">ta tranche de 5 h</small></label><input type="number" id="b-w5h" inputmode="numeric" /></div>
+      <div class="field"><label data-i18n="html.settings.lim7d.label">Limite sur 7 jours<small data-i18n="html.settings.lim7d.hint">ta tranche hebdomadaire</small></label><input type="number" id="b-w7d" inputmode="numeric" /></div>
     </div>
 
-    <div class="grouplabel">Crédits API</div>
+    <div class="grouplabel" data-i18n="html.settings.api.group">Crédits API</div>
     <div class="fieldgroup">
-      <div class="field"><label>Crédits achetés ($)<small>ex. 5</small></label><input type="number" id="b-api" inputmode="decimal" /></div>
+      <div class="field"><label data-i18n="html.settings.api.label">Crédits achetés ($)<small data-i18n="html.settings.api.ph">ex. 5</small></label><input type="number" id="b-api" inputmode="decimal" /></div>
     </div>
 
     </details>
 
-    <div class="grouplabel">Affichage</div>
+    <div class="grouplabel" data-i18n="html.settings.lang.group">Langue</div>
     <div class="fieldgroup">
-      <div class="field"><label>Taux $ → €<small>pour l'estimation en euros</small></label><input type="number" id="b-eur" inputmode="decimal" step="0.01" /></div>
-      <div class="field"><label>Alerte à (%)<small>seuil d'avertissement</small></label><input type="number" id="b-warn" inputmode="numeric" /></div>
-    </div>
-
-
-    <div class="grouplabel">Notifications</div>
-    <div class="fieldgroup">
-      <div class="field"><label>Alertes sur le téléphone<small>seuils 50 / 80 / 100&nbsp;%</small></label>
-        <button class="iconbtn" id="enable-notif" aria-label="Activer les notifications" style="width:auto;padding:0 14px;border-radius:10px;font-size:13px;font-weight:500;color:var(--terracotta-d)">Activer</button>
+      <div class="field">
+        <label data-i18n="html.settings.lang.label">Interface</label>
+        <div class="seg" id="lang-seg" role="group" aria-label="Language">
+          <button type="button" data-lang="en">EN</button>
+          <button type="button" data-lang="fr">FR</button>
+        </div>
       </div>
     </div>
-    <div class="grouplabel">Projets en cours <small style="text-transform:none;letter-spacing:0">— poids estimé en tokens</small></div>
+
+    <div class="grouplabel" data-i18n="html.settings.display.group">Affichage</div>
+    <div class="fieldgroup">
+      <div class="field"><label data-i18n="html.settings.eur.label">Taux $ → €<small data-i18n="html.settings.eur.hint">pour l'estimation en euros</small></label><input type="number" id="b-eur" inputmode="decimal" step="0.01" /></div>
+      <div class="field"><label data-i18n="html.settings.warn.label">Alerte à (%)<small data-i18n="html.settings.warn.hint">seuil d'avertissement</small></label><input type="number" id="b-warn" inputmode="numeric" /></div>
+    </div>
+
+
+    <div class="grouplabel" data-i18n="html.settings.notif.group">Notifications</div>
+    <div class="fieldgroup">
+      <div class="field"><label data-i18n="html.settings.notif.label">Alertes sur le téléphone<small data-i18n="html.settings.notif.hint">seuils 50 / 80 / 100&nbsp;%</small></label>
+        <button class="iconbtn" id="enable-notif" aria-label="Activer les notifications" style="width:auto;padding:0 14px;border-radius:10px;font-size:13px;font-weight:500;color:var(--terracotta-d)" data-i18n="html.settings.notif.enable">Activer</button>
+      </div>
+    </div>
+    <div class="grouplabel" data-i18n="html.settings.proj.group">Projets en cours <small style="text-transform:none;letter-spacing:0" data-i18n="html.settings.proj.note">— poids estimé en tokens</small></div>
     <div class="fieldgroup" id="proj-editor"></div>
-    <button class="addrow" id="add-proj"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Ajouter un projet</button>
+    <button class="addrow" id="add-proj"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> <span data-i18n="html.settings.proj.add">Ajouter un projet</span></button>
 
-    <button class="btn" id="save-settings">Enregistrer</button>
-    <button class="btn ghost" id="reset-settings">Réinitialiser les valeurs par défaut</button>
+    <button class="btn" id="save-settings" data-i18n="html.settings.save">Enregistrer</button>
+    <button class="btn ghost" id="reset-settings" data-i18n="html.settings.reset">Réinitialiser les valeurs par défaut</button>
 
-    <div class="grouplabel">Ce projet</div>
+    <div class="grouplabel" data-i18n="html.settings.about.group">Ce projet</div>
     <div class="about-block">
-      <p class="about-txt">Outil perso, open source, gratuit. Si tu l'utilises au quotidien et que tu veux soutenir le projet :</p>
-      <a class="btn sponsor-btn" href="https://github.com/sponsors/arochab" target="_blank" rel="noopener">Sponsor sur GitHub</a>
+      <p class="about-txt" data-i18n="html.settings.about.txt">Outil perso, open source, gratuit. Si tu l'utilises au quotidien et que tu veux soutenir le projet :</p>
+      <a class="btn sponsor-btn" href="https://github.com/sponsors/arochab" target="_blank" rel="noopener" data-i18n="html.settings.about.sponsor">Sponsor sur GitHub</a>
       <div class="about-links">
-        <a href="https://github.com/arochab/claude-eats-tokens" target="_blank" rel="noopener">Code source (MIT)</a>
+        <a href="https://github.com/arochab/claude-eats-tokens" target="_blank" rel="noopener" data-i18n="html.settings.about.source">Code source (MIT)</a>
       </div>
     </div>
   </div>
@@ -259,50 +270,50 @@
 <!-- Connexion multi-tenant -->
 <div class="sheet" id="auth-sheet" role="dialog" aria-modal="true" aria-labelledby="auth-title">
   <div class="sheet-inner">
-    <h2 id="auth-title">Connexion
-      <button class="iconbtn" id="close-auth" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="auth-title" data-i18n="html.auth.title">Connexion
+      <button class="iconbtn" id="close-auth" aria-label="Fermer" data-i18n="html.auth.close.aria" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
-    <p class="lead">Connecte-toi pour voir tes données depuis n'importe quel appareil.</p>
+    <p class="lead" data-i18n="html.auth.lead">Connecte-toi pour voir tes données depuis n'importe quel appareil.</p>
 
     <div id="auth-form">
-      <div class="grouplabel">S'inscrire ou se connecter</div>
+      <div class="grouplabel" data-i18n="html.auth.signup.group">S'inscrire ou se connecter</div>
       <div class="fieldgroup">
-        <div class="field"><label>Email<small>ton adresse email</small></label><input type="email" id="auth-email" placeholder="toi@exemple.com" /></div>
+        <div class="field"><label data-i18n="html.auth.email.label">Email<small data-i18n="html.auth.email.hint">ton adresse email</small></label><input type="email" id="auth-email" placeholder="toi@exemple.com" data-i18n="html.auth.email.ph" data-i18n-attr="placeholder" /></div>
       </div>
       <div id="auth-error" style="color:var(--danger);font-size:13px;margin:8px 0;display:none"></div>
-      <button class="btn" id="auth-submit">Obtenir mon code de connexion</button>
-      <p class="about-txt" style="margin-top:12px">Tu recevras un <b>code de connexion</b> (il commence par <code>cet_</code>) à coller une fois dans le moteur, sur ton ordinateur. Pas de mot de passe. Garde cette page ouverte : on te demandera de coller ce code à l'installation.</p>
+      <button class="btn" id="auth-submit" data-i18n="html.auth.submit">Obtenir mon code de connexion</button>
+      <p class="about-txt" style="margin-top:12px" data-i18n="html.auth.help">Tu recevras un <b>code de connexion</b> (il commence par <code>cet_</code>) à coller une fois dans le moteur, sur ton ordinateur. Pas de mot de passe. Garde cette page ouverte : on te demandera de coller ce code à l'installation.</p>
 
-      <div class="grouplabel" style="margin-top:24px">J'ai déjà un code de connexion</div>
+      <div class="grouplabel" style="margin-top:24px" data-i18n="html.auth.existing.group">J'ai déjà un code de connexion</div>
       <div class="fieldgroup">
-        <div class="field"><label>Code de connexion<small>cet_...</small></label><input type="text" id="auth-key-input" placeholder="cet_..." /></div>
+        <div class="field"><label data-i18n="html.auth.key.label">Code de connexion<small data-i18n="html.auth.key.ph">cet_...</small></label><input type="text" id="auth-key-input" placeholder="cet_..." data-i18n="html.auth.key.ph" data-i18n-attr="placeholder" /></div>
       </div>
-      <button class="btn ghost" id="auth-key-submit">Me connecter avec mon code</button>
+      <button class="btn ghost" id="auth-key-submit" data-i18n="html.auth.key.submit">Me connecter avec mon code</button>
     </div>
 
     <div id="auth-success" style="display:none">
       <div class="alert ok" style="margin-top:12px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
         <div>
-          <b>Compte créé !</b>
-          <span class="why">Ton code de connexion est ci-dessous. Copie-le maintenant — il ne sera plus affiché. Tu le colleras dans le moteur, sur ton ordinateur.</span>
+          <b data-i18n="html.auth.success.title">Compte créé !</b>
+          <span class="why" data-i18n="html.auth.success.help">Ton code de connexion est ci-dessous. Copie-le maintenant — il ne sera plus affiché. Tu le colleras dans le moteur, sur ton ordinateur.</span>
         </div>
       </div>
       <div class="fieldgroup" style="margin-top:12px">
-        <div class="field"><label>Ton code de connexion<small>à garder précieusement</small></label><input type="text" id="auth-key-display" readonly style="font-family:var(--mono);font-size:11px;width:200px" /></div>
+        <div class="field"><label data-i18n="html.auth.key.display.label">Ton code de connexion<small data-i18n="html.auth.key.display.hint">à garder précieusement</small></label><input type="text" id="auth-key-display" readonly style="font-family:var(--mono);font-size:11px;width:200px" /></div>
       </div>
-      <button class="btn" id="auth-copy-key">Copier la clé</button>
-      <button class="btn ghost" id="auth-done">C'est bon, j'ai copié</button>
+      <button class="btn" id="auth-copy-key" data-i18n="html.auth.key.copy">Copier la clé</button>
+      <button class="btn ghost" id="auth-done" data-i18n="html.auth.key.done">C'est bon, j'ai copié</button>
     </div>
 
     <div id="auth-logged" style="display:none">
       <div class="alert ok" style="margin-top:12px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-        <div><b>Connecté</b> <span id="auth-logged-email"></span></div>
+        <div><b data-i18n="html.auth.connected.title">Connecté</b> <span id="auth-logged-email"></span></div>
       </div>
-      <p class="about-txt" style="margin-top:12px">Plan : <b id="auth-logged-plan">free</b><span id="auth-logged-status"></span></p>
-      <button class="btn" id="auth-go-pro" style="display:none">Passer à Pro</button>
-      <button class="btn ghost" id="auth-logout">Se déconnecter</button>
+      <p class="about-txt" style="margin-top:12px"><span data-i18n="html.auth.plan.label">Plan :</span> <b id="auth-logged-plan">free</b><span id="auth-logged-status"></span></p>
+      <button class="btn" id="auth-go-pro" style="display:none" data-i18n="html.auth.upgrade">Passer à Pro</button>
+      <button class="btn ghost" id="auth-logout" data-i18n="html.auth.logout">Se déconnecter</button>
     </div>
   </div>
 </div>
@@ -310,13 +321,13 @@
 <!-- Onboarding à étapes : de la démo à ses vrais chiffres -->
 <div class="sheet" id="setup-sheet" role="dialog" aria-modal="true" aria-labelledby="setup-title">
   <div class="sheet-inner">
-    <h2 id="setup-title">Voir mes vrais chiffres
-      <button class="iconbtn" id="close-setup" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="setup-title"><span data-i18n="html.setup.title">Voir mes vrais chiffres</span>
+      <button class="iconbtn" id="close-setup" aria-label="Fermer" data-i18n="html.close" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
 
     <div class="setup-progress">
-      <p class="setup-stepno" id="setup-stepno" aria-hidden="true">Étape 1/5</p>
-      <div class="setup-bar" role="progressbar" id="setup-bar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-label="Progression de l'installation">
+      <p class="setup-stepno" id="setup-stepno" aria-hidden="true" data-i18n="html.setup.step">Étape 1/5</p>
+      <div class="setup-bar" role="progressbar" id="setup-bar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-label="Progression de l'installation" data-i18n="html.setup.progress.aria" data-i18n-attr="aria-label">
         <span id="setup-bar-fill" style="width:20%"></span>
       </div>
     </div>
@@ -325,63 +336,63 @@
 
     <!-- ÉTAPE 1 -->
     <div class="setup-step" data-step="1" tabindex="-1">
-      <p class="setup-lead">On va installer un petit outil <b>sur ton ordinateur</b> (pas sur le téléphone). C'est lui qui lit l'activité de Claude Code et l'envoie ici. À faire <b>une seule fois</b>.</p>
-      <div class="grouplabel">1 · Récupérer l'outil</div>
-      <p class="setup-body">Sur ton ordinateur, télécharge le dossier du projet, puis dézippe-le quelque part où tu le retrouveras (ton Bureau, par exemple).</p>
+      <p class="setup-lead" data-i18n="html.setup.s1.lead">On va installer un petit outil <b>sur ton ordinateur</b> (pas sur le téléphone). C'est lui qui lit l'activité de Claude Code et l'envoie ici. À faire <b>une seule fois</b>.</p>
+      <div class="grouplabel" data-i18n="html.setup.s1.group">1 · Récupérer l'outil</div>
+      <p class="setup-body" data-i18n="html.setup.s1.body">Sur ton ordinateur, télécharge le dossier du projet, puis dézippe-le quelque part où tu le retrouveras (ton Bureau, par exemple).</p>
       <a class="btn ghost setup-linkbtn" href="https://github.com/arochab/claude-eats-tokens/archive/refs/heads/main.zip" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        Télécharger le dossier (.zip)
+        <span data-i18n="html.setup.s1.btn">Télécharger le dossier (.zip)</span>
       </a>
-      <p class="setup-hint">Ce bouton ouvre GitHub sur ton ordinateur. Si tu lis ceci sur ton téléphone, ouvre plutôt cette page depuis ton PC — c'est là que l'outil doit vivre.</p>
+      <p class="setup-hint" data-i18n="html.setup.s1.hint">Ce bouton ouvre GitHub sur ton ordinateur. Si tu lis ceci sur ton téléphone, ouvre plutôt cette page depuis ton PC — c'est là que l'outil doit vivre.</p>
     </div>
 
     <!-- ÉTAPE 2 -->
     <div class="setup-step" data-step="2" hidden tabindex="-1">
-      <div class="grouplabel">2 · Créer ton compte</div>
-      <p class="setup-body">Un compte relie ton ordinateur à cette page. Tu reçois un <b>code de connexion</b> (il commence par <code>cet_</code>). Pas de mot de passe.</p>
+      <div class="grouplabel" data-i18n="html.setup.s2.group">2 · Créer ton compte</div>
+      <p class="setup-body" data-i18n="html.setup.s2.body">Un compte relie ton ordinateur à cette page. Tu reçois un <b>code de connexion</b> (il commence par <code>cet_</code>). Pas de mot de passe.</p>
 
       <div id="setup-auth-form">
         <div class="fieldgroup">
-          <div class="field"><label>Ton email<small>sert juste à retrouver ton compte</small></label><input type="email" id="setup-email" placeholder="toi@exemple.com" autocomplete="email" /></div>
+          <div class="field"><label><span data-i18n="html.setup.s2.email.label">Ton email</span><small data-i18n="html.setup.s2.email.hint">sert juste à retrouver ton compte</small></label><input type="email" id="setup-email" placeholder="toi@exemple.com" autocomplete="email" /></div>
         </div>
-        <button class="btn" id="setup-auth-submit">Obtenir mon code de connexion</button>
-        <button type="button" class="setup-textlink" id="setup-have-key">J'ai déjà un code de connexion</button>
+        <button class="btn" id="setup-auth-submit" data-i18n="html.setup.s2.submit">Obtenir mon code de connexion</button>
+        <button type="button" class="setup-textlink" id="setup-have-key" data-i18n="html.setup.s2.existing">J'ai déjà un code de connexion</button>
 
         <div id="setup-have-key-form" hidden>
           <div class="fieldgroup" style="margin-top:12px">
-            <div class="field"><label>Code de connexion<small>commence par cet_</small></label><input type="text" id="setup-key-input" placeholder="cet_..." autocomplete="off" spellcheck="false" /></div>
+            <div class="field"><label><span data-i18n="html.setup.s2.key.label">Code de connexion</span><small data-i18n="html.setup.s2.key.hint">commence par cet_</small></label><input type="text" id="setup-key-input" placeholder="cet_..." autocomplete="off" spellcheck="false" /></div>
           </div>
-          <button class="btn ghost" id="setup-key-submit">Utiliser ce code</button>
+          <button class="btn ghost" id="setup-key-submit" data-i18n="html.setup.s2.key.submit">Utiliser ce code</button>
         </div>
       </div>
 
       <div id="setup-auth-done" hidden>
         <div class="alert ok" style="margin:4px 0 12px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-          <div><b>Compte créé.</b> <span class="why">Voici ton code. Copie-le maintenant : tu vas le coller sur ton ordinateur à l'étape suivante.</span></div>
+          <div><b data-i18n="html.setup.s2.success.title">Compte créé.</b> <span class="why" data-i18n="html.setup.s2.success.body">Voici ton code. Copie-le maintenant : tu vas le coller sur ton ordinateur à l'étape suivante.</span></div>
         </div>
         <div class="setup-keybox">
           <code id="setup-key-value">cet_…</code>
-          <button type="button" class="setup-copy" id="setup-copy-key" aria-label="Copier le code">Copier</button>
+          <button type="button" class="setup-copy" id="setup-copy-key" aria-label="Copier le code" data-i18n="html.setup.copy.btn">Copier</button>
         </div>
       </div>
     </div>
 
     <!-- ÉTAPE 3 -->
     <div class="setup-step" data-step="3" hidden tabindex="-1">
-      <div class="grouplabel">3 · Coller ton code sur l'ordinateur</div>
-      <p class="setup-body">Dans le dossier que tu as dézippé, il y a un fichier <code>secret.local.example.bat</code>. Fais-en une copie et renomme-la en <code>secret.local.bat</code>.</p>
-      <p class="setup-body">Ouvre <code>secret.local.bat</code> avec le Bloc-notes et colle ton code juste après le signe égal, comme ceci :</p>
+      <div class="grouplabel" data-i18n="html.setup.s3.group">3 · Coller ton code sur l'ordinateur</div>
+      <p class="setup-body" data-i18n="html.setup.s3.body1">Dans le dossier que tu as dézippé, il y a un fichier <code>secret.local.example.bat</code>. Fais-en une copie et renomme-la en <code>secret.local.bat</code>.</p>
+      <p class="setup-body" data-i18n="html.setup.s3.body2">Ouvre <code>secret.local.bat</code> avec le Bloc-notes et colle ton code juste après le signe égal, comme ceci :</p>
       <pre class="setup-code"><span class="setup-code-dim">set CET_API_KEY=</span>cet_ton_code_ici</pre>
-      <p class="setup-hint">Enregistre le fichier, puis ferme-le. C'est tout pour cette étape.</p>
+      <p class="setup-hint" data-i18n="html.setup.s3.hint">Enregistre le fichier, puis ferme-le. C'est tout pour cette étape.</p>
     </div>
 
     <!-- ÉTAPE 4 -->
     <div class="setup-step" data-step="4" hidden tabindex="-1">
-      <div class="grouplabel">4 · Lancer l'outil</div>
-      <p class="setup-body"><b>Sur Windows :</b> double-clique sur <code>DEMARRER.bat</code> dans le dossier. Une fenêtre noire s'ouvre et se met à envoyer tes chiffres. Laisse-la ouverte.</p>
-      <p class="setup-hint">S'il te dit que Python manque : installe-le depuis python.org et, à l'écran d'installation, coche la case <b>« Add Python to PATH »</b>. Puis relance <code>DEMARRER.bat</code>.</p>
-      <p class="setup-body setup-body--sep"><b>Sur Mac ou Linux :</b> il n'y a pas de double-clic. Ouvre un terminal dans le dossier et lance <code>python tools/push_usage.py --interval 60</code> (le fichier <code>secret.local.bat</code> te donne les valeurs à charger).</p>
+      <div class="grouplabel" data-i18n="html.setup.s4.group">4 · Lancer l'outil</div>
+      <p class="setup-body" data-i18n="html.setup.s4.win"><b>Sur Windows :</b> double-clique sur <code>DEMARRER.bat</code> dans le dossier. Une fenêtre noire s'ouvre et se met à envoyer tes chiffres. Laisse-la ouverte.</p>
+      <p class="setup-hint" data-i18n="html.setup.s4.win.python">S'il te dit que Python manque : installe-le depuis python.org et, à l'écran d'installation, coche la case <b>« Add Python to PATH »</b>. Puis relance <code>DEMARRER.bat</code>.</p>
+      <p class="setup-body setup-body--sep" data-i18n="html.setup.s4.mac"><b>Sur Mac ou Linux :</b> il n'y a pas de double-clic. Ouvre un terminal dans le dossier et lance <code>python tools/push_usage.py --interval 60</code> (le fichier <code>secret.local.bat</code> te donne les valeurs à charger).</p>
     </div>
 
     <!-- ÉTAPE 5 -->
@@ -389,16 +400,16 @@
       <div class="setup-done-ic" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
       </div>
-      <div class="grouplabel">5 · C'est branché</div>
-      <p class="setup-body">Tant que la fenêtre reste ouverte sur ton ordinateur, tes chiffres arrivent tout seuls. <b>Reviens ici : la démo laisse la place à tes vraies données</b>, sans rien faire de plus.</p>
-      <p class="setup-hint">Rien ne s'affiche encore ? Laisse une minute à l'ordinateur pour le premier envoi, puis tire la page vers le bas pour rafraîchir. L'outil est à relancer seulement si tu redémarres l'ordinateur.</p>
-      <button type="button" class="setup-textlink" id="setup-pair-link">Un code « XXXX-XXXX » s'affiche sur mon ordinateur ? Le confirmer →</button>
+      <div class="grouplabel" data-i18n="html.setup.s5.group">5 · C'est branché</div>
+      <p class="setup-body" data-i18n="html.setup.s5.body">Tant que la fenêtre reste ouverte sur ton ordinateur, tes chiffres arrivent tout seuls. <b>Reviens ici : la démo laisse la place à tes vraies données</b>, sans rien faire de plus.</p>
+      <p class="setup-hint" data-i18n="html.setup.s5.hint">Rien ne s'affiche encore ? Laisse une minute à l'ordinateur pour le premier envoi, puis tire la page vers le bas pour rafraîchir. L'outil est à relancer seulement si tu redémarres l'ordinateur.</p>
+      <button type="button" class="setup-textlink" id="setup-pair-link" data-i18n="html.setup.s5.pair">Un code « XXXX-XXXX » s'affiche sur mon ordinateur ? Le confirmer →</button>
     </div>
 
     <div class="setup-nav">
-      <button type="button" class="btn ghost setup-prev" id="setup-prev">Précédent</button>
-      <button type="button" class="btn setup-next" id="setup-next">Suivant</button>
-      <button type="button" class="btn setup-finish" id="setup-finish" hidden>J'ai compris, fermer</button>
+      <button type="button" class="btn ghost setup-prev" id="setup-prev" data-i18n="html.setup.prev">Précédent</button>
+      <button type="button" class="btn setup-next" id="setup-next" data-i18n="html.setup.next">Suivant</button>
+      <button type="button" class="btn setup-finish" id="setup-finish" hidden data-i18n="html.setup.done">J'ai compris, fermer</button>
     </div>
   </div>
 </div>
@@ -406,42 +417,42 @@
 <!-- Brancher mon ordinateur : device-pairing (anti-phishing par vérification visuelle du code) -->
 <div class="sheet" id="pair-sheet" role="dialog" aria-modal="true" aria-labelledby="pair-title">
   <div class="sheet-inner">
-    <h2 id="pair-title">Brancher mon ordinateur
-      <button class="iconbtn" id="close-pair" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="pair-title"><span data-i18n="html.pair.title">Brancher mon ordinateur</span>
+      <button class="iconbtn" id="close-pair" aria-label="Fermer" data-i18n="html.close" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
 
     <div id="pair-live" class="visually-hidden" role="status" aria-live="polite"></div>
 
     <!-- ÉTAT 1 : pas connecté -> on invite d'abord à créer/retrouver un compte -->
     <div id="pair-need-auth" hidden>
-      <p class="lead">Pour brancher ton ordinateur, connecte-toi d'abord. C'est <b>ta</b> connexion qu'on relie à ce PC.</p>
-      <button class="btn" id="pair-goto-auth">Me connecter / créer un compte</button>
-      <button class="btn ghost" id="pair-cancel-auth">Annuler</button>
+      <p class="lead" data-i18n="html.pair.noauth.lead">Pour brancher ton ordinateur, connecte-toi d'abord. C'est <b>ta</b> connexion qu'on relie à ce PC.</p>
+      <button class="btn" id="pair-goto-auth" data-i18n="html.pair.noauth.btn">Me connecter / créer un compte</button>
+      <button class="btn ghost" id="pair-cancel-auth" data-i18n="html.pair.noauth.cancel">Annuler</button>
     </div>
 
     <!-- ÉTAT 2 : confirmation du code (le cœur anti-phishing) -->
     <div id="pair-confirm" hidden>
-      <p class="lead">Un code vient de s'afficher dans le terminal, sur ton ordinateur. Vérifie qu'il correspond exactement à celui-ci avant de confirmer.</p>
+      <p class="lead" data-i18n="html.pair.confirm.lead">Un code vient de s'afficher dans le terminal, sur ton ordinateur. Vérifie qu'il correspond exactement à celui-ci avant de confirmer.</p>
 
-      <div class="pair-code" id="pair-code" role="text" aria-label="Code de branchement">XXXX-XXXX</div>
+      <div class="pair-code" id="pair-code" role="text" aria-label="Code de branchement" data-i18n="html.pair.code.aria" data-i18n-attr="aria-label">XXXX-XXXX</div>
 
       <!-- champ manuel : si l'utilisateur arrive sans code dans l'URL -->
       <div id="pair-manual" hidden>
-        <div class="grouplabel">Tape le code de ton terminal</div>
+        <div class="grouplabel" data-i18n="html.pair.manual.group">Tape le code de ton terminal</div>
         <div class="fieldgroup">
-          <div class="field"><label>Code<small>affiché sur ton ordinateur</small></label><input type="text" id="pair-code-input" placeholder="XXXX-XXXX" autocomplete="off" spellcheck="false" maxlength="9" style="width:130px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase" /></div>
+          <div class="field"><label><span data-i18n="html.pair.manual.label">Code</span><small data-i18n="html.pair.manual.hint">affiché sur ton ordinateur</small></label><input type="text" id="pair-code-input" placeholder="XXXX-XXXX" autocomplete="off" spellcheck="false" maxlength="9" style="width:130px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase" data-i18n="html.pair.manual.ph" data-i18n-attr="placeholder" /></div>
         </div>
       </div>
 
       <div class="pair-check">
         <span class="pair-check-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
-        <span>Vérifie que ce code est bien celui affiché dans ton terminal, sur ton ordinateur. Ne confirme que s'ils sont identiques.</span>
+        <span data-i18n="html.pair.check">Vérifie que ce code est bien celui affiché dans ton terminal, sur ton ordinateur. Ne confirme que s'ils sont identiques.</span>
       </div>
 
       <div id="pair-error" class="pair-msg pair-msg--err" hidden></div>
 
-      <button class="btn" id="pair-confirm-btn">Confirmer — c'est bien mon ordinateur</button>
-      <button class="btn ghost" id="pair-cancel">Annuler</button>
+      <button class="btn" id="pair-confirm-btn" data-i18n="html.pair.confirm.btn">Confirmer — c'est bien mon ordinateur</button>
+      <button class="btn ghost" id="pair-cancel" data-i18n="html.pair.cancel">Annuler</button>
     </div>
 
     <!-- ÉTAT 3 : succès -->
@@ -449,9 +460,9 @@
       <div class="pair-success-ic" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
       </div>
-      <p class="pair-success-t">C'est branché !</p>
-      <p class="pair-success-h">Ton ordinateur est relié à ton compte. Tes vrais chiffres vont apparaître ici tout seuls — laisse la fenêtre ouverte sur ton PC.</p>
-      <button class="btn" id="pair-done">Voir mes chiffres</button>
+      <p class="pair-success-t" data-i18n="html.pair.success.title">C'est branché !</p>
+      <p class="pair-success-h" data-i18n="html.pair.success.body">Ton ordinateur est relié à ton compte. Tes vrais chiffres vont apparaître ici tout seuls — laisse la fenêtre ouverte sur ton PC.</p>
+      <button class="btn" id="pair-done" data-i18n="html.pair.success.btn">Voir mes chiffres</button>
     </div>
   </div>
 </div>
@@ -459,41 +470,41 @@
 <!-- Drill-down projet -->
 <div class="sheet" id="projsheet" role="dialog" aria-modal="true" aria-labelledby="projsheet-title">
   <div class="sheet-inner">
-    <h2 id="projsheet-title">Projet
-      <button class="iconbtn" id="close-projsheet" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="projsheet-title"><span data-i18n="html.proj.title">Projets</span>
+      <button class="iconbtn" id="close-projsheet" aria-label="Fermer" data-i18n="html.close" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
     <div id="projsheet-body"></div>
-    <button class="btn" id="projsheet-filter">Filtrer le tableau de bord sur ce projet</button>
+    <button class="btn" id="projsheet-filter" data-i18n="html.proj.filter">Filtrer le tableau de bord sur ce projet</button>
   </div>
 </div>
 
 <!-- Passe à Pro -->
 <div class="sheet" id="pro-sheet" role="dialog" aria-modal="true" aria-labelledby="pro-title">
   <div class="sheet-inner">
-    <h2 id="pro-title">Passe à Pro
-      <button class="iconbtn" id="close-pro" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="pro-title"><span data-i18n="html.pro.title">Passe à Pro</span>
+      <button class="iconbtn" id="close-pro" aria-label="Fermer" data-i18n="html.close" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
-    <p class="lead">5 € / mois. Résiliable quand tu veux.</p>
+    <p class="lead" data-i18n="html.pro.price">5 € / mois. Résiliable quand tu veux.</p>
 
-    <p class="pro-hook">Arrête de rouvrir l'app pour savoir si tu peux relancer. Ton téléphone te prévient <b>avant</b> que ça bloque.</p>
+    <p class="pro-hook" data-i18n="html.pro.hook">Arrête de rouvrir l'app pour savoir si tu peux relancer. Ton téléphone te prévient <b>avant</b> que ça bloque.</p>
 
     <ul class="pro-value">
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><b>Sois prévenu à temps.</b> Notifs dès 25, 50, 75 puis 90 % — pas seulement quand c'est trop tard.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><b>Vois plus loin.</b> 30 jours et tout l'historique, pas seulement les 7 derniers.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></span><b>Anticipe la fin de mois.</b> La projection te dit où tu atterris à ce rythme.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><b>Fouille tes projets.</b> Ouvre chaque projet : modèles, sessions, coût détaillé.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b>Waste Radar.</b> Repère où part ton Opus (le modèle premium, donc le plus cher) quand un modèle plus léger aurait suffi — et ce que tu aurais pu économiser.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b>Boîte noire.</b> Comprends enfin pourquoi ta fenêtre fond si vite — et quel projet est en cause.</li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><b>Exporte tout.</b> CSV et PNG pour garder tes chiffres ou les partager.</li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><b data-i18n="html.pro.feat1.title">Sois prévenu à temps.</b> <span data-i18n="html.pro.feat1.body">Notifs dès 25, 50, 75 puis 90 % — pas seulement quand c'est trop tard.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><b data-i18n="html.pro.feat2.title">Vois plus loin.</b> <span data-i18n="html.pro.feat2.body">30 jours et tout l'historique, pas seulement les 7 derniers.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></span><b data-i18n="html.pro.feat3.title">Anticipe la fin de mois.</b> <span data-i18n="html.pro.feat3.body">La projection te dit où tu atterris à ce rythme.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><b data-i18n="html.pro.feat4.title">Fouille tes projets.</b> <span data-i18n="html.pro.feat4.body">Ouvre chaque projet : modèles, sessions, coût détaillé.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b data-i18n="html.pro.feat5.title">Waste Radar.</b> <span data-i18n="html.pro.feat5.body">Repère où part ton Opus (le modèle premium, donc le plus cher) quand un modèle plus léger aurait suffi — et ce que tu aurais pu économiser.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b data-i18n="html.pro.feat6.title">Boîte noire.</b> <span data-i18n="html.pro.feat6.body">Comprends enfin pourquoi ta fenêtre fond si vite — et quel projet est en cause.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><b data-i18n="html.pro.feat7.title">Exporte tout.</b> <span data-i18n="html.pro.feat7.body">CSV et PNG pour garder tes chiffres ou les partager.</span></li>
     </ul>
 
-    <button class="btn pro-cta" id="pro-checkout">Passer à Pro — 5 €/mois</button>
-    <p class="pro-reassure">Sans engagement. Le gratuit reste gratuit.</p>
+    <button class="btn pro-cta" id="pro-checkout" data-i18n="html.pro.cta">Passer à Pro — 5 €/mois</button>
+    <p class="pro-reassure" data-i18n="html.pro.reassurance">Sans engagement. Le gratuit reste gratuit.</p>
 
-    <div class="grouplabel" id="pro-export-label">Exporter mes données <small class="hint-mini">pro</small></div>
+    <div class="grouplabel" id="pro-export-label"><span data-i18n="html.pro.export.group">Exporter mes données</span> <small class="hint-mini" data-i18n="html.pro.export.badge">pro</small></div>
     <div class="exportrow">
-      <button class="btn ghost" id="export-csv"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6h6M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Export CSV</button>
-      <button class="btn ghost" id="export-png"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg> Export PNG</button>
+      <button class="btn ghost" id="export-csv"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6h6M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> <span data-i18n="html.pro.export.csv">Export CSV</span></button>
+      <button class="btn ghost" id="export-png"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg> <span data-i18n="html.pro.export.png">Export PNG</span></button>
     </div>
   </div>
 </div>
@@ -501,16 +512,19 @@
 <!-- Waste Radar : liste des tâches candidates -->
 <div class="sheet" id="waste-sheet" role="dialog" aria-modal="true" aria-labelledby="waste-sheet-title">
   <div class="sheet-inner">
-    <h2 id="waste-sheet-title">Waste Radar
-      <button class="iconbtn" id="close-waste" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <h2 id="waste-sheet-title"><span data-i18n="html.waste.sheet.title">Waste Radar</span>
+      <button class="iconbtn" id="close-waste" aria-label="Fermer" data-i18n="html.close" data-i18n-attr="aria-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </h2>
-    <p class="lead" id="waste-sheet-lead">Des tâches où tu as utilisé Opus alors qu'un modèle plus léger aurait sans doute suffi. Ce sont des <b>candidats à vérifier</b>, pas un verdict.</p>
+    <p class="lead" id="waste-sheet-lead" data-i18n="html.waste.sheet.lead">Des tâches où tu as utilisé Opus alors qu'un modèle plus léger aurait sans doute suffi. Ce sont des <b>candidats à vérifier</b>, pas un verdict.</p>
     <div id="waste-list"></div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="pwa/config.js"></script>
+<script src="pwa/i18n/fr.js"></script>
+<script src="pwa/i18n/en.js"></script>
+<script src="pwa/i18n/index.js"></script>
 <script src="pwa/format.js"></script>
 <script src="pwa/app.js"></script>
 <script src="pwa/radar-hero.js" defer></script>
