@@ -49,15 +49,23 @@ body{font-family:var(--sans);background:
 .dot.demo{background:var(--clay)}
 .dot.err{background:var(--danger)}
 
-/* premier lancement / démo : guidage clair */
-.firstrun{display:flex;gap:13px;align-items:flex-start;background:rgba(212,162,127,.12);border:1px solid rgba(212,162,127,.3);border-radius:var(--r-lg);padding:15px 16px;margin-bottom:16px}
+/* premier lancement / démo : carte éditoriale forte — pas un bandeau d'alerte */
+.firstrun{
+  display:flex;gap:16px;align-items:flex-start;
+  background:linear-gradient(135deg,rgba(217,168,120,.18) 0%,rgba(193,95,60,.12) 100%);
+  border:1px solid rgba(193,95,60,.22);
+  border-radius:var(--r-xl);padding:20px 20px 18px;margin-bottom:18px;
+  animation:rise .45s var(--ease) both;
+}
 /* l'attribut hidden doit l'emporter sur display:flex (sinon bandeau démo affiché à tort) */
 .firstrun[hidden]{display:none}
 [hidden]{display:none!important}
-.firstrun .fr-ic{width:34px;height:34px;border-radius:9px;flex:0 0 auto;background:rgba(212,162,127,.22);display:grid;place-items:center;color:var(--terracotta-d)}
-.firstrun .fr-ic svg{width:18px;height:18px}
-.firstrun .fr-t{font-family:var(--serif);font-size:15px;margin:0 0 3px}
-.firstrun .fr-h{font-size:12.5px;color:var(--slate-soft);margin:0;line-height:1.5}
+/* glyphe circulaire — plus expressif qu'une icône carrée */
+.firstrun .fr-glyph{flex:0 0 auto;width:40px;height:40px;display:grid;place-items:center;color:var(--terracotta-d);margin-top:2px}
+/* eyebrow : étiquette mono au-dessus du titre */
+.firstrun .fr-eyebrow{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--terracotta-d);margin:0 0 5px;opacity:.85}
+.firstrun .fr-t{font-family:var(--serif);font-weight:500;font-size:20px;letter-spacing:-.01em;margin:0 0 7px;color:var(--slate);line-height:1.1}
+.firstrun .fr-h{font-size:13px;color:var(--slate-soft);margin:0;line-height:1.55}
 .firstrun .fr-h b{font-weight:600;color:var(--slate)}
 
 /* segmented period filter */
@@ -355,8 +363,16 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .setup-nav .setup-prev{flex:0 0 auto;width:auto;padding-left:22px;padding-right:22px}
 .setup-nav .setup-next,.setup-nav .setup-finish{flex:1}
 .setup-nav .setup-prev[disabled]{opacity:.35;pointer-events:none}
-.fr-cta{background:none;border:none;color:var(--terracotta-d);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;padding:8px 0 0;margin:0}
-.fr-cta:hover{text-decoration:underline}
+.fr-cta{
+  display:inline-block;margin-top:14px;
+  background:var(--terracotta);color:#fff;
+  border:none;font-family:var(--sans);font-size:13.5px;font-weight:600;
+  border-radius:var(--r-btn);padding:11px 20px;cursor:pointer;
+  transition:background .15s,transform .15s,box-shadow .15s;
+  box-shadow:0 2px 8px rgba(193,95,60,.28);
+}
+.fr-cta:hover{background:var(--terracotta-d);transform:translateY(-1px);box-shadow:0 4px 14px rgba(193,95,60,.36)}
+.fr-cta:active{transform:scale(.98);background:var(--terracotta-d)}
 
 /* ===== Brancher mon ordinateur (#pair-sheet) — device-pairing ===== */
 /* le code en gros, style "carte de sécurité" : mono, espacé, centré, chiffre

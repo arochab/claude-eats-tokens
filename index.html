@@ -58,11 +58,18 @@
   </div>
 
   <div class="firstrun" id="firstrun" hidden>
-    <div class="fr-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/><circle cx="12" cy="12" r="3"/></svg></div>
+    <div class="fr-glyph" aria-hidden="true">
+      <svg viewBox="0 0 40 40" fill="none" width="40" height="40">
+        <circle cx="20" cy="20" r="19" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3" opacity=".35"/>
+        <circle cx="20" cy="20" r="11" fill="currentColor" opacity=".12"/>
+        <path d="M20 13v7.5M20 24.5v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
     <div class="fr-body">
+      <p class="fr-eyebrow" data-i18n="html.firstrun.eyebrow">Démonstration</p>
       <p class="fr-t" data-i18n="html.firstrun.title">Tu vois un exemple</p>
-      <p class="fr-h" data-i18n="html.firstrun.body">Ces chiffres sont une démo. Pour suivre <b>ta</b> vraie conso, il faut lancer un petit outil sur ton ordinateur (pas sur le téléphone) : il lit l'activité de Claude Code et l'envoie ici, en privé. Sans ça, tu vois un exemple, pas tes chiffres.</p>
-      <button type="button" class="fr-cta" id="firstrun-setup" data-i18n="html.firstrun.cta">Voir comment faire →</button>
+      <p class="fr-h" data-i18n="html.firstrun.body">Lance le moteur sur ton ordinateur — il lit Claude Code et envoie tes vrais chiffres ici, en privé.</p>
+      <button type="button" class="fr-cta" id="firstrun-setup" data-i18n="html.firstrun.cta">Connecter mon ordinateur →</button>
     </div>
   </div>
 

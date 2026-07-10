@@ -292,9 +292,10 @@
     "html.status.loading": "Loading…",
 
     /* ---- index.html : firstrun ---- */
+    "html.firstrun.eyebrow":"Demo",
     "html.firstrun.title": "You're looking at a demo",
-    "html.firstrun.body":  "These numbers are a demo. To track your real usage, you need to run a small tool on your computer (not your phone): it reads your Claude Code activity and sends it here, privately. Without it, you're seeing an example, not your data.",
-    "html.firstrun.cta":   "See how to set it up →",
+    "html.firstrun.body":  "Run the engine on your computer — it reads Claude Code and sends your real numbers here, privately.",
+    "html.firstrun.cta":   "Connect my computer →",
 
     /* ---- index.html : projfilter ---- */
     "html.filter.label":   "Filtered:",

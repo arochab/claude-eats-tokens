@@ -292,9 +292,10 @@
     "html.status.loading": "Chargement…",
 
     /* ---- index.html : firstrun ---- */
+    "html.firstrun.eyebrow":"Démonstration",
     "html.firstrun.title": "Tu vois un exemple",
-    "html.firstrun.body":  "Ces chiffres sont une démo. Pour suivre ta vraie conso, il faut lancer un petit outil sur ton ordinateur (pas sur le téléphone) : il lit l'activité de Claude Code et l'envoie ici, en privé. Sans ça, tu vois un exemple, pas tes chiffres.",
-    "html.firstrun.cta":   "Voir comment faire →",
+    "html.firstrun.body":  "Lance le moteur sur ton ordinateur — il lit Claude Code et envoie tes vrais chiffres ici, en privé.",
+    "html.firstrun.cta":   "Connecter mon ordinateur →",
 
     /* ---- index.html : projfilter ---- */
     "html.filter.label":   "Filtré :",
