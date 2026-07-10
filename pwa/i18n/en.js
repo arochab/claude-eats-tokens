@@ -119,6 +119,7 @@
     "app.status.synced":    "Synced {ago} · {n} messages",
     "app.status.stale":     "⚠ Data may be stale ({ago})",
     "app.status.offline":   "Offline — no cached data.",
+    "app.status.waking":    "Connecting to server… (~30 s on first load)",
     "app.status.sleeping":  "Server asleep and no local data. Try again in ~1 min.",
     "app.status.nodata":    "No data yet. Make sure the engine is running on your PC.",
     "app.status.update":    "An app update is available (format {sc}).",
@@ -519,6 +520,7 @@
     "html.waste.sheet.lead": "Tasks where you used Opus when a lighter model would probably have been enough. These are candidates to review, not verdicts.",
 
     /* ---- shared ---- */
+    "html.verdict.demo.banner": "Example — not your data yet",
     "html.close":            "Close",
     "html.proj.filter":      "Filter dashboard to this project",
     "html.setup.copy.aria":  "Copy the code",

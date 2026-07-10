@@ -29,8 +29,8 @@ body{font-family:var(--sans);background:
 /* entrée douce des sections (premium, discret) */
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .app > section,.app > .grid2,.app > .minirings,.app > .status,.app > .seg{animation:rise .5s var(--ease) both}
-.app > .seg{animation-delay:.02s}.app > .verdict{animation-delay:.04s}.app > .hero{animation-delay:.06s}
-.app > .minirings{animation-delay:.08s}.app > .grid2{animation-delay:.10s}
+.app > .seg{animation-delay:.04s}.app > .verdict{animation-delay:.08s}.app > .hero{animation-delay:.12s}
+.app > .minirings{animation-delay:.16s}.app > .grid2{animation-delay:.20s}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-top:env(safe-area-inset-top)}
 .brand{display:flex;align-items:center;gap:11px}
@@ -418,16 +418,34 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .dot.live{background:#7E9E6D;position:relative}
 .dot.live::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid #7E9E6D;animation:pulse 1.8s infinite}
 @keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+/* dot waking : amber pulsé pendant le réveil Render */
+.dot.waking{background:var(--amber);position:relative}
+.dot.waking::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--amber);animation:pulse 1.2s infinite}
+
+/* Moment aha : le verdict s'allume quand les vraies données arrivent pour la première fois */
+@keyframes ahaEnter{0%{transform:scale(.94);opacity:.7}60%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}
+.verdict.aha-enter{animation:ahaEnter .7s var(--ease) both}
+.verdict.aha-enter .vlight{animation:ahaLight .7s var(--ease) both}
+@keyframes ahaLight{0%{transform:scale(.8);box-shadow:0 0 0 rgba(26,25,21,0)}60%{transform:scale(1.08);box-shadow:0 12px 32px rgba(26,25,21,.22)}100%{transform:scale(1);box-shadow:0 8px 24px rgba(26,25,21,.14)}}
+
+/* ===== Wake-bar : barre de progression cold start Render ===== */
+.wake-bar{height:3px;background:var(--cream-2);border-radius:99px;overflow:hidden;margin:-12px 0 14px;opacity:0;transition:opacity .3s}
+.wake-bar:not([hidden]){opacity:1}
+.wake-bar-fill{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--clay),var(--terracotta));border-radius:99px;animation:wakeProgress 35s linear forwards}
+@keyframes wakeProgress{0%{width:0}85%{width:82%}100%{width:88%}}
 
 /* ===== Verdict global ===== */
-.verdict{border-radius:var(--r-xl);padding:22px 24px;margin-bottom:16px;transition:background .4s var(--ease),border-color .4s var(--ease);border:1px solid transparent}
+.verdict{border-radius:var(--r-lg);padding:22px 24px;margin-bottom:16px;transition:background .4s var(--ease),border-color .4s var(--ease);border:1px solid transparent}
+/* Bannière démo : plus visible qu'un badge inline 11px */
+.verdict-demo-banner{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;text-align:center;color:var(--muted);background:var(--cream-2);border-radius:8px;padding:6px 12px;margin-bottom:12px}
+.verdict-demo-banner[hidden]{display:none}
 .verdict.ok{background:rgba(126,158,109,.14);border-color:rgba(126,158,109,.22)}
 .verdict.warn{background:rgba(200,146,61,.15);border-color:rgba(200,146,61,.25)}
 .verdict.bad{background:rgba(181,86,58,.15);border-color:rgba(181,86,58,.25)}
 .vmain{display:flex;align-items:center;gap:16px}
-/* feu tricolore : pastille icône colorée */
-.vlight{width:64px;height:64px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(26,25,21,.12);transition:background .4s var(--ease)}
-.vlight svg{width:32px;height:32px}
+/* feu tricolore : pastille icône — carré arrondi 80px, cohérent avec le design system */
+.vlight{width:80px;height:80px;border-radius:22px;flex:0 0 auto;display:grid;place-items:center;color:#fff;box-shadow:0 8px 24px rgba(26,25,21,.14);transition:background .4s var(--ease),transform .4s var(--ease)}
+.vlight svg{width:36px;height:36px}
 .verdict.ok .vlight{background:linear-gradient(150deg,#8cae78,var(--sage))}
 .verdict.warn .vlight{background:linear-gradient(150deg,#d6a64e,var(--amber))}
 .verdict.bad .vlight{background:linear-gradient(150deg,#c4694b,var(--danger))}

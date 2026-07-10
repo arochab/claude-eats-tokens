@@ -21,6 +21,11 @@
     try { fetch(PUSH_SERVER.replace(/\/$/, "") + "/", { method: "GET", mode: "cors" }).catch(function(){}); } catch (e) {}
   }
 
+  /* Flag "premier vrai chiffre" — pour le moment aha. */
+  var AHA_KEY = "tokenTracker.ahaShown.v1";
+  var _ahaShown = false;
+  try { _ahaShown = !!localStorage.getItem(AHA_KEY); } catch (e) {}
+
   /* ---------- Réglages (localStorage) ---------- */
   // Seuils d'alerte OPTIONNELS (0 = pas de seuil = pas d'alerte inventée).
   // Plus aucun budget auto-calibré : le jury scientifique l'a supprimé.
@@ -549,12 +554,14 @@
     VERDICT_LEVEL = st.level;   // green | orange | red — pour la dédup des alertes
     v.className = "verdict " + (toneMap[st.level] || "ok") + (demo ? " is-demo" : "");
     $("vlight").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + iconMap[st.level] + '</svg>';
-    // En démo : badge « Exemple » sur le titre pour que ce vrai verdict ne soit
-    // jamais pris pour celui de l'utilisateur.
+    // En démo : badge « Exemple » + bannière d'avertissement en haut du verdict.
+    var demoBanner = $("verdict-demo-banner");
     if (demo) {
       $("vstate").innerHTML = esc(st.title) + ' <span class="demo-badge">' + esc(t("app.verdict.badge.demo")) + '</span>';
+      if (demoBanner) demoBanner.hidden = false;
     } else {
       $("vstate").textContent = st.title;
+      if (demoBanner) demoBanner.hidden = true;
     }
     // quand le feu n'est pas vert, la vraie question est "jusqu'à quand ?" :
     // on colle l'heure de reset 5h direct dans la phrase, sans scroller.
@@ -1007,6 +1014,29 @@
     if (dot) { dot.classList.remove("demo", "err"); if (kind) dot.classList.add(kind); }
   }
 
+  /* Moment aha : première fois qu'on reçoit de vraies données (pas démo).
+     Déclenche une animation d'entrée sur le verdict. Une seule fois. */
+  function triggerAha() {
+    if (_ahaShown) return;
+    _ahaShown = true;
+    try { localStorage.setItem(AHA_KEY, "1"); } catch (e) {}
+    var v = $("verdict");
+    if (!v) return;
+    v.classList.add("aha-enter");
+    setTimeout(function () { v.classList.remove("aha-enter"); }, 800);
+  }
+
+  /* État "réveil Render" : quand on a une clé et que ça prend du temps,
+     on affiche un message clair plutôt que le silence ou la démo. */
+  var _wakeTimer = null;
+  function showWakeStatus() {
+    setStatus(t("app.status.waking"), "waking");
+    var bar = $("wake-bar"); if (bar) bar.hidden = false;
+  }
+  function hideWakeStatus() {
+    var bar = $("wake-bar"); if (bar) bar.hidden = true;
+  }
+
   function load(silent) {
     var sources = [];
     // Multi-tenant : si une API key est définie, on passe par le serveur avec la clé
@@ -1018,6 +1048,10 @@
     }
     sources.push({ url: "data/usage.json", remote: false });
     var sawRemoteTimeout = false;
+    // Si clé présente et serveur distant : après 4s sans réponse, on informe
+    if (apiKey && PUSH_SERVER && !silent) {
+      _wakeTimer = setTimeout(showWakeStatus, 4000);
+    }
 
     function tryAt(i) {
       if (i >= sources.length) {
@@ -1025,19 +1059,24 @@
         // Si on avait une clé mais que le serveur n'a pas répondu, on réessaie
         // une fois avec un timeout plus long avant de tomber en démo.
         if (sawRemoteTimeout && apiKey && PUSH_SERVER) {
+          if (!silent) showWakeStatus();
           return fetchTimeout(PUSH_SERVER.replace(/\/$/, "") + "/usage.json?key=" + encodeURIComponent(apiKey), 45000, { headers: { "X-Api-Key": apiKey } })
             .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
             .then(function (d) {
               if (!d || !d.totals || !d.totals.total) throw new Error("empty");
+              hideWakeStatus();
               DATA = d; render(); try { checkThresholds(d); } catch (e) {}
+              if (!d.demo && d.source && d.source.claudeCodeDir !== null) triggerAha();
             })
             .catch(function () {
+              hideWakeStatus();
               return fetchTimeout("data/usage.demo.json", 8000)
                 .then(function (r) { return r.json(); })
                 .then(function (d) { DATA = d; render(); })
                 .catch(function () { if (!silent) setStatus(t("app.status.sleeping"), "err"); });
             });
         }
+        hideWakeStatus();
         return fetchTimeout("data/usage.demo.json", 8000)
           .then(function (r) { return r.json(); })
           .then(function (d) { DATA = d; render(); /* render() pose le bandeau démo */ })
@@ -1060,13 +1099,16 @@
           // des champs. On AFFICHE quand même (le front ignore ce qu'il ne connaît
           // pas) au lieu de bloquer l'app — on note juste qu'une MAJ est dispo.
           var sc = d.schema || 1;
+          clearTimeout(_wakeTimer); hideWakeStatus();
           DATA = d; render(); try { checkThresholds(d); } catch (e) {}
+          // Moment aha : première vraie donnée (non-démo)
+          if (!d.demo && d.source && d.source.claudeCodeDir !== null) triggerAha();
           if (sc > SUPPORTED_SCHEMA) {
             setStatus(t("app.status.update", { sc: sc }), "warn");
           }
         })
         .catch(function (e) {
-          if (src.remote && e && e.name === "AbortError") sawRemoteTimeout = true;
+          if (src.remote && e && e.name === "AbortError") { clearTimeout(_wakeTimer); sawRemoteTimeout = true; }
           if (e && e.message === "schema-too-new") return;  // message déjà posé
           return tryAt(i + 1);
         });
@@ -1835,7 +1877,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v33.js";
+  var SW_FILE = "sw.v34.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

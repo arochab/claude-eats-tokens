@@ -52,6 +52,10 @@
   </header>
 
   <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="status-txt" data-i18n="html.status.loading">Chargement…</span></div>
+  <!-- Barre de réveil Render : visible uniquement pendant le cold start (~30s) -->
+  <div class="wake-bar" id="wake-bar" hidden aria-live="polite">
+    <span class="wake-bar-fill" id="wake-bar-fill"></span>
+  </div>
 
   <div class="firstrun" id="firstrun" hidden>
     <div class="fr-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/><circle cx="12" cy="12" r="3"/></svg></div>
@@ -68,6 +72,8 @@
   </div>
 
   <section class="verdict" id="verdict">
+    <!-- Bannière démo : visible uniquement en mode exemple, plus lisible que le badge inline -->
+    <div class="verdict-demo-banner" id="verdict-demo-banner" hidden data-i18n="html.verdict.demo.banner">Exemple — pas encore tes chiffres</div>
     <div class="vmain">
       <div class="vlight" id="vlight" aria-hidden="true"></div>
       <div class="vtxt"><p class="vstate" id="vstate" data-i18n="html.verdict.loading">Analyse…</p><p class="vsub" id="vsub"></p></div>

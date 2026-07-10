@@ -119,6 +119,7 @@
     "app.status.synced":    "Synchronisé {ago} · {n} messages",
     "app.status.stale":     "⚠ Données possiblement périmées ({ago})",
     "app.status.offline":   "Hors-ligne — aucune donnée en cache.",
+    "app.status.waking":    "Connexion au serveur… (~30 s la première fois)",
     "app.status.sleeping":  "Serveur endormi et aucune donnée locale. Réessaie dans ~1 min.",
     "app.status.nodata":    "Aucune donnée pour l'instant. Vérifie que le moteur tourne sur ton PC.",
     "app.status.update":    "Une mise à jour de l'app est disponible (format {sc}).",
@@ -519,6 +520,7 @@
     "html.waste.sheet.lead": "Des tâches où tu as utilisé Opus alors qu'un modèle plus léger aurait sans doute suffi. Ce sont des candidats à vérifier, pas un verdict.",
 
     /* ---- shared ---- */
+    "html.verdict.demo.banner": "Exemple — pas encore tes chiffres",
     "html.close":            "Fermer",
     "html.proj.filter":      "Filtrer le tableau de bord sur ce projet",
     "html.setup.copy.aria":  "Copier le code",
