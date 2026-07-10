@@ -1526,6 +1526,10 @@
           $("auth-key-display").value = res.data.api_key;
           $("auth-form").style.display = "none";
           $("auth-success").style.display = "block";
+          // Proposer les notifs juste après la connexion (Notification API dispo + pas encore accordé)
+          if ("Notification" in window && Notification.permission === "default") {
+            var np = $("notif-prompt"); if (np) np.hidden = false;
+          }
           load();  // recharger les données avec la clé
         })
         .catch(function () {
@@ -1548,6 +1552,20 @@
         document.execCommand("copy");
         $("auth-copy-key").textContent = t("app.auth.copied");
       }
+    });
+
+    // Activer les notifs depuis le prompt post-connexion
+    if ($("notif-prompt-btn")) $("notif-prompt-btn").addEventListener("click", function () {
+      var btn = this;
+      Notification.requestPermission().then(function (p) {
+        var np = $("notif-prompt");
+        if (p === "granted") {
+          btn.textContent = t("app.notif.perm.granted");
+          setTimeout(function () { if (np) np.hidden = true; }, 1400);
+        } else {
+          if (np) np.hidden = true;
+        }
+      });
     });
 
     // Fermer après copie
@@ -1877,7 +1895,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v34.js";
+  var SW_FILE = "sw.v35.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

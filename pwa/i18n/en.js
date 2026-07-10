@@ -297,6 +297,11 @@
     "html.firstrun.body":  "Run the engine on your computer — it reads Claude Code and sends your real numbers here, privately.",
     "html.firstrun.cta":   "Connect my computer →",
 
+    /* ---- Notification prompt after connection ---- */
+    "html.notif.prompt.title": "Get an alert before you hit the limit?",
+    "html.notif.prompt.sub":   "A push notification when you're close to the ceiling — no need to keep the app open.",
+    "html.notif.prompt.cta":   "Enable notifications",
+
     /* ---- index.html : projfilter ---- */
     "html.filter.label":   "Filtered:",
     "html.filter.clear":   "Show all ✕",

@@ -316,6 +316,16 @@
         <div class="field"><label data-i18n="html.auth.key.display.label">Ton code de connexion<small data-i18n="html.auth.key.display.hint">à garder précieusement</small></label><input type="text" id="auth-key-display" readonly style="font-family:var(--mono);font-size:11px;width:200px" /></div>
       </div>
       <button class="btn" id="auth-copy-key" data-i18n="html.auth.key.copy">Copier la clé</button>
+      <div class="notif-prompt" id="notif-prompt" hidden>
+        <div class="notif-prompt-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="notif-prompt-body">
+          <p class="notif-prompt-t" data-i18n="html.notif.prompt.title">Recevoir une alerte avant la limite ?</p>
+          <p class="notif-prompt-s" data-i18n="html.notif.prompt.sub">Une notification quand tu approches du plafond — sans avoir à garder l'app ouverte.</p>
+          <button type="button" class="notif-prompt-btn" id="notif-prompt-btn" data-i18n="html.notif.prompt.cta">Activer les notifications</button>
+        </div>
+      </div>
       <button class="btn ghost" id="auth-done" data-i18n="html.auth.key.done">C'est bon, j'ai copié</button>
     </div>
 

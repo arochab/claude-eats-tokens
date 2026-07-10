@@ -297,6 +297,11 @@
     "html.firstrun.body":  "Lance le moteur sur ton ordinateur — il lit Claude Code et envoie tes vrais chiffres ici, en privé.",
     "html.firstrun.cta":   "Connecter mon ordinateur →",
 
+    /* ---- Prompt notifications post-connexion ---- */
+    "html.notif.prompt.title": "Recevoir une alerte avant la limite ?",
+    "html.notif.prompt.sub":   "Une notification quand tu approches du plafond — sans garder l'app ouverte.",
+    "html.notif.prompt.cta":   "Activer les notifications",
+
     /* ---- index.html : projfilter ---- */
     "html.filter.label":   "Filtré :",
     "html.filter.clear":   "Tout voir ✕",
