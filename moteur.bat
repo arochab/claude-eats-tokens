@@ -1,11 +1,13 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-if not exist "secret.local.bat" (
+if not exist "%~dp0secret.local.bat" (
   echo secret.local.bat introuvable — definis PUSH_URL et ton code de connexion (CET_API_KEY) ou PUSH_SECRET. Voir secret.local.example.bat.
   exit /b 1
 )
-call "secret.local.bat"
+REM Chemin COMPLET obligatoire : selon la config Windows, `call fichier.bat`
+REM sans chemin peut ne pas chercher dans le dossier courant et echouer net.
+call "%~dp0secret.local.bat"
 REM Boucle .bat : un envoi --once toutes les INTERVAL secondes. Plus robuste que
 REM la boucle interne de python (qui restait silencieuse sans pousser).
 REM En plus, toutes les ~10 min (REFRESH_EVERY cycles), on capture le VRAI %
