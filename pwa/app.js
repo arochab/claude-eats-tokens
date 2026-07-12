@@ -915,7 +915,7 @@
   /* ---------- charts ---------- */
   function drawTrend(rows) {
     var ctx = $("trend").getContext("2d");
-    var g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, "rgba(204,120,92,.28)"); g.addColorStop(1, "rgba(204,120,92,0)");
+    var g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.clientHeight || 170); g.addColorStop(0, "rgba(204,120,92,.28)"); g.addColorStop(1, "rgba(204,120,92,0)");
     var cfg = {
       type: "line",
       data: { labels: rows.map(function (r) { return dayLabel(r.date); }), datasets: [{ data: rows.map(function (r) { return r.total; }), borderColor: "#CC785C", borderWidth: 2.5, backgroundColor: g, fill: true, tension: .38, pointRadius: rows.length <= 2 ? 5 : 0, pointBackgroundColor: "#CC785C", pointHoverRadius: 5, pointHoverBackgroundColor: "#CC785C", pointHoverBorderColor: "#fff", pointHoverBorderWidth: 2 }] },
@@ -1199,6 +1199,7 @@
     var sheet = $(id);
     _sheetReturnFocus = document.activeElement;
     sheet.classList.add("open");
+    document.body.classList.add("sheet-open");
     // Focus sur le dialogue lui-même (pas le bouton Fermer) pour que le lecteur
     // d'écran lise le titre du sheet à l'ouverture (A8).
     sheet.setAttribute("tabindex", "-1");
@@ -1217,6 +1218,7 @@
   function closeSheet(id) {
     var sheet = $(id);
     sheet.classList.remove("open");
+    document.body.classList.remove("sheet-open");
     if (sheet._keyHandler) { sheet.removeEventListener("keydown", sheet._keyHandler); sheet._keyHandler = null; }
     if (_sheetReturnFocus && _sheetReturnFocus.focus) { _sheetReturnFocus.focus(); _sheetReturnFocus = null; }
   }

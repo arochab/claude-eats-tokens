@@ -418,11 +418,16 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 @media (prefers-color-scheme:dark){
-  :root{--cream:#1A1915;--cream-2:#2A2925;--paper:#23221E;--slate:#F0EEE6;--slate-soft:#D8D5CA;--muted:#9A988C;--line:rgba(240,238,230,.10);--line-strong:rgba(240,238,230,.18)}
+  :root{--cream:#1A1915;--cream-2:#2A2925;--paper:#23221E;--slate:#F0EEE6;--slate-soft:#D8D5CA;--muted:#A6A396;--line:rgba(240,238,230,.10);--line-strong:rgba(240,238,230,.18)}
   /* fond sombre cohérent (sinon le dégradé crème clair "bave" en haut) */
   body{background:radial-gradient(1200px 600px at 50% -10%, #211F1A 0%, #141310 60%) fixed,#141310}
-  .hero{background:linear-gradient(155deg,#2A2722 0%,#1E1C17 55%,#121009 100%)}
   .field input,.field select{background:#2A2925}
+  /* contraste : tracks de jauges quasi invisibles sur fond sombre */
+  .win-track,.fbar-track,.proj .pbar{background:rgba(240,238,230,.12)}
+  /* contraste : le rouge boueux de la tendance haussière -> terracotta clair */
+  .ministats .trend.up{color:var(--terracotta-l)}
+  /* contraste : encart vert « aha » injecté par renderWindows (.win-advice .alert.ok) */
+  .win-advice .alert.ok{color:#C9D2B6}
   /* squelette de chargement visible sur fond sombre */
   .sk{background:linear-gradient(90deg,#2A2925 25%,#33312c 50%,#2A2925 75%);background-size:200% 100%}
   /* Sheets : surface élevée légèrement plus claire que le fond, pour se détacher
@@ -624,3 +629,109 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .pro-reassure{font-size:11.5px;color:var(--muted);text-align:center;margin:10px 0 4px}
 #pro-export-label{margin-top:24px;display:flex;align-items:center;gap:8px}
 #pro-export-label .hint-mini{text-transform:uppercase}
+
+/* ===========================================================================
+   Responsive — La Double-Page (≥720 / ≥1024 / ≥1440)
+   Mobile ≤719px : PIXEL-IDENTIQUE — aucune règle ci-dessous ne s'y applique.
+   =========================================================================== */
+
+/* ===== Bloc A — « Le cahier » (≥720) : typo fluide + modales centrées ===== */
+@media (min-width:720px){
+  :root{
+    --fs-display:clamp(34px,2.5vw + 10px,56px);  /* manchette verdict */
+    --fs-hero:clamp(28px,1.8vw + 8px,44px);      /* chiffre du mois */
+    --fs-figure:clamp(24px,1.2vw + 9px,32px);    /* chiffres serif des cartes */
+  }
+  .app{max-width:680px;padding:28px 24px 36px}
+  .vstate{font-size:var(--fs-display);letter-spacing:-.02em}
+  #hero-used{font-size:var(--fs-hero)}
+  .ministats .v,.win-pct,.fbar-pct,.waste-verdict{font-size:var(--fs-figure)}
+  .card h2{font-size:19px}
+  .vsub{font-size:14.5px;max-width:58ch}
+  .alert,.boite-txt{font-size:14px}
+  /* 3 jauges verdict côte à côte */
+  .vgauges{flex-direction:row;gap:28px}
+  .vgauges>*{flex:1 1 0;min-width:0}
+  /* chart */
+  .chart-wrap{height:210px}
+  /* sheets → modales centrées */
+  .sheet{align-items:center;padding:28px}
+  .sheet-inner{max-width:580px;border-radius:var(--r-xl);max-height:min(760px,88vh);
+               padding:26px 26px 30px;transform:translateY(10px) scale(.985)}
+  #projsheet .sheet-inner{max-width:660px}
+  #setup-sheet .sheet-inner{max-width:640px}
+  body.sheet-open{overflow:hidden}   /* scopé ≥720 : iOS mobile jamais touché */
+}
+
+/* ===== Bloc B — « La double-page » (≥1024) : grille 12 colonnes ===== */
+@media (min-width:1024px){
+  /* grille : défaut = bande pleine largeur, robuste aux cartes conditionnelles */
+  .app{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:40px;row-gap:0;
+       max-width:1128px;padding:36px 40px 56px}
+  .app>*{grid-column:1/-1;min-width:0}
+  #alerts:empty{display:none}
+  /* fond : halo élargi pour la pleine page */
+  body{background:radial-gradient(1800px 900px at 50% -12%,#F5F3EC 0%,var(--cream) 60%) fixed,var(--cream)}
+  /* topbar — « ours de magazine » */
+  .topbar{padding-bottom:18px;border-bottom:1px solid var(--line-strong);margin-bottom:22px}
+  .glyph{width:38px;height:38px}
+  .topbar h1{font-size:15px}
+  /* status — ligne de folio sous le filet */
+  .status{background:transparent;border-color:transparent;padding:2px 0}
+  /* verdict — LA MANCHETTE : titre à gauche, jauges derrière un filet vertical */
+  .verdict{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);
+           column-gap:48px;align-items:center;padding:32px 40px}
+  .verdict-demo-banner{grid-column:1/-1}
+  .vmain{grid-column:1}
+  .vgauges{grid-column:2;flex-direction:column;gap:14px;margin-top:0;padding-top:0;border-top:none;
+           border-left:1px solid rgba(26,25,21,.08);padding-left:44px;
+           align-self:stretch;justify-content:center}
+  .vgauges>*{flex:0 0 auto}
+  /* boîte noire + waste radar : appariées ssi les deux sont visibles */
+  .app:has(#boite-card:not([hidden])):has(#waste-card:not([hidden])) #boite-card{grid-column:1/8}
+  .app:has(#boite-card:not([hidden])):has(#waste-card:not([hidden])) #waste-card{grid-column:8/13}
+  /* mes fenêtres / forfait (XOR par style.display inline) + héro « pleine page » */
+  #windows-card,#forfait-card{grid-column:1/8}
+  .hero{grid-column:8/13;flex-direction:column;align-items:stretch;justify-content:space-between;padding:28px}
+  .hero-radar{width:180px;height:180px;align-self:center;margin-top:18px}
+  /* ministats — bandeau de chiffres clés */
+  .ministats{gap:20px}
+  .ministats .ms{padding:18px 20px}
+  .ministats .k{letter-spacing:.08em}
+  /* où je me situe */
+  .pos-verdict,.pos-caveat{max-width:68ch}
+  /* évolution — le geste rapport annuel */
+  .chart-wrap{height:260px}
+  /* projets — index de fin de magazine */
+  #projects{columns:2;column-gap:56px;column-rule:1px solid var(--line)}
+  .proj{break-inside:avoid}
+  /* footer — colophon */
+  .foot{border-top:1px solid var(--line);padding-top:20px;margin-top:28px}
+}
+
+/* ===== Bloc C — « Grand format » (≥1440) : respiration, pas de nouveau layout ===== */
+@media (min-width:1440px){
+  .app{max-width:1240px;column-gap:56px;padding:48px 48px 72px}
+  .verdict{padding:40px 48px;column-gap:64px}
+  .card{padding:24px}
+  .hero-radar{width:200px;height:200px}
+  .chart-wrap{height:300px}
+}
+
+/* ===== Bloc D — dark (≥1024) ===== */
+@media (min-width:1024px) and (prefers-color-scheme:dark){
+  body{background:radial-gradient(1800px 900px at 50% -12%,#211F1A 0%,#141310 60%) fixed,#141310}
+  .vgauges{border-left-color:rgba(240,238,230,.1)}
+}
+
+/* ===== Bloc E — hover desktop (jamais sur tactile) ===== */
+@media (hover:hover) and (pointer:fine){
+  .proj:hover{background:rgba(26,25,21,.04)}
+  .waste-btn:hover .waste-chev{transform:translateX(3px)}
+  .waste-chev{transition:transform .15s var(--ease)}
+  button.waste-btn:hover .waste-verdict,.boite-btn:hover .boite-txt b{color:var(--terracotta-d)}
+  .pos-details>summary:hover::after{color:var(--slate)}
+}
+@media (hover:hover) and (pointer:fine) and (prefers-color-scheme:dark){
+  .proj:hover{background:rgba(240,238,230,.05)}
+}
