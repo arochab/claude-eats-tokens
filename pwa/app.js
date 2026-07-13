@@ -2001,7 +2001,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v38.js";
+  var SW_FILE = "sw.v39.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;
