@@ -344,11 +344,24 @@
     var brushes5h = b.lim5h > 0 && eff5h >= b.lim5h * 0.8;
     if (brushes5h || effWeek >= b.intensif) tierIndex = Math.max(tierIndex, 3);
 
-    // position du marqueur sur le spectre (échelle LOG, ~2 ordres de grandeur)
-    var lo = Math.log10(Math.max(1, b.decouverte));
-    var hi = Math.log10(Math.max(b.decouverte * 10, b.intensif * 1.6));
-    var lv = Math.log10(Math.max(1, effWeek));
-    var markerPct = Math.max(2, Math.min(100, Math.round((lv - lo) / (hi - lo) * 100)));
+    // Position du marqueur sur le spectre. Le spectre = 4 segments visuels de
+    // largeur égale (25% chacun). Le marqueur DOIT tomber dans le segment du
+    // palier surligné (tierIndex), sinon incohérence visuelle : marqueur sous
+    // « Découverte » alors que « Régulier » est allumé (bug relevé jury Ive).
+    // On calcule donc une fraction 0..1 DANS le segment du palier (échelle log
+    // sur les bornes de ce palier), puis on la mappe dans sa bande de 25%.
+    var edges = [b.decouverte, b.regulier, b.intensif];   // bornes des 3 premiers crans
+    var segLo, segHi;
+    if (tierIndex === 0) { segLo = b.decouverte / 4; segHi = b.decouverte; }
+    else if (tierIndex === 3) { segLo = b.intensif; segHi = b.intensif * 4; }
+    else { segLo = edges[tierIndex - 1]; segHi = edges[tierIndex]; }
+    var fLo = Math.log10(Math.max(1, segLo));
+    var fHi = Math.log10(Math.max(segLo * 1.0001, segHi));
+    var fLv = Math.log10(Math.max(1, effWeek));
+    var frac = Math.max(0, Math.min(1, (fLv - fLo) / (fHi - fLo)));   // 0..1 dans le palier
+    // centre le marqueur dans les 80% médians de la bande (évite les bords pile)
+    var markerPct = Math.round((tierIndex * 25) + 2.5 + frac * 20);
+    markerPct = Math.max(2, Math.min(98, markerPct));
 
     // ratio vs la semaine médiane (réutilise la même médiane que status())
     var weeks = (d && d.weekly && d.weekly.weeks) ? d.weekly.weeks.map(function (w) { return w.total; }) : [];

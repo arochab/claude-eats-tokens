@@ -190,6 +190,7 @@
     /* ---- app.js : graphique ---- */
     "app.chart.aria": "Évolution : {total} tokens sur la période sélectionnée ({days} jours).",
     "app.chart.hint": "tokens / jour",
+    "app.chart.avg": "moy.",
 
     /* ---- app.js : projets ---- */
     "app.proj.noname":       "Sans projet",
@@ -331,6 +332,7 @@
     /* ---- index.html : positionnement ---- */
     "html.pos.title":      "Où je me situe",
     "html.pos.badge":      "repère",
+    "html.pos.teaser":     "Ta semaine face aux abonnés Max",
     "html.pos.sub":        "Ta semaine comparée à l'usage typique d'un abonné Claude Max.",
     "html.pos.spectrum.aria": "Position de ton usage sur le spectre des abonnés Max",
     "html.pos.caveat":     "Les paliers s'appuient sur des estimations publiques d'usage Max, pas sur des chiffres officiels Anthropic.",

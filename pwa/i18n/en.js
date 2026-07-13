@@ -190,6 +190,7 @@
     /* ---- app.js : chart ---- */
     "app.chart.aria": "Usage over time: {total} tokens for the selected period ({days} days).",
     "app.chart.hint": "tokens / day",
+    "app.chart.avg": "avg",
 
     /* ---- app.js : projects ---- */
     "app.proj.noname":       "No project",
@@ -331,6 +332,7 @@
     /* ---- index.html : position ---- */
     "html.pos.title":      "Where I stand",
     "html.pos.badge":      "reference",
+    "html.pos.teaser":     "Your week vs typical Max users",
     "html.pos.sub":        "Your week compared to typical Claude Max subscriber usage.",
     "html.pos.spectrum.aria": "Your usage position on the Max subscriber spectrum",
     "html.pos.caveat":     "Tiers are based on public estimates of Max usage, not official Anthropic figures.",

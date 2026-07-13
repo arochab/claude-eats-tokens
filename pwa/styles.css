@@ -142,6 +142,9 @@ body{font-family:var(--sans);background:
 @media (max-width:360px){
   .hero-radar{width:108px;height:108px}
 }
+/* micro-légende des 3 fenêtres sous le radar — masquée hors grille double-page
+   (mobile/tablette pixel-identique). Activée ≥1024 pour remplir le bas du héro. */
+.hero-legend{display:none}
 
 /* ---------------------------------------------------------------------------
    Texture de grille technique (signature DA). Très subtile : traits ~0.4 alpha,
@@ -232,6 +235,8 @@ body{font-family:var(--sans);background:
 .pos-details[open]>summary::after{content:"−"}
 .pos-details>summary h2{margin-bottom:0}
 .pos-details[open]>summary h2{margin-bottom:16px}
+/* teaser inline : réservé au repli en desktop (≥1024) ; masqué partout ailleurs */
+.pos-teaser{display:none}
 /* Réglages avancés : replie les champs experts, garde l'essentiel visible (B4) */
 .adv-settings{margin-top:8px;border-top:1px solid var(--line)}
 .adv-settings>summary{list-style:none;cursor:pointer;display:flex;align-items:center;
@@ -424,6 +429,14 @@ button.proj:hover{background:rgba(204,120,92,.05)}
   .field input,.field select{background:#2A2925}
   /* contraste : tracks de jauges quasi invisibles sur fond sombre */
   .win-track,.fbar-track,.proj .pbar{background:rgba(240,238,230,.12)}
+  /* contraste : le remplissage des barres projets se noyait sur fond quasi-noir
+     (colonne droite illisible : serp-scraper, AGENTIC-FIGMA-MCP). Clay #D9A878
+     est chaud et bien visible sur le track sombre ; le delta % (13%, 11%) remonté
+     en clay lisible à distance sur un 27 pouces (jury ive/altman round 3).
+     NB : --terracotta-l (#F3E4DC) est un crème rosé pour le TEXTE sur sombre, pas
+     une teinte de remplissage — d'où clay ici. */
+  .proj .pbar>span{background:var(--clay)}
+  .proj .pshare{color:var(--clay)}
   /* contraste : le rouge boueux de la tendance haussière -> terracotta clair */
   .ministats .trend.up{color:var(--terracotta-l)}
   /* contraste : encart vert « aha » injecté par renderWindows (.win-advice .alert.ok) */
@@ -551,6 +564,13 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .card h2 .hint,.hint-mini{}
 .waste-card h2 .hint,.boite-card h2 .hint,.hint-mini{
   background:rgba(193,95,60,.12);color:var(--terracotta-d);padding:3px 8px;border-radius:6px;letter-spacing:.12em}
+/* dark : sur le fond quasi-noir des cartes Pro, le terracotta sombre virait au
+   rouge illisible. Clay lumineux + fond terracotta plus présent (jury amodei).
+   Placé APRÈS la règle de base pour l'emporter par ordre de source. */
+@media (prefers-color-scheme:dark){
+  .waste-card h2 .hint,.boite-card h2 .hint{
+    background:rgba(204,120,92,.26);color:var(--clay)}
+}
 
 /* ----- Boîte noire (carte conditionnelle) ----- */
 .boite-btn{display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:0;color:inherit;font:inherit}
@@ -568,6 +588,9 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 .waste-chev{grid-area:chev;color:var(--muted);display:grid;place-items:center}
 .waste-chev svg{width:20px;height:20px}
 .waste-btn:active{opacity:.85}
+/* aperçu inline des tâches candidates — masqué hors grille double-page (mobile/
+   tablette pixel-identiques). Activé ≥1024 quand la carte est pleine largeur. */
+.waste-preview{display:none}
 
 /* ----- Waste sheet : liste des tâches candidates ----- */
 .waste-row{padding:14px 0;border-bottom:1px solid var(--line)}
@@ -638,7 +661,9 @@ button.proj:hover{background:rgba(204,120,92,.05)}
 /* ===== Bloc A — « Le cahier » (≥720) : typo fluide + modales centrées ===== */
 @media (min-width:720px){
   :root{
-    --fs-display:clamp(34px,2.5vw + 10px,56px);  /* manchette verdict */
+    --fs-display:clamp(34px,2.2vw + 8px,46px);   /* manchette verdict — plafond
+       abaissé 56→46px : au-delà de 1240px le titre serif enflait au point
+       d'écraser sa colonne 7fr et de déséquilibrer la manchette (jury ive round 3). */
     --fs-hero:clamp(28px,1.8vw + 8px,44px);      /* chiffre du mois */
     --fs-figure:clamp(24px,1.2vw + 9px,32px);    /* chiffres serif des cartes */
   }
@@ -678,28 +703,142 @@ button.proj:hover{background:rgba(204,120,92,.05)}
   .topbar h1{font-size:15px}
   /* status — ligne de folio sous le filet */
   .status{background:transparent;border-color:transparent;padding:2px 0}
-  /* verdict — LA MANCHETTE : titre à gauche, jauges derrière un filet vertical */
+  /* verdict — LA MANCHETTE : titre à gauche, jauges derrière un filet vertical.
+     Contenu centré verticalement + padding resserré : pas de champ vide sous le
+     pictogramme validé quand le titre serif est court (jury ive/amodei). */
   .verdict{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);
-           column-gap:48px;align-items:center;padding:32px 40px}
+           column-gap:40px;align-items:center;padding:26px 40px}
   .verdict-demo-banner{grid-column:1/-1}
-  .vmain{grid-column:1}
-  .vgauges{grid-column:2;flex-direction:column;gap:14px;margin-top:0;padding-top:0;border-top:none;
-           border-left:1px solid rgba(26,25,21,.08);padding-left:44px;
-           align-self:stretch;justify-content:center}
+  .vmain{grid-column:1;align-self:center}
+  /* filet vertical Clay : lisible en LIGHT sur fond crème/sauge, pas seulement en
+     dark. L'ancien slate 8% se dissolvait crème-sur-crème (jury ive). */
+  .vgauges{grid-column:2;flex-direction:column;gap:15px;margin-top:0;padding-top:0;border-top:none;
+           border-left:1px solid rgba(204,120,92,.22);padding-left:36px;
+           align-self:center;justify-content:center}
   .vgauges>*{flex:0 0 auto}
-  /* boîte noire + waste radar : appariées ssi les deux sont visibles */
-  .app:has(#boite-card:not([hidden])):has(#waste-card:not([hidden])) #boite-card{grid-column:1/8}
-  .app:has(#boite-card:not([hidden])):has(#waste-card:not([hidden])) #waste-card{grid-column:8/13}
-  /* mes fenêtres / forfait (XOR par style.display inline) + héro « pleine page » */
-  #windows-card,#forfait-card{grid-column:1/8}
-  .hero{grid-column:8/13;flex-direction:column;align-items:stretch;justify-content:space-between;padding:28px}
-  .hero-radar{width:180px;height:180px;align-self:center;margin-top:18px}
-  /* ministats — bandeau de chiffres clés */
+
+  /* ===== RANGÉES APPARIÉES — robustes aux cartes conditionnelles (:has) =====
+     Les cartes Pro (boîte noire, waste) sont souvent masquées. On apparie ce qui
+     est RÉELLEMENT visible pour ne jamais laisser un bandeau seul à moitié vide. */
+  /* 1) boîte noire + waste visibles ensemble : la paire canonique de la spec */
+  .app:has(#boite-card:not([hidden])):has(#waste-card:not([hidden])) #boite-card{grid-column:1/7}
+  .app:has(#boite-card:not([hidden])):has(#waste-card:not([hidden])) #waste-card{grid-column:7/13;align-self:stretch}
+  /* 2) waste seul (boîte noire masquée, cas courant) : pleine largeur mais DENSE —
+        le bandeau à gauche, un APERÇU de 2 tâches candidates à droite qui remplit la
+        largeur. Plus jamais 55% de vide + un chevron perdu (jury musk/altman). */
+  .app:not(:has(#boite-card:not([hidden]))) #waste-card{
+    grid-column:1/-1;
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+    column-gap:44px;align-items:center;grid-template-areas:"h h" "btn prev"}
+  .app:not(:has(#boite-card:not([hidden]))) #waste-card>h2{grid-area:h}
+  .app:not(:has(#boite-card:not([hidden]))) #waste-card .waste-btn{grid-area:btn;align-items:center}
+  .app:not(:has(#boite-card:not([hidden]))) #waste-card .waste-preview{grid-area:prev}
+  /* aperçu inline : 2 tâches candidates, séparées d'un filet, alignées à droite.
+     Filet Clay renforcé + titres plus contrastés/lourds : la colonne droite lit
+     comme une SECONDE colonne délibérée, pas comme un débordement gris (jury ive
+     wide). (base .waste-preview{display:none} définie hors media.) */
+  .app:not(:has(#boite-card:not([hidden]))) #waste-card .waste-preview:not(:empty){
+    display:flex;flex-direction:column;gap:11px;padding-left:44px;
+    border-left:1px solid rgba(204,120,92,.30)}
+  .waste-preview .wp-item{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+  .waste-preview .wp-title{font-size:13.5px;font-weight:500;color:var(--slate);line-height:1.4;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .waste-preview .wp-money{font-family:var(--serif);font-weight:500;font-size:15px;
+    color:var(--terracotta-d);white-space:nowrap;font-variant-numeric:tabular-nums}
+  /* mes fenêtres / forfait (XOR par style.display inline) + héro « pleine page ».
+     La paire fenêtres|héro s'étire à hauteur égale (stretch par défaut) et CHAQUE
+     carte remplit sa hauteur — voir .hero / #windows-card ci-dessous. */
+  #windows-card,#forfait-card{grid-column:1/7}
+  .hero{grid-column:7/13;flex-direction:column;align-items:stretch;justify-content:space-between;padding:26px 28px}
+  .hero .info{flex:0 0 auto}
+  /* héro : chiffre en haut, radar + micro-légende dessous. Radar à 200px (et non
+     250) : un héro moins haut = une rangée moins haute = moins de vide à combler
+     dans « Mes fenêtres » en face, tout en gardant un donut généreux et centré
+     (compromis retenue/densité, jury contrôle final unanime sur le vide jumeau). */
+  .hero-radar{width:200px;height:200px;align-self:center;margin:0 auto}
+  .hero-legend{display:flex;flex-direction:column;gap:9px;margin-top:20px;
+    padding-top:16px;border-top:1px solid rgba(240,238,230,.1)}
+  .hero-legend .hl-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
+  .hero-legend .hl-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .hero-legend .hl-lab{font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+    text-transform:uppercase;color:rgba(240,238,230,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hero-legend .hl-pct{font-family:var(--serif);font-size:14px;font-weight:500;
+    color:#F0EEE6;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  /* le bloc radar+légende est centré dans l'espace sous le chiffre */
+  .hero{justify-content:flex-start}
+  .hero .hero-radar{margin-top:auto}
+  .hero .hero-legend{margin-bottom:0}
+  /* « Mes fenêtres » : la carte S'ÉTIRE à la hauteur du héro noir (stretch) et
+     RÉPARTIT son contenu pour combler l'espace — le titre en haut, les deux
+     fenêtres au centre distribuées, le bandeau vert de réassurance ancré en bas.
+     Fini le trou de crème mort de ~150px sous la barre 53% : la colonne gauche
+     ferme la rangée au même niveau que le héro (jury jobs/altman/ive unanimes,
+     round 3). C'est la vraie double-page — deux colonnes de hauteur égale. */
+  #windows-card{display:flex;flex-direction:column;align-self:stretch}
+  #windows-card>h2{flex:0 0 auto;margin-bottom:24px}
+  /* le corps occupe toute la hauteur restante et RÉPARTIT son contenu en trois
+     temps régulièrement espacés (space-between) : jauge 5h, jauge semaine, puis
+     bandeau vert. L'air est distribué en gouttières ÉGALES entre les blocs — plus
+     de réservoir de vide concentré au milieu (les 5 jurés du contrôle final). Les
+     jauges gardent leur identité de paire par leur proximité typographique, mais
+     l'espacement régulier fait respirer la carte comme une composition, pas comme
+     un étirement. Chaque jauge gagne un filet de séparation subtil pour structurer
+     le rythme vertical. */
+  #windows-card #windows-body{flex:1 1 auto;display:flex;flex-direction:column;
+                              justify-content:space-between;gap:18px;padding-top:4px}
+  #windows-card .win{margin-bottom:0;padding-bottom:18px;border-bottom:1px solid var(--line)}
+  #windows-card .win-track{margin-top:11px}
+  /* le bandeau de réassurance ferme la carte sans filet (il a déjà son fond) */
+  #windows-card .win-advice{margin-top:0;padding:16px 18px}
+  /* barres plus longues : le % n'est plus une île à l'extrême droite. La piste
+     court sur toute la largeur (jauge honnête) et devient VISIBLE — l'ancien
+     track crème-sur-papier disparaissait, ne laissant voir que le remplissage
+     ~50% + un chiffre flottant. Track assombri = la barre relie visiblement sa
+     fin au % au bout de la ligne (jury altman). */
+  #windows-card .win-track{height:8px;margin-top:9px;background:rgba(26,25,21,.07)}
+  /* ministats — bandeau de chiffres clés : le delta est COLLÉ au chiffre (même
+     ligne de base, petit gap) au lieu d'être exilé à l'extrême droite d'une tuile
+     trop large ; le bloc est centré verticalement pour ne plus coller en haut à
+     gauche d'une carte étirée (jury musk/jobs wide). */
   .ministats{gap:20px}
-  .ministats .ms{padding:18px 20px}
+  .ministats .ms{padding:20px;display:grid;grid-template-columns:auto auto;
+                 grid-template-areas:"k k" "v trend";column-gap:12px;
+                 align-items:baseline;justify-content:start;align-content:center;row-gap:8px}
+  .ministats .ms .k{grid-area:k}
+  .ministats .ms .v{grid-area:v}
+  .ministats .ms .trend{grid-area:trend;margin:0;align-self:baseline}
   .ministats .k{letter-spacing:.08em}
-  /* où je me situe */
+  /* le triptyque se rattache visuellement à la rangée fenêtres|héro au-dessus :
+     gouttière resserrée en haut pour former un bloc « chiffres clés » cohérent
+     plutôt que trois tuiles orphelines flottant après un grand blanc (jury
+     jobs/ive/altman round 3). */
+  .app>.hero{margin-bottom:16px}
+  .ministats{margin-top:-2px}
+  /* ligne de rythme : les 2 chiffres clés (projection + fourchette) passent en
+     Slate lisible, le disclaimer « Max = fenêtres 5h » se dégrade en muted —
+     plus un pavé gris uniforme illisible en survol rapide (jury altman/amodei). */
+  #pace-banner .alert{font-size:13.5px;line-height:1.6}
+  #pace-banner .alert b,#pace-banner .alert strong{color:var(--slate);font-weight:600}
+  /* où je me situe : barre-teaser PLEINE LARGEUR, alignée sur la grille comme le
+     bandeau de rythme au-dessus. Replié, ce n'était qu'une pilule orpheline à 15%
+     de remplissage sur une ligne vide (jury altman/amodei) — désormais titre à
+     gauche, sous-titre repère + « + » à droite, la ligne est intentionnelle. */
   .pos-verdict,.pos-caveat{max-width:68ch}
+  #position-card{padding:0;background:transparent;border:none;box-shadow:none}
+  .pos-details:not([open]){display:block;width:100%;
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+    box-shadow:var(--shadow);padding:16px 24px}
+  /* la ligne repli : titre serif à gauche, « + » au bout de la pleine largeur.
+     Le sous-titre repère revient inline pour donner du corps à la barre. */
+  .pos-details:not([open])>summary{display:flex;align-items:center;gap:14px}
+  .pos-details:not([open])>summary::after{margin-left:0}
+  .pos-details:not([open]) .pos-teaser{display:inline;margin-left:auto;
+    font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis}
+  .pos-details[open]{background:var(--paper);border:1px solid var(--line);
+    border-radius:var(--r-lg);box-shadow:var(--shadow);padding:20px 24px}
+  .pos-details:not([open])>summary h2{margin-bottom:0}
+  .pos-details:not([open])>summary h2 .hint{margin-right:2px}
   /* évolution — le geste rapport annuel */
   .chart-wrap{height:260px}
   /* projets — index de fin de magazine */
@@ -709,13 +848,22 @@ button.proj:hover{background:rgba(204,120,92,.05)}
   .foot{border-top:1px solid var(--line);padding-top:20px;margin-top:28px}
 }
 
-/* ===== Bloc C — « Grand format » (≥1440) : respiration, pas de nouveau layout ===== */
+/* ===== Bloc C — « Grand format » (≥1440) : respiration, pas de nouveau layout =====
+   Plafond utile élargi à 1320px : le contenu remplit ses 12 colonnes, plus de
+   marges crème béantes autour d'une colonne trop étroite (jury jobs). */
 @media (min-width:1440px){
-  .app{max-width:1240px;column-gap:56px;padding:48px 48px 72px}
-  .verdict{padding:40px 48px;column-gap:64px}
+  .app{max-width:1320px;column-gap:56px;padding:48px 48px 72px}
+  /* verdict : padding resserré + colonnes rapprochées et bloc de barres élargi
+     (6fr/4fr au lieu de 7fr/5fr) pour tuer le couloir vide central entre le titre
+     serif et les 3 mini-barres (jury musk wide). */
+  .verdict{padding:32px 48px;column-gap:48px;grid-template-columns:minmax(0,6fr) minmax(0,4fr)}
   .card{padding:24px}
-  .hero-radar{width:200px;height:200px}
+  .hero{padding:30px 32px}
+  .hero-radar{width:230px;height:230px}
   .chart-wrap{height:300px}
+  /* projets : colonnes plus larges qui exploitent toute la grille, pas un index
+     tassé à gauche (jury jobs). */
+  #projects{column-gap:72px}
 }
 
 /* ===== Bloc D — dark (≥1024) ===== */

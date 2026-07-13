@@ -107,6 +107,7 @@
       <span class="waste-sub" id="waste-sub" data-i18n="html.waste.sub">Des tâches où un modèle plus léger aurait sans doute suffi. À vérifier.</span>
       <span class="waste-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
     </button>
+    <div class="waste-preview" id="waste-preview" aria-hidden="true"></div>
   </section>
 
   <section class="card" id="windows-card">
@@ -131,6 +132,7 @@
       <p class="reset" id="hero-reset"></p>
     </div>
     <div class="hero-radar" id="hero-radar" role="img" aria-label="Radar des fenêtres : 5 heures, semaine, mois" data-i18n="html.radar.aria" data-i18n-attr="aria-label"></div>
+    <div class="hero-legend" id="hero-legend" aria-hidden="true"></div>
   </section>
 
   <div id="alerts"></div>
@@ -159,7 +161,7 @@
   <!-- ↓↓↓ longue traîne (secondaire) : repère, évolution, projets ↓↓↓ -->
   <section class="card card-2" id="position-card">
     <details class="pos-details">
-      <summary><h2><span data-i18n="html.pos.title">Où je me situe</span> <span class="hint" data-i18n="html.pos.badge">repère</span></h2></summary>
+      <summary><h2><span data-i18n="html.pos.title">Où je me situe</span> <span class="hint" data-i18n="html.pos.badge">repère</span></h2><span class="pos-teaser" data-i18n="html.pos.teaser">Ta semaine face aux abonnés Max</span></summary>
       <p class="pos-sub" id="pos-sub" data-i18n="html.pos.sub">Ta semaine comparée à l'usage typique d'un abonné Claude Max.</p>
       <div class="pos-spectrum" id="pos-spectrum" role="img" aria-label="Position de ton usage sur le spectre des abonnés Max" data-i18n="html.pos.spectrum.aria" data-i18n-attr="aria-label"></div>
       <p class="pos-verdict" id="pos-verdict"></p>
