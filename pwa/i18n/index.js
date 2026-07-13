@@ -7,8 +7,15 @@
   var LANG_KEY = "tokenTracker.lang.v1";
   var _lang = null;
 
-  /* Détection initiale : 1) localStorage, 2) navigator.language, 3) EN par défaut */
+  /* Détection initiale : 1) ?lang= dans l'URL (partage de lien forcé, ex démo EN
+     à l'international), 2) localStorage, 3) navigator.language, 4) EN par défaut */
   function detectLang() {
+    try {
+      if (typeof location !== "undefined" && location.search) {
+        var q = new URLSearchParams(location.search).get("lang");
+        if (q === "fr" || q === "en") return q;
+      }
+    } catch (e) {}
     try {
       var s = typeof localStorage !== "undefined" && localStorage.getItem(LANG_KEY);
       if (s === "fr" || s === "en") return s;
