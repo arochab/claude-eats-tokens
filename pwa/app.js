@@ -247,7 +247,7 @@
     /* projets — MÊME source que le reste du dashboard (respecte le filtre projet) */
     renderProjects(filteredData());
 
-    var src = demo ? t("app.status.demo").split(" — ")[0] : (d.source.claudeCodeDir || "logs locaux");
+    var src = demo ? t("app.status.demo").split(/\s*[—:-]\s+/)[0] : (d.source.claudeCodeDir || "logs locaux");
     var asOf = (d.source && d.source.pricingAsOf) ? (" (" + d.source.pricingAsOf + ")") : "";
     var rateInfo = rateValue() ? (" · " + rateFreshness()) : (" · " + t("app.rate.unavail"));
     $("foot").innerHTML = t("app.foot.source", { src: "<b>" + esc(short(src)) + "</b>" }) +
@@ -278,7 +278,7 @@
       donutLabels[2] + " " + Math.round(sum.cacheCreate / tot * 100) + "%, " +
       donutLabels[3] + " " + Math.round(sum.cacheRead / tot * 100) + "%.");
   }
-  function short(s) { s = String(s); return s.length > 40 ? "…" + s.slice(-38) : s; }
+  function short(s) { s = String(s); return s.length > 40 ? "..." + s.slice(-38) : s; }
 
   function miniRing(label, used, budget, sub) {
     var p = pct(used, budget);
@@ -523,7 +523,7 @@
     var tierLabel = i18n ? i18n.t(p.tierLabel) : p.tierLabel;
     if (p.tierIndex >= 2) {       // Intensif / Power-user
       verdict = i18n ? i18n.t("app.pos.verdict.heavy", { tier: esc(tierLabel.toLowerCase()) })
-        : "Tu es dans les utilisateurs <b>" + esc(tierLabel.toLowerCase()) + "s</b> de Claude Max — tu sors vraiment la valeur de ton forfait.";
+        : "Tu es dans les utilisateurs <b>" + esc(tierLabel.toLowerCase()) + "s</b> de Claude Max, tu sors vraiment la valeur de ton forfait.";
     } else {                      // Découverte / Régulier
       verdict = i18n ? i18n.t("app.pos.verdict.light") : "Tu utilises Claude tranquillement, dans la norme.";
     }
@@ -616,7 +616,7 @@
         // Canal NON-chromatique : un glyphe + suffixe pour que le niveau ne soit
         // pas porté par la couleur seule (WCAG 1.4.1 — daltonisme).
         var mark = g.level === "red" ? "● " : g.level === "orange" ? "⚠ " : "";
-        var suffix = g.level === "red" ? " — " + t("app.gauge.full") : g.level === "orange" ? " — " + t("app.gauge.hot") : "";
+        var suffix = g.level === "red" ? ", " + t("app.gauge.full") : g.level === "orange" ? ", " + t("app.gauge.hot") : "";
         return '<div class="vg"><div class="vg-top"><span class="vg-lab">' + esc(g.label) + '</span>' +
           '<span class="vg-val">' + mark + esc(g.value) + suffix + '</span></div>' +
           '<div class="vg-bar"><span style="width:' + Math.max(3, g.fill) + '%;background:' + col + '"></span></div>' +
@@ -1564,7 +1564,7 @@
           fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/me", { headers: { "X-Api-Key": apiKey } })
             .then(function (r) { return r.json(); })
             .then(function (d) {
-              if (d.email) $("auth-logged-email").textContent = " — " + d.email;
+              if (d.email) $("auth-logged-email").textContent = " : " + d.email;
               var plan = d.plan || "free";
               if ($("auth-logged-plan")) $("auth-logged-plan").textContent = plan;
               // statut d'abonnement : "actif jusqu'au JJ/MM" quand résilié en cours
@@ -1996,7 +1996,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v37.js";
+  var SW_FILE = "sw.v38.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

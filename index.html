@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Claude Eats Tokens — à quel point Claude a faim aujourd'hui ?</title>
-<meta name="description" content="Claude Max hides how close you are to the 5-hour throttle. This reads your local logs and shows it on your phone — before you hit the wall. A throttle assistant, not a dashboard." />
+<title>Claude Eats Tokens : à quel point Claude a faim aujourd'hui ?</title>
+<meta name="description" content="Claude Max hides how close you are to the 5-hour throttle. This reads your local logs and shows it on your phone, before you hit the wall. A throttle assistant, not a dashboard." />
 <meta name="theme-color" content="#F0EEE6" />
 <!-- Open Graph / Twitter Card : carte de partage (X, Reddit, Discord, HN preview) -->
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Claude Eats Tokens — a throttle assistant, not a dashboard" />
-<meta property="og:description" content="Claude Max has no usage API. This reads your local logs and shows on your phone if you can fire off that big job — or if you're about to hit the 5-hour wall. Free & open source." />
+<meta property="og:title" content="Claude Eats Tokens: a throttle assistant, not a dashboard" />
+<meta property="og:description" content="Claude Max has no usage API. This reads your local logs and shows on your phone if you can fire off that big job, or if you're about to hit the 5-hour wall. Free & open source." />
 <meta property="og:url" content="https://arochab.github.io/claude-eats-tokens/" />
 <meta property="og:image" content="https://arochab.github.io/claude-eats-tokens/assets/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Claude Eats Tokens — a throttle assistant, not a dashboard" />
+<meta name="twitter:title" content="Claude Eats Tokens: a throttle assistant, not a dashboard" />
 <meta name="twitter:description" content="Claude Max has no usage API. This reads your local logs and shows on your phone before you hit the 5-hour throttle. Waste Radar + Black Box. Free & open source." />
 <meta name="twitter:image" content="https://arochab.github.io/claude-eats-tokens/assets/og-image.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -51,7 +51,7 @@
     </div>
   </header>
 
-  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="status-txt" data-i18n="html.status.loading">Chargement…</span></div>
+  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><span class="dot"></span><span id="status-txt" data-i18n="html.status.loading">Chargement...</span></div>
   <!-- Barre de réveil Render : visible uniquement pendant le cold start (~30s) -->
   <div class="wake-bar" id="wake-bar" hidden aria-live="polite">
     <span class="wake-bar-fill" id="wake-bar-fill"></span>
@@ -68,8 +68,8 @@
     <div class="fr-body">
       <p class="fr-eyebrow" data-i18n="html.firstrun.eyebrow">Démonstration</p>
       <p class="fr-t" data-i18n="html.firstrun.title">Tu vois un exemple</p>
-      <p class="fr-h" data-i18n="html.firstrun.body">Lance le moteur sur ton ordinateur — il lit Claude Code et envoie tes vrais chiffres ici, en privé.</p>
-      <button type="button" class="fr-cta" id="firstrun-setup" data-i18n="html.firstrun.cta">Connecter mon ordinateur →</button>
+      <p class="fr-h" data-i18n="html.firstrun.body">Lance le moteur sur ton ordinateur : il lit Claude Code et envoie tes vrais chiffres ici, en privé.</p>
+      <button type="button" class="fr-cta" id="firstrun-setup" data-i18n="html.firstrun.cta">Connecter mon ordinateur</button>
     </div>
   </div>
 
@@ -80,10 +80,10 @@
 
   <section class="verdict" id="verdict">
     <!-- Bannière démo : visible uniquement en mode exemple, plus lisible que le badge inline -->
-    <div class="verdict-demo-banner" id="verdict-demo-banner" hidden data-i18n="html.verdict.demo.banner">Exemple — pas encore tes chiffres</div>
+    <div class="verdict-demo-banner" id="verdict-demo-banner" hidden data-i18n="html.verdict.demo.banner">Exemple, pas encore tes chiffres</div>
     <div class="vmain">
       <div class="vlight" id="vlight" aria-hidden="true"></div>
-      <div class="vtxt"><p class="vstate" id="vstate" data-i18n="html.verdict.loading">Analyse…</p><p class="vsub" id="vsub"></p></div>
+      <div class="vtxt"><p class="vstate" id="vstate" data-i18n="html.verdict.loading">Analyse...</p><p class="vsub" id="vsub"></p></div>
     </div>
     <div class="vgauges" id="vgauges"></div>
   </section>
@@ -128,7 +128,7 @@
     <div class="info">
       <p class="lab" id="hero-lab" data-i18n="app.hero.lab">Ce mois-ci</p>
       <p class="v"><span id="hero-used" class="sk">000</span></p>
-      <p class="rest" id="hero-rest">—</p>
+      <p class="rest" id="hero-rest">&nbsp;</p>
       <p class="reset" id="hero-reset"></p>
     </div>
     <div class="hero-radar" id="hero-radar" role="img" aria-label="Radar des fenêtres : 5 heures, semaine, mois" data-i18n="html.radar.aria" data-i18n-attr="aria-label"></div>
@@ -141,17 +141,17 @@
   <div class="ministats">
     <div class="ms">
       <p class="k" data-i18n="html.ms.today">Aujourd'hui</p>
-      <p class="v" id="s-today">—</p>
+      <p class="v" id="s-today">&nbsp;</p>
       <p class="trend" id="t-today">&nbsp;</p>
     </div>
     <div class="ms">
       <p class="k" data-i18n="html.ms.week">Cette semaine</p>
-      <p class="v" id="s-week">—</p>
+      <p class="v" id="s-week">&nbsp;</p>
       <p class="trend" id="t-week">&nbsp;</p>
     </div>
     <div class="ms">
       <p class="k" data-i18n="html.ms.pace">Au rythme actuel</p>
-      <p class="v" id="s-pace">—</p>
+      <p class="v" id="s-pace">&nbsp;</p>
       <p class="trend" id="t-pace">&nbsp;</p>
     </div>
   </div>
@@ -253,7 +253,7 @@
 
     <div class="grouplabel" data-i18n="html.settings.display.group">Affichage</div>
     <div class="fieldgroup">
-      <div class="field"><label data-i18n="html.settings.eur.label">Taux $ → €<small data-i18n="html.settings.eur.hint">pour l'estimation en euros</small></label><input type="number" id="b-eur" inputmode="decimal" step="0.01" /></div>
+      <div class="field"><label data-i18n="html.settings.eur.label">Taux $ vers €<small data-i18n="html.settings.eur.hint">pour l'estimation en euros</small></label><input type="number" id="b-eur" inputmode="decimal" step="0.01" /></div>
       <div class="field"><label data-i18n="html.settings.warn.label">Alerte à (%)<small data-i18n="html.settings.warn.hint">seuil d'avertissement</small></label><input type="number" id="b-warn" inputmode="numeric" /></div>
     </div>
 
@@ -264,7 +264,7 @@
         <button class="iconbtn" id="enable-notif" aria-label="Activer les notifications" style="width:auto;padding:0 14px;border-radius:10px;font-size:13px;font-weight:500;color:var(--terracotta-d)" data-i18n="html.settings.notif.enable">Activer</button>
       </div>
     </div>
-    <div class="grouplabel" data-i18n="html.settings.proj.group">Projets en cours <small style="text-transform:none;letter-spacing:0" data-i18n="html.settings.proj.note">— poids estimé en tokens</small></div>
+    <div class="grouplabel" data-i18n="html.settings.proj.group">Projets en cours <small style="text-transform:none;letter-spacing:0" data-i18n="html.settings.proj.note">poids estimé en tokens</small></div>
     <div class="fieldgroup" id="proj-editor"></div>
     <button class="addrow" id="add-proj"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> <span data-i18n="html.settings.proj.add">Ajouter un projet</span></button>
 
@@ -311,7 +311,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
         <div>
           <b data-i18n="html.auth.success.title">Compte créé !</b>
-          <span class="why" data-i18n="html.auth.success.help">Ton code de connexion est ci-dessous. Copie-le maintenant — il ne sera plus affiché. Tu le colleras dans le moteur, sur ton ordinateur.</span>
+          <span class="why" data-i18n="html.auth.success.help">Ton code de connexion est ci-dessous. Copie-le maintenant, il ne sera plus affiché. Tu le colleras dans le moteur, sur ton ordinateur.</span>
         </div>
       </div>
       <div class="fieldgroup" style="margin-top:12px">
@@ -324,7 +324,7 @@
         </div>
         <div class="notif-prompt-body">
           <p class="notif-prompt-t" data-i18n="html.notif.prompt.title">Recevoir une alerte avant la limite ?</p>
-          <p class="notif-prompt-s" data-i18n="html.notif.prompt.sub">Une notification quand tu approches du plafond — sans avoir à garder l'app ouverte.</p>
+          <p class="notif-prompt-s" data-i18n="html.notif.prompt.sub">Une notification quand tu approches du plafond, sans avoir à garder l'app ouverte.</p>
           <button type="button" class="notif-prompt-btn" id="notif-prompt-btn" data-i18n="html.notif.prompt.cta">Activer les notifications</button>
         </div>
       </div>
@@ -368,7 +368,7 @@
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         <span data-i18n="html.setup.s1.btn">Télécharger le dossier (.zip)</span>
       </a>
-      <p class="setup-hint" data-i18n="html.setup.s1.hint">Ce bouton ouvre GitHub sur ton ordinateur. Si tu lis ceci sur ton téléphone, ouvre plutôt cette page depuis ton PC — c'est là que l'outil doit vivre.</p>
+      <p class="setup-hint" data-i18n="html.setup.s1.hint">Ce bouton ouvre GitHub sur ton ordinateur. Si tu lis ceci sur ton téléphone, ouvre plutôt cette page depuis ton PC, c'est là que l'outil doit vivre.</p>
     </div>
 
     <!-- ÉTAPE 2 -->
@@ -397,7 +397,7 @@
           <div><b data-i18n="html.setup.s2.success.title">Compte créé.</b> <span class="why" data-i18n="html.setup.s2.success.body">Voici ton code. Copie-le maintenant : tu vas le coller sur ton ordinateur à l'étape suivante.</span></div>
         </div>
         <div class="setup-keybox">
-          <code id="setup-key-value">cet_…</code>
+          <code id="setup-key-value">cet_...</code>
           <button type="button" class="setup-copy" id="setup-copy-key" aria-label="Copier le code" data-i18n="html.setup.copy.btn">Copier</button>
         </div>
       </div>
@@ -428,7 +428,7 @@
       <div class="grouplabel" data-i18n="html.setup.s5.group">5 · C'est branché</div>
       <p class="setup-body" data-i18n="html.setup.s5.body">Tant que la fenêtre reste ouverte sur ton ordinateur, tes chiffres arrivent tout seuls. <b>Reviens ici : la démo laisse la place à tes vraies données</b>, sans rien faire de plus.</p>
       <p class="setup-hint" data-i18n="html.setup.s5.hint">Rien ne s'affiche encore ? Laisse une minute à l'ordinateur pour le premier envoi, puis tire la page vers le bas pour rafraîchir. L'outil est à relancer seulement si tu redémarres l'ordinateur.</p>
-      <button type="button" class="setup-textlink" id="setup-pair-link" data-i18n="html.setup.s5.pair">Un code « XXXX-XXXX » s'affiche sur mon ordinateur ? Le confirmer →</button>
+      <button type="button" class="setup-textlink" id="setup-pair-link" data-i18n="html.setup.s5.pair">Un code « XXXX-XXXX » s'affiche sur mon ordinateur ? Le confirmer</button>
     </div>
 
     <div class="setup-nav">
@@ -476,7 +476,7 @@
 
       <div id="pair-error" class="pair-msg pair-msg--err" hidden></div>
 
-      <button class="btn" id="pair-confirm-btn" data-i18n="html.pair.confirm.btn">Confirmer — c'est bien mon ordinateur</button>
+      <button class="btn" id="pair-confirm-btn" data-i18n="html.pair.confirm.btn">Confirmer, c'est bien mon ordinateur</button>
       <button class="btn ghost" id="pair-cancel" data-i18n="html.pair.cancel">Annuler</button>
     </div>
 
@@ -486,7 +486,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
       </div>
       <p class="pair-success-t" data-i18n="html.pair.success.title">C'est branché !</p>
-      <p class="pair-success-h" data-i18n="html.pair.success.body">Ton ordinateur est relié à ton compte. Tes vrais chiffres vont apparaître ici tout seuls — laisse la fenêtre ouverte sur ton PC.</p>
+      <p class="pair-success-h" data-i18n="html.pair.success.body">Ton ordinateur est relié à ton compte. Tes vrais chiffres vont apparaître ici tout seuls. Laisse la fenêtre ouverte sur ton PC.</p>
       <button class="btn" id="pair-done" data-i18n="html.pair.success.btn">Voir mes chiffres</button>
     </div>
   </div>
@@ -514,16 +514,16 @@
     <p class="pro-hook" data-i18n="html.pro.hook">Arrête de rouvrir l'app pour savoir si tu peux relancer. Ton téléphone te prévient <b>avant</b> que ça bloque.</p>
 
     <ul class="pro-value">
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><b data-i18n="html.pro.feat1.title">Sois prévenu à temps.</b> <span data-i18n="html.pro.feat1.body">Notifs dès 25, 50, 75 puis 90 % — pas seulement quand c'est trop tard.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><b data-i18n="html.pro.feat1.title">Sois prévenu à temps.</b> <span data-i18n="html.pro.feat1.body">Notifs dès 25, 50, 75 puis 90 %, pas seulement quand c'est trop tard.</span></li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><b data-i18n="html.pro.feat2.title">Vois plus loin.</b> <span data-i18n="html.pro.feat2.body">30 jours et tout l'historique, pas seulement les 7 derniers.</span></li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></span><b data-i18n="html.pro.feat3.title">Anticipe la fin de mois.</b> <span data-i18n="html.pro.feat3.body">La projection te dit où tu atterris à ce rythme.</span></li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><b data-i18n="html.pro.feat4.title">Fouille tes projets.</b> <span data-i18n="html.pro.feat4.body">Ouvre chaque projet : modèles, sessions, coût détaillé.</span></li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b data-i18n="html.pro.feat5.title">Waste Radar.</b> <span data-i18n="html.pro.feat5.body">Repère où part ton Opus (le modèle premium, donc le plus cher) quand un modèle plus léger aurait suffi — et ce que tu aurais pu économiser.</span></li>
-      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b data-i18n="html.pro.feat6.title">Boîte noire.</b> <span data-i18n="html.pro.feat6.body">Comprends enfin pourquoi ta fenêtre fond si vite — et quel projet est en cause.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><b data-i18n="html.pro.feat5.title">Waste Radar.</b> <span data-i18n="html.pro.feat5.body">Repère où part ton Opus (le modèle premium, donc le plus cher) quand un modèle plus léger aurait suffi, et ce que tu aurais pu économiser.</span></li>
+      <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg></span><b data-i18n="html.pro.feat6.title">Boîte noire.</b> <span data-i18n="html.pro.feat6.body">Comprends enfin pourquoi ta fenêtre fond si vite, et quel projet est en cause.</span></li>
       <li><span class="pv-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><b data-i18n="html.pro.feat7.title">Exporte tout.</b> <span data-i18n="html.pro.feat7.body">CSV et PNG pour garder tes chiffres ou les partager.</span></li>
     </ul>
 
-    <button class="btn pro-cta" id="pro-checkout" data-i18n="html.pro.cta">Passer à Pro — 5 €/mois</button>
+    <button class="btn pro-cta" id="pro-checkout" data-i18n="html.pro.cta">Passer à Pro, 5 €/mois</button>
     <p class="pro-reassure" data-i18n="html.pro.reassurance">Sans engagement. Le gratuit reste gratuit.</p>
 
     <div class="grouplabel" id="pro-export-label"><span data-i18n="html.pro.export.group">Exporter mes données</span> <small class="hint-mini" data-i18n="html.pro.export.badge">pro</small></div>
