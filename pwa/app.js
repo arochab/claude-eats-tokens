@@ -325,9 +325,14 @@
     var html = w.rows.map(function (r) {
       var resetTxt = "";
       if (r.resetAt) {
+        // until() renvoie déjà une phrase complète ("resets in 9 h 29 min" /
+        // "se remet à zéro dans …" / "reset"). On l'utilise telle quelle, et on
+        // ne remplace QUE le cas "vient de se réinitialiser" par le libellé doux.
+        // (Avant : on re-préfixait avec app.windows.in => "resets resets in …" en
+        // EN, car le replace /^reset / ne matchait pas "resets in".)
         var u = until(new Date(r.resetAt).toISOString(), now);
-        resetTxt = /réinitialis|reset$/i.test(u) ? t("app.windows.zero")
-                 : t("app.windows.in", { until: u.replace(/^reset /, "") });
+        var done = u === t("until.done");
+        resetTxt = done ? t("app.windows.zero") : u;
       }
       return '<div class="win">' +
         '<div class="win-top"><span class="win-lab">' + esc(r.label) + '</span>' +
@@ -405,13 +410,13 @@
 
     // reset hebdo (prochain lundi par défaut) + reset 5h
     var weekReset = CET.weeklyResetLabel(CET.nextWeeklyReset(Date.now(), settings.weekResetDay, settings.weekResetHour));
-    // reset 5h en clair (until() renvoie "réinitialisée"/"reset dans X" -> on humanise)
+    // reset 5h en clair : until() renvoie déjà la phrase complète, on l'utilise
+    // telle quelle (fix du doublon "resets resets in …" en EN).
     var reset5h;
     if (win.w5hResetAt) {
       var u = until(win.w5hResetAt);
-      reset5h = /réinitialis|reset$/i.test(u) ? t("app.windows.zero")
-              : t("app.windows.in", { until: u.replace(/^reset /, "") });
-    } else { reset5h = t("app.windows.in", { until: t("until.done") }); }
+      reset5h = (u === t("until.done")) ? t("app.windows.zero") : u;
+    } else { reset5h = t("app.windows.zero"); }
 
     function bar(label, p, resetTxt, accent) {
       if (p == null) {
@@ -515,7 +520,7 @@
     $("pos-spectrum").innerHTML =
       '<div class="pos-track">' + segs +
       '<div class="pos-marker" style="left:' + p.markerPct + '%">' +
-        '<span class="pos-dot"></span><span class="pos-mlabel">Toi · ' + fmt(p.effWeek) + '</span>' +
+        '<span class="pos-dot"></span><span class="pos-mlabel">' + esc(t("app.pos.you")) + ' · ' + fmt(p.effWeek) + '</span>' +
       '</div></div>';
 
     // verdict : honnête et POSITIF (intensif = bonne nouvelle)

@@ -181,6 +181,7 @@
 
     /* ---- app.js : positionnement ---- */
     "app.pos.verdict.heavy":  "Tu es dans les utilisateurs {tier}s de Claude Max, tu sors vraiment la valeur de ton forfait. C'est une bonne nouvelle, pas une alerte : tu utilises à plein ce que tu paies déjà. Rien ne se bloque tant que la fenêtre de 5 h ne sature pas.",
+    "app.pos.you":            "Toi",
     "app.pos.verdict.light":  "Tu utilises Claude tranquillement, dans la norme. De la marge partout, tu peux y aller plus franchement si tu veux.",
     "app.pos.repere.ratio":   "≈ {r}× ta semaine habituelle, tu montes en puissance",
     "app.pos.repere.5h":      "Ton pic sur 5 h frôle la limite Max estimée : c'est le seul moment où Claude peut te ralentir un peu.",

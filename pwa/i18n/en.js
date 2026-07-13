@@ -181,6 +181,7 @@
 
     /* ---- app.js : position card ---- */
     "app.pos.verdict.heavy":  "You're among the {tier} users of Claude Max, you're really getting value from your subscription. That's a good thing, not a warning: you're using what you're already paying for. Nothing blocks you as long as the 5 h window doesn't saturate.",
+    "app.pos.you":            "You",
     "app.pos.verdict.light":  "You're using Claude at a relaxed pace, well within the norm. Plenty of headroom, you could push harder if you wanted.",
     "app.pos.repere.ratio":   "≈ {r}× your usual week, you're ramping up",
     "app.pos.repere.5h":      "Your 5 h peak is brushing the estimated Max limit: that's the only moment Claude could slow you down a little.",
