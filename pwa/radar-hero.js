@@ -53,6 +53,31 @@
   }
   function reduced() { return !!(mq && mq.matches); }
 
+  /* Le héro n'est plus systématiquement noir : en LIGHT il est devenu une carte
+     crème comme les autres (la carte noire au milieu d'une page claire lisait
+     comme un bug). Le radar doit donc savoir sur quel fond il peint, sinon sa
+     piste et sa pastille crème deviennent invisibles sur crème.
+     On lit la vraie couleur de fond de l'hôte plutôt que de deviner : robuste au
+     dark mode, au forced-colors, et à un futur toggle de thème manuel. */
+  var mqDark = (root.matchMedia && root.matchMedia("(prefers-color-scheme:dark)")) || null;
+  function isDarkHero() {
+    try {
+      var el = host && host.closest ? host.closest(".hero") : null;
+      if (el && root.getComputedStyle) {
+        var bg = root.getComputedStyle(el).backgroundColor || "";
+        var m = bg.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+        if (m) {
+          // luminance perçue : < 128 = fond sombre
+          var lum = 0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3];
+          // un fond totalement transparent renvoie rgba(0,0,0,0) : on ne s'y fie
+          // pas, on retombe sur la media query.
+          if (!/,\s*0\s*\)$/.test(bg)) return lum < 128;
+        }
+      }
+    } catch (e) {}
+    return !!(mqDark && mqDark.matches);
+  }
+
   // -------- lecture des données : windowsOfficial (v4) prioritaire, sinon estimations --------
   // On ne laisse JAMAIS le radar vide : à défaut d'officiel, on dérive des %.
   function clampPct(v) {
@@ -144,7 +169,13 @@
     var stroke = Math.max(5, rMax * 0.115);            // épaisseur d'arc nette/bold
     var gap = stroke * 1.65;                            // espacement entre anneaux
     var TOP = -Math.PI / 2;                             // 12 h
-    var TRACK = "rgba(244,241,233,.10)";               // piste faible (spec)
+    // Le héro est SOMBRE en dark, CLAIR en light (harmonisé avec le reste des
+    // cartes). Les 3 couleurs "de fond" du radar doivent donc s'inverser, sinon
+    // la piste crème translucide et le point crème disparaissent sur fond crème.
+    var dark = isDarkHero();
+    var TRACK = dark ? "rgba(244,241,233,.10)" : "rgba(26,25,21,.08)";
+    var DOT = dark ? "#F4F1E9" : "#FFFDF7";            // pastille au bout de l'arc
+    var HUB = dark ? "rgba(244,241,233,.22)" : "rgba(26,25,21,.20)";  // marqueur 12 h
 
     for (var i = 0; i < arcs.length; i++) {
       var a = arcs[i];
@@ -181,7 +212,7 @@
         var ex = cx + Math.cos(a1) * r, ey = cy + Math.sin(a1) * r;
         ctx.beginPath();
         ctx.arc(ex, ey, stroke * 0.62, 0, Math.PI * 2);
-        ctx.fillStyle = "#F4F1E9";
+        ctx.fillStyle = DOT;
         ctx.shadowColor = col;
         ctx.shadowBlur = stroke * 1.4;
         ctx.fill();
@@ -198,7 +229,7 @@
     // marqueur central discret (12 h) — signe que le départ est en haut
     ctx.beginPath();
     ctx.arc(cx, cy, Math.max(2, rMax * 0.04), 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(244,241,233,.22)";
+    ctx.fillStyle = HUB;
     ctx.fill();
 
     ctx.restore();
