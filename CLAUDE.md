@@ -1,5 +1,17 @@
 # Claude Eats Tokens — Agent Instructions
 
+> ## ⚠️ LIS `AGENT.md` MAINTENANT, AVANT TOUTE AUTRE CHOSE.
+>
+> `AGENT.md` est la **mémoire vivante** du projet : les pièges déjà payés, les
+> décisions produit gravées, les chantiers laissés en plan par la session
+> précédente, et la façon de travailler avec Adam. Ce fichier-ci décrit
+> l'architecture (le *quoi*) ; `AGENT.md` contient le *pourquoi* et le
+> *n'y retombe pas*.
+>
+> **Tu dois aussi le mettre à jour en fin de session** dès que tu as appris
+> quelque chose de non déductible du code (un piège, une décision d'Adam, un
+> chantier ouvert). Le protocole exact est en tête de `AGENT.md`.
+
 Claude Eats Tokens est un **suivi visuel de la consommation de tokens Claude**
 (Claude Code + API), distribué comme **Progressive Web App** installable sur
 téléphone. Front statique sur **GitHub Pages**, petit serveur de push sur
