@@ -120,8 +120,10 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
   RSS. **Son 1er run de test n'a jamais été vérifié** : ouvrir
   https://claude.ai/code/routines/trig_012Xv1oQc7kqiwr5NCVfGtXb et confirmer
   qu'elle affiche bien « NOT YET » (et pas « CHECK FAILED »).
-- **Le SW n'a pas été bumpé** depuis le commit `a4b6abd` (héro + header). Il faut
-  un `sw.v40.js` avant de pousser ces changements en prod.
+- **Lancement en cours.** Publiés : article dev.to, post r/SideProject (a reçu des
+  commentaires, Adam y répond). En attente de réponse : formulaire officiel
+  Anthropic (« Submit your build »), awesome-claude-code, Console.dev. DevHunt a
+  été abandonné volontairement (49 $ pour un créneau de lancement).
 
 ---
 
@@ -137,9 +139,9 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 ## 6. Journal des passes (une ligne par session, la plus récente en haut)
 
 - **14 juil 2026** — Héro thémé (fin de la carte noire en light) + header sur une
-  ligne à toutes les largeurs. Création de ce fichier. Découvert que le « bug »
-  du double « just reset » n'existait pas : c'était `data/usage.json` périmé en
-  local.
+  ligne à toutes les largeurs. **SW v40**, poussé en prod. Création de ce fichier.
+  Découvert que le « bug » du double « just reset » n'existait pas : c'était
+  `data/usage.json` périmé en local.
 - **13 juil 2026** — Lancement produit : article dev.to, r/SideProject,
   Console.dev, formulaire officiel Anthropic, awesome-claude-code, ccusage.
   Purge des marqueurs IA de tout le texte visible. SW v39.
