@@ -67,13 +67,32 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
   toi-même le résultat. Un sous-agent a déjà affirmé avoir tout nettoyé alors
   qu'il avait cassé un `split()` au passage.
 
+### Hébergement / quotas (le piège le plus cher du projet)
+- **Les 750 h gratuites de Render sont partagées par TOUT le workspace**, pas par
+  service. Deux services allumés en permanence = 48 h consommées par jour = quota
+  mort en 15,6 jours. C'est arrivé le **15 juil 2026 à 15h00** :
+  « Suspended by Free Tier Usage Exceeded ». Le quota ne se recharge que le **1er
+  du mois** — aucun moyen gratuit de relancer avant. Diagnostic en 10 s :
+  `curl -si <url> | grep x-render-routing` → `suspend`.
+- **Ce qui gardait Render éveillé 24/7** n'était pas que le moteur : la PWA
+  pinguait `/` **à chaque ouverture** pour le préchauffer. Un « petit ping
+  inoffensif » qui coûtait le quota. Supprimé en voie directe (`useDirect()`).
+- **Conséquence gravée** : plus aucun serveur dans le chemin des données (voir
+  § 3). Si tu es tenté de remettre un service entre le PC et la base, souviens-toi
+  que ça revient à réarmer une bombe à retardement mensuelle.
+
 ### Données et environnement local
-- **`data/usage.json` du dépôt est un artefact de test, pas la vérité.** Le
-  moteur pousse vers Render, pas vers ce fichier. S'il est périmé, l'app locale
-  affiche des symptômes qui **n'existent pas en prod** (dates de reset dans le
-  passé → « just reset » partout, « Synced 3 d ago »). **Avant de diagnostiquer
-  un bug d'affichage en local, rafraîchis-le :**
-  `cp ~/.config/claude-eats/usage.json data/usage.json`
+- **`data/usage.json` du dépôt est un artefact de test, pas la vérité** (il est
+  gitignoré et personne ne l'écrit plus). Le moteur écrit dans
+  `~/.config/claude-eats/usage.json` et pousse dans Supabase.
+  Depuis le 16 juil, **la PWA en localhost lit la vraie base** dès qu'une clé
+  `cet_` est dans le localStorage : plus besoin de copier le fichier à la main
+  pour diagnostiquer, et fini les faux symptômes dus à un artefact périmé.
+- **Un cycle du moteur dure ~3,5 min** (scan de 6 600 fichiers / 80 000 messages)
+  avec un plafond de 300 s dans `moteur.py`. Après un redémarrage, **attends 4-5
+  min avant de conclure** que le push ne marche pas — l'absence de ligne dans le
+  log ne veut pas dire panne. Des `push TIMEOUT apres 300s` apparaissent quand le
+  scan frôle le plafond : c'est un signal à surveiller, pas encore un bug.
 - Le Waste Radar affiche les **vrais titres de sessions d'Adam** (souvent en
   français, parfois des prompts d'agents). Ce n'est pas un bug, c'est la vraie
   donnée. Il l'assume.
@@ -100,6 +119,13 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 3. Décisions gravées (ne pas re-débattre)
 
+- **Aucun serveur dans le chemin des données.** Le PC et la PWA écrivent/lisent
+  Supabase en direct (RPC `cet_push_usage` / `cet_get_usage`, migration 0005).
+  Render est sorti du chemin le 16 juil 2026 après sa suspension pour quota.
+  Adam a explicitement écarté les deux alternatives : payer 7 $/mois, et attendre
+  le 1er août. Il a choisi de **supprimer le problème**, pas de le déplacer.
+  Bénéfice de fond : le produit hébergé (freemium) n'a plus besoin de serveur du
+  tout — donc plus de coût fixe à la monétisation.
 - **Le héro suit le thème.** Carte claire en light, nuit chaude en dark. La carte
   noire en plein light mode lisait comme un bug de rendu. Tranché le 14 juil 2026.
 - **Une seule question, pas un mur de chiffres.** L'app répond « puis-je
@@ -115,6 +141,17 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
+- **Les écrans de compte pointent encore vers Render** : inscription
+  (`/auth/register`), appairage (`/pair/*`) et checkout (`/billing/checkout`)
+  appellent toujours le serveur suspendu. Sans effet pour Adam (son compte
+  existe, sa clé est posée), mais **un inconnu ne peut pas créer de compte tant
+  que Render ne revient pas** (1er août). Pour finir le travail, ces 3 flux
+  doivent devenir des RPC Supabase, comme le reste. La lecture/écriture des
+  chiffres, elle, est déjà 100 % hors Render.
+- **`sessions: []` est vide dans le payload** alors que `wasteSuspects` en a 30.
+  Antérieur à la refonte du 16 juil (vérifié : le fichier écrit par le moteur est
+  vide lui aussi, ce n'est pas le transport). Le Waste Radar marche quand même.
+  À creuser dans `usage_core.select_sessions`.
 - **Veille Console.dev** : routine cloud `trig_012Xv1oQc7kqiwr5NCVfGtXb`, tourne
   chaque lundi 10h. Elle doit envoyer un email à Adam si l'app apparaît dans le
   RSS. **Son 1er run de test n'a jamais été vérifié** : ouvrir
@@ -138,6 +175,14 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 6. Journal des passes (une ligne par session, la plus récente en haut)
 
+- **16 juil 2026** — **Sortie de Render.** L'app était morte depuis le 15 juil
+  15h00 (Render suspendu : quota gratuit épuisé par 2 services allumés 24/7).
+  Le PC, lui, n'avait jamais cessé de pousser dans le vide. Migration 0005
+  (2 fonctions SECURITY DEFINER), compte propriétaire d'Adam en `plan=pro`,
+  moteur + PWA rebranchés en direct sur Supabase, ping de réveil de Render
+  supprimé. Reprise d'une clé via `?key=` (branche un téléphone en un lien).
+  Trou de sécurité fermé au passage : le `/usage.json` legacy servait les
+  chiffres d'Adam **sans aucune auth**. 193 tests verts (+16). **SW v41.**
 - **14 juil 2026** — Héro thémé (fin de la carte noire en light) + header sur une
   ligne à toutes les largeurs. **SW v40**, poussé en prod. Création de ce fichier.
   Découvert que le « bug » du double « just reset » n'existait pas : c'était

@@ -1,17 +1,18 @@
-/* Service worker v40 — Claude Eats Tokens.
+/* Service worker v41 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
-   network-ONLY sur les données (usage.json, Render). Purge tout cache != v40 à
-   l'activation. Nom de fichier neuf à chaque montée de version = jamais servi
-   depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v40 : le héro suit enfin le thème. La carte « ce mois-ci » restait noire même
-   en light mode, où elle lisait comme un bug de rendu au milieu d'une page
-   crème ; elle devient une carte claire en light et garde sa nuit chaude en
-   dark. Le radar canvas, qui peignait piste et pastille en crème translucide
-   (invisibles sur fond clair), détecte désormais la luminance de son hôte.
-   Header : titre sur une seule ligne à toutes les largeurs (il se cassait en
-   « Claude Eats / Tokens » sur 390px, et finissait coupé sous 380px).
-   Invalide v39. */
-const CACHE = "cet-v40";
+   network-ONLY sur les données (usage.json, Render, Supabase). Purge tout cache
+   != v41 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
+   servi depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
+   v41 : l'app ne passe plus par aucun serveur. Elle lit la base Supabase en
+   direct (fonction SQL cet_get_usage, migration 0005) au lieu d'interroger
+   Render, qui s'est fait suspendre le 15/07/2026 pour dépassement du quota
+   gratuit (750 h/mois partagées, brûlées par 2 services allumés en permanence).
+   Le ping de réveil de Render au boot est supprimé en voie directe : c'était lui
+   qui rallumait le serveur — et donc le compteur — à chaque ouverture de l'app.
+   Les appels à la base sont des POST, que ce worker ignore déjà (garde `method
+   !== GET`) : aucun risque de chiffres figés en cache.
+   Invalide v40. */
+const CACHE = "cet-v41";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js", "./pwa/aurora.js", "./pwa/tokens-field.js",
@@ -37,7 +38,9 @@ self.addEventListener("activate", (e) => {
 });
 
 function isData(url) {
-  return url.pathname.endsWith("usage.json") || url.href.indexOf("onrender.com") >= 0;
+  return url.pathname.endsWith("usage.json")
+    || url.href.indexOf("onrender.com") >= 0
+    || url.href.indexOf("supabase.co") >= 0;
 }
 
 self.addEventListener("fetch", (e) => {

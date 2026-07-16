@@ -125,15 +125,34 @@ def cmd_doctor(args):
     print(f"  {ok if found else ko} logs Claude Code :",
           str(found) if found else "introuvables (Claude Code a-t-il tourné ?)")
 
-    # 3) le serveur répond ?
-    url = cfg.push_url().rstrip("/")
-    try:
-        r = engine.requests.get(url + "/", timeout=60)
-        alive = r.ok
-    except Exception:
-        alive = False
-    print(f"  {ok if alive else ko} serveur :",
-          url, "(répond)" if alive else "(pas de réponse — Render dort ~50s ?)")
+    # 3) la destination répond ? On teste la voie RÉELLEMENT utilisée, sinon le
+    #    diagnostic mentirait (ex. « serveur mort » alors qu'on écrit en direct).
+    if cfg.use_direct():
+        sb = cfg.supabase_url().rstrip("/")
+        try:
+            # cet_get_usage avec une clé vide : la base doit répondre 200/null.
+            # On ne teste PAS la vraie clé ici (doctor ne doit rien écrire).
+            r = engine.requests.post(
+                f"{sb}/rest/v1/rpc/cet_get_usage",
+                json={"p_api_key": ""},
+                headers={"apikey": cfg.supabase_key(),
+                         "Authorization": f"Bearer {cfg.supabase_key()}",
+                         "Content-Type": "application/json"},
+                timeout=20)
+            alive = r.ok
+        except Exception:
+            alive = False
+        print(f"  {ok if alive else ko} base (écriture directe, sans serveur) :",
+              sb, "(répond)" if alive else "(pas de réponse — réseau ?)")
+    else:
+        url = cfg.push_url().rstrip("/")
+        try:
+            r = engine.requests.get(url + "/", timeout=60)
+            alive = r.ok
+        except Exception:
+            alive = False
+        print(f"  {ok if alive else ko} serveur :",
+              url, "(répond)" if alive else "(pas de réponse — Render dort ~50s ?)")
 
     # 4) service d'arrière-plan installé ?
     import subprocess

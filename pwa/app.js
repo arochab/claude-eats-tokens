@@ -8,16 +8,26 @@
      du forfait). ok = vert, warn = ambre, danger = rouge. */
   var CET_COLORS = { ok: "#7E9466", warn: "#C8923D", danger: "#A8432F" };
   /* ---------- source des données ----------
-     Renseigne l'URL de ton serveur Render ci-dessous (ou laisse vide).
-     Ordre d'essai : serveur Render -> data/usage.json (GitHub Pages) -> démo. */
+     Ordre d'essai :
+       1. Base Supabase EN DIRECT (si une clé cet_ est présente) — pas de serveur
+       2. serveur Render (legacy : self-host avec PUSH_SECRET, sans clé)
+       3. data/usage.json (GitHub Pages, dernier état commité)
+       4. démo
+     Voir pwa/config.js pour le pourquoi de la clé publique. */
   var PUSH_SERVER = window.CLAUDE_EATS_TOKENS_SERVER || ""; // ex: "https://claude-eats-tokens.onrender.com"
+  var SB_URL = (window.CET_SUPABASE_URL || "").replace(/\/$/, "");
+  var SB_KEY = window.CET_SUPABASE_KEY || "";
+  /* Vrai quand on peut parler à la base sans serveur. C'est le cas normal. */
+  function useDirect() { return !!(SB_URL && SB_KEY && window.CET_API_KEY); }
 
   /* Wake-up Render dès le boot : Render free s'endort après 15 min d'inactivité,
      le cold start prend ~40-50s. On fire-and-forget un ping sur "/" dès que l'IIFE
-     démarre, avant même que load() ne tente la vraie requête. Comme ça, quand le
-     timeout de 25s de load() commence à tourner, Render est déjà en train de
-     chauffer et répond dans les temps. */
-  if (PUSH_SERVER && window.CET_API_KEY) {
+     démarre, pour qu'il chauffe avant la vraie requête.
+     NE PAS pinguer en voie directe : ce ping RÉVEILLE Render à chaque ouverture
+     de l'app et consomme le quota d'heures gratuites (750 h/mois, partagées) —
+     c'est ce qui a fini par le faire suspendre le 15/07/2026. Sans appelant,
+     Render dort et ne coûte plus rien. */
+  if (PUSH_SERVER && window.CET_API_KEY && !useDirect()) {
     try { fetch(PUSH_SERVER.replace(/\/$/, "") + "/", { method: "GET", mode: "cors" }).catch(function(){}); } catch (e) {}
   }
 
@@ -1141,19 +1151,39 @@
     var bar = $("wake-bar"); if (bar) bar.hidden = true;
   }
 
+  /* Options fetch pour un appel RPC Supabase (POST + clés dans les en-têtes).
+     La clé cet_ voyage dans le CORPS, jamais dans l'URL : une URL finit dans
+     l'historique, les logs et les référents ; un corps POST non. */
+  function sbFetchOpts(apiKey) {
+    return {
+      method: "POST",
+      headers: {
+        apikey: SB_KEY,
+        Authorization: "Bearer " + SB_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ p_api_key: apiKey })
+    };
+  }
+
   function load(silent) {
     var sources = [];
-    // Multi-tenant : si une API key est définie, on passe par le serveur avec la clé
     var apiKey = window.CET_API_KEY;
-    if (PUSH_SERVER) {
+    var direct = useDirect();
+    if (direct) {
+      // Voie normale : la base répond en direct, sans réveil ni cold start.
+      sources.push({ url: SB_URL + "/rest/v1/rpc/cet_get_usage", remote: true, supabase: true });
+    } else if (PUSH_SERVER) {
+      // Legacy : self-host derrière son propre serveur.
       var remoteUrl = PUSH_SERVER.replace(/\/$/, "") + "/usage.json";
       if (apiKey) remoteUrl += "?key=" + encodeURIComponent(apiKey);
       sources.push({ url: remoteUrl, remote: true, withKey: !!apiKey });
     }
     sources.push({ url: "data/usage.json", remote: false });
     var sawRemoteTimeout = false;
-    // Si clé présente et serveur distant : après 4s sans réponse, on informe
-    if (apiKey && PUSH_SERVER && !silent) {
+    // Message "le serveur se réveille" : uniquement en voie legacy — la base
+    // directe répond en < 1s, annoncer un réveil serait un mensonge.
+    if (apiKey && PUSH_SERVER && !direct && !silent) {
       _wakeTimer = setTimeout(showWakeStatus, 4000);
     }
 
@@ -1162,7 +1192,7 @@
         // dernier repli : démo. On nuance le message selon ce qu'on a vu.
         // Si on avait une clé mais que le serveur n'a pas répondu, on réessaie
         // une fois avec un timeout plus long avant de tomber en démo.
-        if (sawRemoteTimeout && apiKey && PUSH_SERVER) {
+        if (sawRemoteTimeout && apiKey && PUSH_SERVER && !direct) {
           if (!silent) showWakeStatus();
           return fetchTimeout(PUSH_SERVER.replace(/\/$/, "") + "/usage.json?key=" + encodeURIComponent(apiKey), 45000, { headers: { "X-Api-Key": apiKey } })
             .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
@@ -1193,9 +1223,12 @@
       }
       var src = sources[i];
       var fetchOpts = {};
+      if (src.supabase) fetchOpts = sbFetchOpts(apiKey);
       // Passer l'API key en header aussi (pour les requêtes multi-tenant)
-      if (src.withKey && apiKey) fetchOpts.headers = { "X-Api-Key": apiKey };
-      return fetchTimeout(src.url, src.remote ? 25000 : 8000, fetchOpts)
+      else if (src.withKey && apiKey) fetchOpts.headers = { "X-Api-Key": apiKey };
+      // La base directe répond vite (pas de cold start) : 15s suffisent large.
+      // Render peut dormir 50s : on lui laisse 25s avant de basculer.
+      return fetchTimeout(src.url, src.supabase ? 15000 : (src.remote ? 25000 : 8000), fetchOpts)
         .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
         .then(function (d) {
           if (!d || !d.totals || !d.totals.total) throw new Error("empty");
@@ -1564,11 +1597,21 @@
         form.style.display = "none";
         success.style.display = "none";
         logged.style.display = "block";
-        // Charger le profil
-        if (PUSH_SERVER) {
-          fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/me", { headers: { "X-Api-Key": apiKey } })
-            .then(function (r) { return r.json(); })
+        /* Charger le profil.
+           En voie directe, cet_get_usage() renvoie DÉJÀ le bloc `user` avec le
+           chargement des chiffres : on le réutilise au lieu d'appeler /auth/me
+           sur un serveur qu'on ne veut plus réveiller. Promise pour garder un
+           seul chemin de rendu en aval. */
+        var profile = (useDirect() && DATA && DATA.user)
+          ? Promise.resolve(DATA.user)
+          : (PUSH_SERVER
+              ? fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/me", { headers: { "X-Api-Key": apiKey } })
+                  .then(function (r) { return r.json(); })
+              : null);
+        if (profile) {
+          profile
             .then(function (d) {
+              if (!d) return;
               if (d.email) $("auth-logged-email").textContent = " : " + d.email;
               var plan = d.plan || "free";
               if ($("auth-logged-plan")) $("auth-logged-plan").textContent = plan;
@@ -1581,7 +1624,9 @@
                   if (!isNaN(dt.getTime())) {
                     extra = " " + t("app.auth.status.until", { date: dt.toLocaleDateString(_loc(), { day: "2-digit", month: "2-digit" }) });
                   } else extra = " " + t("app.auth.status.cancel");
-                } else if (d.plan_status && d.plan_status !== "active") {
+                } else if (d.plan_status && d.plan_status !== "active" && d.plan_status !== "none") {
+                  // "none" = aucun abonnement (propriétaire, self-host) : ce
+                  // n'est pas un statut à afficher, ça se lirait comme un défaut.
                   extra = " (" + d.plan_status + ")";
                 }
                 statusEl.textContent = extra;
@@ -2001,7 +2046,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v40.js";
+  var SW_FILE = "sw.v41.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

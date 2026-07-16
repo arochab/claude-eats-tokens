@@ -21,12 +21,31 @@ Audience : usage perso d'Adam + pièce de portfolio. Mobile-first.
 
 ## Architecture (réglée — ne pas re-dériver)
 
+**Depuis le 16 juil 2026, il n'y a plus de serveur dans le chemin des données.**
+
 ```
-Poste local (lit ~/.claude/projects)  ─►  POST /push  ─►  Render (Flask)  ─►  Supabase (multi-tenant) / Gist (legacy)
-                                                              │
-   PWA (GitHub Pages)  ◄── GET /usage.json ─────────────────┘
-   data/usage.json (repli si serveur endormi)
+Poste local (lit ~/.claude/projects)  ──rpc cet_push_usage──►  Supabase (PostgreSQL)
+                                                                     ▲
+   PWA (GitHub Pages)  ────────────────rpc cet_get_usage────────────┘
+   data/usage.json (repli) ──► data/usage.demo.json (démo)
 ```
+
+- Le PC et la PWA parlent **directement** à PostgREST avec la clé *publishable*
+  (publique, rôle `anon`), et prouvent leur identité avec la clé perso `cet_`.
+  Toutes les tables sont en **RLS sans policy** : `anon` ne lit RIEN en direct.
+  Seules les deux fonctions `SECURITY DEFINER` de la migration **0005**
+  (`cet_get_usage`, `cet_push_usage`) sont exposées ; elles comparent le SHA-256
+  de la clé et ne rendent que les lignes de son porteur.
+- **Render est hors du chemin** (`server/app.py` reste au dépôt pour la voie
+  legacy self-host : `PUSH_SECRET` sans clé `cet_`). Pourquoi : le 15 juil 2026
+  à 15h00, Render a suspendu le service pour *Free Tier Usage Exceeded* — les
+  750 h/mois gratuites sont **partagées par tout le workspace**, et deux services
+  allumés en permanence les brûlent en 15,6 jours. Le quota ne se recharge que le
+  1er du mois. Une archi qui meurt une fois par mois n'est pas une archi.
+- Bascule côté PC : `config.use_direct()` (clé `cet_` présente → direct).
+  `CET_FORCE_SERVER=1` force l'ancienne voie. Côté front : `useDirect()` dans
+  `pwa/app.js`. Aucun des deux ne contacte Render en voie directe — c'est le
+  point clé : **sans appelant, Render dort et ne consomme plus rien**.
 
 - **Le service worker vit à la RACINE** (`sw.vN.js`, actuellement `sw.v29.js`) —
   jamais dans `pwa/`, sinon le scope ne couvre pas toute l'app. Network-first sur

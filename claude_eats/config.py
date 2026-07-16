@@ -18,6 +18,7 @@ Résolution des identifiants (ordre de priorité) :
   - clé de connexion  : env CET_API_KEY  -> config.json["api_key"]
   - secret self-host  : env PUSH_SECRET   -> config.json["secret"]
   - URL du serveur    : env PUSH_URL      -> config.json["push_url"] -> défaut Render
+  - base directe      : env CET_SUPABASE_URL/_KEY -> config.json -> défaut hébergé
 """
 import json
 import os
@@ -26,6 +27,17 @@ from pathlib import Path
 # Serveur hébergé par défaut (déjà la valeur historique). Le futur pairing pourra
 # l'écraser via config.json ; l'env PUSH_URL reste prioritaire pour le self-host.
 DEFAULT_PUSH_URL = "https://claude-eats-tokens.onrender.com"
+
+# --- Voie DIRECTE (par défaut depuis le 16/07/2026) -------------------------
+# Le moteur écrit dans Supabase sans passer par aucun serveur. Voir la migration
+# 0005 : la fonction cet_push_usage() valide la clé `cet_` dans la base.
+#
+# Pourquoi la clé ci-dessous peut vivre dans un dépôt public : c'est la clé
+# PUBLISHABLE (rôle `anon`). Elle n'ouvre rien par elle-même — toutes les tables
+# sont en RLS sans policy, et les deux seules fonctions exposées exigent une clé
+# `cet_` valide. C'est exactement le rôle que jouait l'URL Render publique.
+DEFAULT_SUPABASE_URL = "https://yayimgpoopjwmmpzlrpm.supabase.co"
+DEFAULT_SUPABASE_KEY = "sb_publishable_ajTgSKAQytS_6bSf-2V8Kw_4L-oG8ju"
 
 # Nom du dossier de config (sous ~/.config par défaut, cross-platform).
 _APP_DIRNAME = "claude-eats"
@@ -103,3 +115,36 @@ def push_url() -> str:
         return v
     v = str(_load_config().get("push_url", "") or "").strip()
     return v or DEFAULT_PUSH_URL
+
+
+def supabase_url() -> str:
+    """URL Supabase : env CET_SUPABASE_URL, puis config.json, puis défaut hébergé."""
+    v = os.environ.get("CET_SUPABASE_URL", "").strip()
+    if v:
+        return v
+    v = str(_load_config().get("supabase_url", "") or "").strip()
+    return v or DEFAULT_SUPABASE_URL
+
+
+def supabase_key() -> str:
+    """Clé publishable : env CET_SUPABASE_KEY, puis config.json, puis défaut."""
+    v = os.environ.get("CET_SUPABASE_KEY", "").strip()
+    if v:
+        return v
+    v = str(_load_config().get("supabase_key", "") or "").strip()
+    return v or DEFAULT_SUPABASE_KEY
+
+
+def use_direct() -> bool:
+    """True si le moteur doit écrire DIRECTEMENT dans Supabase (sans serveur).
+
+    Condition : une clé `cet_` ET une base joignable. C'est la voie normale
+    depuis le 16/07/2026. Un self-hoster qui ne pose que PUSH_URL+PUSH_SECRET
+    (sans clé `cet_`) garde la voie serveur historique, intacte.
+
+    Échappatoire explicite : CET_FORCE_SERVER=1 force l'ancienne voie (utile
+    pour déboguer le serveur lui-même).
+    """
+    if os.environ.get("CET_FORCE_SERVER", "").strip() in ("1", "true", "yes"):
+        return False
+    return bool(api_key() and supabase_url() and supabase_key())

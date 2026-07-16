@@ -613,20 +613,64 @@ def push(payload, url, secret=None, api_key=None):
     return r
 
 
+def push_direct(payload, api_key, sb_url=None, sb_key=None):
+    """Écrit le payload DANS Supabase, sans serveur intermédiaire.
+
+    Appelle la fonction SQL cet_push_usage(clé, data) (migration 0005), qui
+    valide la clé côté base et fait l'upsert. Retourne (ok: bool, label: str).
+
+    PIÈGE TRAITÉ : PostgREST répond **HTTP 200 avec un corps `false`** quand la
+    fonction refuse la clé. Tester `r.ok` seul ferait passer un refus pour un
+    succès — et le moteur pousserait dans le vide sans jamais le dire. On lit
+    donc le corps, et un `false` est une ERREUR franche.
+    """
+    sb_url = (sb_url or cfg.supabase_url()).rstrip("/")
+    sb_key = sb_key or cfg.supabase_key()
+    r = requests.post(
+        f"{sb_url}/rest/v1/rpc/cet_push_usage",
+        json={"p_api_key": api_key, "p_data": payload},
+        headers={"apikey": sb_key,
+                 "Authorization": f"Bearer {sb_key}",
+                 "Content-Type": "application/json"},
+        timeout=20)
+    if not r.ok:
+        return False, f"ERR {r.status_code}"
+    try:
+        accepted = r.json() is True
+    except ValueError:
+        return False, "ERR reponse illisible"
+    if not accepted:
+        # Clé inconnue, ou payload refusé par la validation SQL.
+        return False, "ERR cle refusee ou payload invalide"
+    return True, "OK"
+
+
 def run_cycle(url, secret=None, api_key=None, out=None, verbose=False,
-              consecutive_errors=0):
+              consecutive_errors=0, direct=None):
     """Construit le payload, l'écrit en repli local, et le pousse si possible.
 
     Retourne (consecutive_errors, ok_label). Extrait de l'ancien `cycle()` pour
     être réutilisable par la boucle CLI (claude_eats.cli). `out` = Path du repli
-    local ; par défaut config.usage_path()."""
+    local ; par défaut config.usage_path().
+
+    `direct` : None = décidé par cfg.use_direct() (voie normale : écriture
+    directe dans Supabase). False = voie serveur historique."""
     if out is None:
         out = cfg.usage_path()
+    if direct is None:
+        direct = cfg.use_direct()
     payload = build(verbose=verbose)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     total = payload["totals"]["total"]
-    if url and (secret or api_key):
+    if direct and api_key:
+        try:
+            sent, ok = push_direct(payload, api_key)
+            consecutive_errors = 0 if sent else consecutive_errors + 1
+        except Exception as e:
+            consecutive_errors += 1
+            ok = f"ERR {e}"
+    elif url and (secret or api_key):
         try:
             r = push(payload, url, secret=secret, api_key=api_key)
             if r.ok:
