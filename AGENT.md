@@ -88,11 +88,17 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
   Depuis le 16 juil, **la PWA en localhost lit la vraie base** dès qu'une clé
   `cet_` est dans le localStorage : plus besoin de copier le fichier à la main
   pour diagnostiquer, et fini les faux symptômes dus à un artefact périmé.
-- **Un cycle du moteur dure ~3,5 min** (scan de 6 600 fichiers / 80 000 messages)
-  avec un plafond de 300 s dans `moteur.py`. Après un redémarrage, **attends 4-5
-  min avant de conclure** que le push ne marche pas — l'absence de ligne dans le
-  log ne veut pas dire panne. Des `push TIMEOUT apres 300s` apparaissent quand le
-  scan frôle le plafond : c'est un signal à surveiller, pas encore un bug.
+- **Un cycle du moteur dure ~100 s** en régime établi (scan de 6 600 fichiers /
+  86 000 messages), plafond 300 s dans `moteur.py` : il y a de la marge, ce n'est
+  pas une bombe à retardement. Le **premier** cycle après un redémarrage prend
+  ~3,5 min (il enchaîne `refresh-windows` + un scan à froid) : **attends 4-5 min
+  avant de conclure à une panne**, l'absence de ligne dans le log ne veut rien
+  dire.
+- **Les `push TIMEOUT apres 300s` ne signalent PAS un scan trop lent.** Vérifié
+  le 16 juil : 0 timeout du 11 au 14, puis 9 le 15 et 3 le 16 — ils sont apparus
+  exactement quand Render a commencé à ne plus répondre. C'était le symptôme du
+  **serveur mort**, pas du volume de données. Ne pas partir en optimisation du
+  scan sur ce signal.
 - Le Waste Radar affiche les **vrais titres de sessions d'Adam** (souvent en
   français, parfois des prompts d'agents). Ce n'est pas un bug, c'est la vraie
   donnée. Il l'assume.
