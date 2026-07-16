@@ -17,8 +17,65 @@
   var PUSH_SERVER = window.CLAUDE_EATS_TOKENS_SERVER || ""; // ex: "https://claude-eats-tokens.onrender.com"
   var SB_URL = (window.CET_SUPABASE_URL || "").replace(/\/$/, "");
   var SB_KEY = window.CET_SUPABASE_KEY || "";
-  /* Vrai quand on peut parler à la base sans serveur. C'est le cas normal. */
-  function useDirect() { return !!(SB_URL && SB_KEY && window.CET_API_KEY); }
+  /* La base est joignable (indépendant du fait d'avoir un compte). C'est la
+     condition de l'INSCRIPTION : à ce moment-là, il n'y a pas encore de clé. */
+  function directAvailable() { return !!(SB_URL && SB_KEY); }
+  /* Vrai quand on peut LIRE ses chiffres sans serveur : base + clé. */
+  function useDirect() { return directAvailable() && !!window.CET_API_KEY; }
+
+  function sbHeaders() {
+    return {
+      apikey: SB_KEY,
+      Authorization: "Bearer " + SB_KEY,
+      "Content-Type": "application/json"
+    };
+  }
+
+  /* Appel d'une fonction SQL. Les clés voyagent dans le CORPS, jamais dans
+     l'URL (une URL finit dans l'historique, les logs et les référents). */
+  function sbRpc(fn, body, ms) {
+    return fetchTimeout(SB_URL + "/rest/v1/rpc/" + fn, ms || 15000, {
+      method: "POST",
+      headers: sbHeaders(),
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    });
+  }
+
+  /* Erreurs de cet_register -> message traduit. La base répond en anglais ;
+     l'afficher brut dans une UI française serait bâclé. Toute valeur inconnue
+     retombe sur le message générique plutôt que de fuiter du jargon. */
+  var REGISTER_ERRORS = {
+    "email already registered": "app.auth.error.taken",
+    "email required": "app.auth.error.email",
+    "rate limited": "app.auth.error.throttled"
+  };
+  function registerErrorText(err) {
+    return t(REGISTER_ERRORS[err] || "app.auth.error.generic");
+  }
+
+  /* Inscription. Rend toujours {ok, data} : les deux écrans qui l'appellent
+     (sheet compte + parcours de mise en route) partagent la même forme.
+     PIÈGE : la fonction SQL répond TOUJOURS HTTP 200 — le verdict est dans le
+     corps ({error:...} ou {api_key:...}). Se fier au code HTTP ferait passer un
+     refus pour un succès. */
+  function registerAccount(email) {
+    if (directAvailable()) {
+      return sbRpc("cet_register", { p_email: email }).then(function (d) {
+        if (!d || d.error || !d.api_key) return { ok: false, data: d || {} };
+        return { ok: true, data: d };
+      });
+    }
+    return fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+    });
+  }
 
   /* Wake-up Render dès le boot : Render free s'endort après 15 min d'inactivité,
      le cold start prend ~40-50s. On fire-and-forget un ping sur "/" dès que l'IIFE
@@ -1151,17 +1208,13 @@
     var bar = $("wake-bar"); if (bar) bar.hidden = true;
   }
 
-  /* Options fetch pour un appel RPC Supabase (POST + clés dans les en-têtes).
-     La clé cet_ voyage dans le CORPS, jamais dans l'URL : une URL finit dans
-     l'historique, les logs et les référents ; un corps POST non. */
+  /* Options fetch pour cet_get_usage dans la cascade de load(). On ne passe pas
+     par sbRpc() ici : la cascade a besoin de la réponse brute pour décider de
+     basculer sur la source suivante. */
   function sbFetchOpts(apiKey) {
     return {
       method: "POST",
-      headers: {
-        apikey: SB_KEY,
-        Authorization: "Bearer " + SB_KEY,
-        "Content-Type": "application/json"
-      },
+      headers: sbHeaders(),
       body: JSON.stringify({ p_api_key: apiKey })
     };
   }
@@ -1597,17 +1650,21 @@
         form.style.display = "none";
         success.style.display = "none";
         logged.style.display = "block";
-        /* Charger le profil.
-           En voie directe, cet_get_usage() renvoie DÉJÀ le bloc `user` avec le
-           chargement des chiffres : on le réutilise au lieu d'appeler /auth/me
-           sur un serveur qu'on ne veut plus réveiller. Promise pour garder un
-           seul chemin de rendu en aval. */
-        var profile = (useDirect() && DATA && DATA.user)
-          ? Promise.resolve(DATA.user)
-          : (PUSH_SERVER
-              ? fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/me", { headers: { "X-Api-Key": apiKey } })
-                  .then(function (r) { return r.json(); })
-              : null);
+        /* Charger le profil, du moins cher au plus cher :
+           1. DATA.user : cet_get_usage() l'a déjà rendu avec les chiffres.
+           2. cet_me : indispensable pour un compte NEUF — tant qu'aucun push
+              n'a eu lieu, cet_get_usage renvoie null et l'écran resterait vide.
+           3. /auth/me : voie legacy (self-host derrière son propre serveur). */
+        var profile = null;
+        if (useDirect() && DATA && DATA.user) {
+          profile = Promise.resolve(DATA.user);
+        } else if (useDirect()) {
+          profile = sbRpc("cet_me", { p_api_key: apiKey });
+        } else if (PUSH_SERVER) {
+          profile = fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/me",
+                          { headers: { "X-Api-Key": apiKey } })
+                      .then(function (r) { return r.json(); });
+        }
         if (profile) {
           profile
             .then(function (d) {
@@ -1658,17 +1715,12 @@
       $("auth-submit").textContent = t("app.auth.creating");
       $("auth-submit").disabled = true;
 
-      fetch(PUSH_SERVER.replace(/\/$/, "") + "/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email }),
-      })
-        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      registerAccount(email)
         .then(function (res) {
           $("auth-submit").textContent = t("html.auth.submit");
           $("auth-submit").disabled = false;
           if (!res.ok) {
-            $("auth-error").textContent = res.data.error || t("app.auth.error.generic");
+            $("auth-error").textContent = registerErrorText(res.data && res.data.error);
             $("auth-error").style.display = "block";
             return;
           }
@@ -1686,7 +1738,10 @@
         .catch(function () {
           $("auth-submit").textContent = t("html.auth.submit");
           $("auth-submit").disabled = false;
-          $("auth-error").textContent = t("app.auth.error.network");
+          // En voie directe, aucun serveur ne dort : promettre un réveil de 50s
+          // serait un mensonge. On dit ce qui est vrai selon la voie.
+          $("auth-error").textContent = t(directAvailable()
+            ? "app.auth.error.netdirect" : "app.auth.error.network");
           $("auth-error").style.display = "block";
         });
     });
@@ -1819,19 +1874,19 @@
       if (!email || email.indexOf("@") < 0) { announce(t("app.auth.error.email")); $("setup-email").focus(); return; }
       var btn = this;
       btn.disabled = true; btn.textContent = t("app.auth.creating"); announce(t("app.setup.creating"));
-      fetch(server + "/auth/register", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email }),
-      })
-        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      registerAccount(email)
         .then(function (res) {
           btn.disabled = false; btn.textContent = t("html.auth.submit");
-          if (!res.ok || !res.data.api_key) { announce(res.data && res.data.error ? res.data.error : t("app.auth.error.generic")); return; }
+          if (!res.ok || !res.data.api_key) {
+            announce(registerErrorText(res.data && res.data.error));
+            return;
+          }
           showKey(res.data.api_key);
         })
         .catch(function () {
           btn.disabled = false; btn.textContent = t("html.auth.submit");
-          announce(t("app.auth.error.network"));
+          announce(t(directAvailable()
+            ? "app.auth.error.netdirect" : "app.auth.error.network"));
         });
     });
 
@@ -2046,7 +2101,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v41.js";
+  var SW_FILE = "sw.v42.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

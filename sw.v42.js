@@ -1,18 +1,23 @@
-/* Service worker v41 — Claude Eats Tokens.
+/* Service worker v42 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
    network-ONLY sur les données (usage.json, Render, Supabase). Purge tout cache
-   != v41 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
+   != v42 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
    servi depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
-   v41 : l'app ne passe plus par aucun serveur. Elle lit la base Supabase en
-   direct (fonction SQL cet_get_usage, migration 0005) au lieu d'interroger
-   Render, qui s'est fait suspendre le 15/07/2026 pour dépassement du quota
-   gratuit (750 h/mois partagées, brûlées par 2 services allumés en permanence).
+   v41-v42 : l'app ne passe plus par aucun serveur. Elle lit la base Supabase en
+   direct (cet_get_usage, migration 0005) et y crée les comptes (cet_register /
+   cet_me, migration 0006), au lieu d'interroger Render — suspendu le 15/07/2026
+   pour dépassement du quota gratuit (750 h/mois partagées par tout le workspace,
+   brûlées en 15,6 jours par 2 services allumés en permanence).
    Le ping de réveil de Render au boot est supprimé en voie directe : c'était lui
-   qui rallumait le serveur — et donc le compteur — à chaque ouverture de l'app.
+   qui rallumait le serveur, et donc le compteur, à chaque ouverture de l'app.
    Les appels à la base sont des POST, que ce worker ignore déjà (garde `method
    !== GET`) : aucun risque de chiffres figés en cache.
-   Invalide v40. */
-const CACHE = "cet-v41";
+   v42 sort aussi l'inscription : un inconnu peut créer un compte même Render
+   suspendu, ce qui était impossible entre le 15 juil et le 1er août. Un
+   garde-fou par IP y est ajouté au passage, l'ancienne route /auth/register
+   étant ouverte sans aucune limite sur une base gratuite de 500 Mo.
+   Invalide v41. */
+const CACHE = "cet-v42";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js", "./pwa/aurora.js", "./pwa/tokens-field.js",

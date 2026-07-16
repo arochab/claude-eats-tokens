@@ -141,13 +141,18 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Les écrans de compte pointent encore vers Render** : inscription
-  (`/auth/register`), appairage (`/pair/*`) et checkout (`/billing/checkout`)
-  appellent toujours le serveur suspendu. Sans effet pour Adam (son compte
-  existe, sa clé est posée), mais **un inconnu ne peut pas créer de compte tant
-  que Render ne revient pas** (1er août). Pour finir le travail, ces 3 flux
-  doivent devenir des RPC Supabase, comme le reste. La lecture/écriture des
-  chiffres, elle, est déjà 100 % hors Render.
+- **Deux flux pointent encore vers Render** : l'appairage CLI (`/pair/*`) et le
+  checkout (`/billing/checkout`). Le checkout est de toute façon dormant (Lemon
+  Squeezy pas encore configuré). L'appairage sert à brancher un PC sans
+  copier-coller de clé ; en attendant, on pose `CET_API_KEY` à la main dans
+  `secret.local.bat`, ce qui marche. Pour finir : porter `/pair/*` en RPC
+  (tables `pairing_codes` déjà en place, migration 0004). Les chiffres et
+  l'inscription, eux, sont **100 % hors Render** (migrations 0005 + 0006).
+- **`cet_register` n'a qu'un garde-fou par IP** (20/h, table `register_throttle`,
+  best-effort via `x-forwarded-for`). Ça arrête un script opportuniste, pas une
+  attaque distribuée. Si le produit décolle, prévoir mieux (captcha, ou
+  confirmation email). Ne PAS remplacer par un plafond global : ce serait une
+  arme, il suffirait de le saturer pour bloquer toute inscription.
 - **`sessions: []` est vide dans le payload** alors que `wasteSuspects` en a 30.
   Antérieur à la refonte du 16 juil (vérifié : le fichier écrit par le moteur est
   vide lui aussi, ce n'est pas le transport). Le Waste Radar marche quand même.
@@ -177,12 +182,14 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 - **16 juil 2026** — **Sortie de Render.** L'app était morte depuis le 15 juil
   15h00 (Render suspendu : quota gratuit épuisé par 2 services allumés 24/7).
-  Le PC, lui, n'avait jamais cessé de pousser dans le vide. Migration 0005
-  (2 fonctions SECURITY DEFINER), compte propriétaire d'Adam en `plan=pro`,
-  moteur + PWA rebranchés en direct sur Supabase, ping de réveil de Render
-  supprimé. Reprise d'une clé via `?key=` (branche un téléphone en un lien).
-  Trou de sécurité fermé au passage : le `/usage.json` legacy servait les
-  chiffres d'Adam **sans aucune auth**. 193 tests verts (+16). **SW v41.**
+  Le PC, lui, n'avait jamais cessé de pousser dans le vide. Migrations 0005
+  (chiffres) et 0006 (inscription + profil) : 4 fonctions SECURITY DEFINER,
+  compte propriétaire d'Adam en `plan=pro`, moteur + PWA rebranchés en direct
+  sur Supabase, ping de réveil de Render supprimé. Reprise d'une clé via `?key=`
+  (branche un téléphone en un lien). **Deux trous de sécurité fermés au passage :**
+  le `/usage.json` legacy servait les chiffres d'Adam sans AUCUNE auth, et
+  `/auth/register` était ouvert sans aucune limite. 193 tests verts (+16).
+  **SW v42.**
 - **14 juil 2026** — Héro thémé (fin de la carte noire en light) + header sur une
   ligne à toutes les largeurs. **SW v40**, poussé en prod. Création de ce fichier.
   Découvert que le « bug » du double « just reset » n'existait pas : c'était
