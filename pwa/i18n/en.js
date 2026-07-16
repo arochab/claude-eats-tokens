@@ -102,6 +102,10 @@
     "app.pro.pitch.pace":    "See where you'll land by month end.",
     "app.pro.pitch.waste":   "See where your Opus goes, and what you could save.",
     "app.pro.pitch.boite":   "Understand why your window is burning fast.",
+    /* Not on sale yet: say so plainly rather than showing an "error" that would
+       read as a breakage. */
+    "app.pro.soon":          "Pro isn't on sale yet. Soon.",
+    "app.pro.error":         "Checkout could not open. Try again in a moment.",
 
     /* ---- app.js : verdict ---- */
     "app.verdict.badge.demo": "Example",

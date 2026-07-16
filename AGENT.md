@@ -141,11 +141,12 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Un seul flux pointe encore vers Render** : le checkout
-  (`/billing/checkout`). Dormant de toute façon — Lemon Squeezy n'est pas
-  configuré. À porter en RPC le jour où la vente s'ouvre. **Tout le reste
-  (chiffres, inscription, appairage) est 100 % hors Render** : migrations 0005,
-  0006, 0007.
+- **Ouvrir Pro à la vente** : tout le code est fait, déployé et testé
+  (Edge Function `billing`, secrets posés, webhook validé avec de vraies
+  signatures). Il manque UNIQUEMENT les 3 actions d'Adam décrites dans
+  `PAIEMENT-SETUP.md` — compte Lemon Squeezy, produit, webhook. Un agent ne peut
+  pas les faire : elles engagent son identité, son IBAN et sa fiscalité.
+  Vérification : `curl .../functions/v1/billing/health` → 3 × `true`.
 - **Le throttle anti-abus est best-effort** (`cet__throttle_ok`, table
   `rpc_throttle`, IP via `x-forwarded-for`). 20/h pour l'inscription, 10/h pour
   `pair_start`. Ça arrête un script opportuniste, pas une attaque distribuée.

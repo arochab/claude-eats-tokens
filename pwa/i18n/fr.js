@@ -102,6 +102,10 @@
     "app.pro.pitch.pace":    "Vois où tu atterris en fin de mois.",
     "app.pro.pitch.waste":   "Découvre où part ton Opus, et ce que tu pourrais récupérer.",
     "app.pro.pitch.boite":   "Comprends pourquoi ta fenêtre fond.",
+    /* Le produit n'est pas encore ouvert à la vente : on le dit franchement au
+       lieu d'un « erreur » qui laisserait croire à une panne. */
+    "app.pro.soon":          "Pro n'est pas encore ouvert à la vente. Bientôt.",
+    "app.pro.error":         "Le paiement n'a pas pu s'ouvrir. Réessaie dans un instant.",
 
     /* ---- app.js : verdict ---- */
     "app.verdict.badge.demo": "Exemple",

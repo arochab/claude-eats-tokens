@@ -1,7 +1,7 @@
-/* Service worker v43 — Claude Eats Tokens.
+/* Service worker v44 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
    network-ONLY sur les données (usage.json, Render, Supabase). Purge tout cache
-   != v43 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
+   != v44 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
    servi depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
    v41-v42 : l'app ne passe plus par aucun serveur. Elle lit la base Supabase en
    direct (cet_get_usage, migration 0005) et y crée les comptes (cet_register /
@@ -21,8 +21,13 @@
    installe et demarre desormais le service dans la foulee : une commande au
    lieu de deux, et ca tourne tout de suite au lieu d'attendre la prochaine
    session Windows.
-   Invalide v42. */
-const CACHE = "cet-v43";
+   v44 : le paiement sort a son tour. Le checkout passe par l'Edge Function
+   `billing` (Supabase, gratuite et toujours allumee) et non plus par Render.
+   La cle voyage desormais dans le CORPS d'un POST : elle n'apparait plus en
+   ?key= dans une URL, qui serait partie dans l'historique, les logs et le
+   Referer envoye a Lemon Squeezy. PLUS AUCUN flux ne touche Render.
+   Invalide v43. */
+const CACHE = "cet-v44";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js", "./pwa/aurora.js", "./pwa/tokens-field.js",

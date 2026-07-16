@@ -1389,18 +1389,45 @@
   if ($("export-png")) $("export-png").addEventListener("click", exportPNG);
 
   /* ----- Pro : checkout + sheet + cartes ----- */
-  // Hook de paiement : ouvre le checkout serveur si serveur+clé présents.
+  /* Hook de paiement.
+     La clé part dans le CORPS d'un POST, jamais en ?key= dans l'URL : une URL
+     traîne dans l'historique, les logs du serveur et l'en-tête Referer envoyé
+     à Lemon Squeezy. C'est le seul appel qui partait encore vers Render.
+
+     POPUP : on ouvre la fenêtre TOUT DE SUITE, dans le geste du clic. Un
+     window.open() après un await est bloqué par les navigateurs (il n'est plus
+     rattaché à une action utilisateur) — le bouton semblerait mort. */
   window.CET_startCheckout = function () {
-    var server = window.CLAUDE_EATS_TOKENS_SERVER, key = window.CET_API_KEY;
-    if (server && key) {
-      window.open(server.replace(/\/$/, "") + "/billing/checkout?key=" + encodeURIComponent(key), "_blank", "noopener");
-    } else {
+    var key = window.CET_API_KEY;
+    if (!key || !directAvailable()) {
       // Pas de compte : ne jamais router le feedback dans .status (invisible
       // derrière la sheet ouverte). On enchaîne directement vers la connexion.
       if (typeof closeSheet === "function") closeSheet("pro-sheet");
       if (typeof window.CET_openAuth === "function") window.CET_openAuth();
       else if ($("auth-sheet")) $("auth-sheet").classList.add("open");
+      return;
     }
+    var win = window.open("", "_blank");
+    fetchTimeout(SB_URL + "/functions/v1/billing/checkout", 20000, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.d && res.d.url) {
+          if (win) win.location = res.d.url; else window.location = res.d.url;
+          return;
+        }
+        // Onglet blanc orphelin si on ne fait rien : on le referme et on parle.
+        if (win) win.close();
+        setStatus(t(res.d && res.d.error === "checkout not configured"
+          ? "app.pro.soon" : "app.pro.error"), "err");
+      })
+      .catch(function () {
+        if (win) win.close();
+        setStatus(t("app.pro.error"), "err");
+      });
   };
   if ($("pro-checkout")) $("pro-checkout").addEventListener("click", window.CET_startCheckout);
   if ($("close-pro")) $("close-pro").addEventListener("click", function () { closeSheet("pro-sheet"); });
@@ -2136,7 +2163,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v43.js";
+  var SW_FILE = "sw.v44.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

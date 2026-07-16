@@ -46,6 +46,12 @@ Poste local (lit ~/.claude/projects)  ──rpc cet_push_usage──►  Supabas
   `CET_FORCE_SERVER=1` force l'ancienne voie. Côté front : `useDirect()` dans
   `pwa/app.js`. Aucun des deux ne contacte Render en voie directe — c'est le
   point clé : **sans appelant, Render dort et ne consomme plus rien**.
+- **Une seule Edge Function** : `supabase/functions/billing` (checkout + webhook
+  Lemon Squeezy), déployée `--no-verify-jwt`. C'est le SEUL morceau qui n'est pas
+  du SQL, et pour une raison précise : LS signe son webhook sur le **corps brut**,
+  que PostgREST ne donne jamais (il parse le JSON avant). Sans corps brut, pas de
+  vérification de signature, donc n'importe qui s'offrirait le plan Pro. Reste à
+  faire côté Adam : `PAIEMENT-SETUP.md`.
 
 - **Le service worker vit à la RACINE** (`sw.vN.js`, actuellement `sw.v29.js`) —
   jamais dans `pwa/`, sinon le scope ne couvre pas toute l'app. Network-first sur
