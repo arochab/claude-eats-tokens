@@ -141,18 +141,17 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Deux flux pointent encore vers Render** : l'appairage CLI (`/pair/*`) et le
-  checkout (`/billing/checkout`). Le checkout est de toute façon dormant (Lemon
-  Squeezy pas encore configuré). L'appairage sert à brancher un PC sans
-  copier-coller de clé ; en attendant, on pose `CET_API_KEY` à la main dans
-  `secret.local.bat`, ce qui marche. Pour finir : porter `/pair/*` en RPC
-  (tables `pairing_codes` déjà en place, migration 0004). Les chiffres et
-  l'inscription, eux, sont **100 % hors Render** (migrations 0005 + 0006).
-- **`cet_register` n'a qu'un garde-fou par IP** (20/h, table `register_throttle`,
-  best-effort via `x-forwarded-for`). Ça arrête un script opportuniste, pas une
-  attaque distribuée. Si le produit décolle, prévoir mieux (captcha, ou
-  confirmation email). Ne PAS remplacer par un plafond global : ce serait une
-  arme, il suffirait de le saturer pour bloquer toute inscription.
+- **Un seul flux pointe encore vers Render** : le checkout
+  (`/billing/checkout`). Dormant de toute façon — Lemon Squeezy n'est pas
+  configuré. À porter en RPC le jour où la vente s'ouvre. **Tout le reste
+  (chiffres, inscription, appairage) est 100 % hors Render** : migrations 0005,
+  0006, 0007.
+- **Le throttle anti-abus est best-effort** (`cet__throttle_ok`, table
+  `rpc_throttle`, IP via `x-forwarded-for`). 20/h pour l'inscription, 10/h pour
+  `pair_start`. Ça arrête un script opportuniste, pas une attaque distribuée.
+  Si le produit décolle, prévoir mieux (captcha, ou confirmation email). Ne
+  **JAMAIS** le remplacer par un plafond global : ce serait une arme, il
+  suffirait de le saturer pour bloquer toute inscription pendant un lancement.
 - **`sessions: []` est vide dans le payload** alors que `wasteSuspects` en a 30.
   Antérieur à la refonte du 16 juil (vérifié : le fichier écrit par le moteur est
   vide lui aussi, ce n'est pas le transport). Le Waste Radar marche quand même.
@@ -180,16 +179,18 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 6. Journal des passes (une ligne par session, la plus récente en haut)
 
-- **16 juil 2026** — **Sortie de Render.** L'app était morte depuis le 15 juil
-  15h00 (Render suspendu : quota gratuit épuisé par 2 services allumés 24/7).
-  Le PC, lui, n'avait jamais cessé de pousser dans le vide. Migrations 0005
-  (chiffres) et 0006 (inscription + profil) : 4 fonctions SECURITY DEFINER,
-  compte propriétaire d'Adam en `plan=pro`, moteur + PWA rebranchés en direct
-  sur Supabase, ping de réveil de Render supprimé. Reprise d'une clé via `?key=`
-  (branche un téléphone en un lien). **Deux trous de sécurité fermés au passage :**
-  le `/usage.json` legacy servait les chiffres d'Adam sans AUCUNE auth, et
-  `/auth/register` était ouvert sans aucune limite. 193 tests verts (+16).
-  **SW v42.**
+- **16 juil 2026** — **Sortie de Render, complète.** L'app était morte depuis le
+  15 juil 15h00 (Render suspendu : quota gratuit épuisé par 2 services allumés
+  24/7). Le PC, lui, n'avait jamais cessé de pousser dans le vide. Migrations
+  0005 (chiffres), 0006 (inscription + profil), 0007 (appairage) : 7 fonctions
+  SECURITY DEFINER, compte propriétaire d'Adam en `plan=pro`, moteur + PWA en
+  direct sur Supabase, ping de réveil de Render supprimé. **Vérifié : 0 appel à
+  Render depuis l'app en prod.** `claude-push pair` fait tout en une commande
+  (appairage + install + démarrage immédiat) au lieu de deux. Reprise d'une clé
+  via `?key=` (branche un téléphone en un lien). **Deux trous de sécurité fermés
+  au passage :** le `/usage.json` legacy servait les chiffres d'Adam sans AUCUNE
+  auth, et `/auth/register` était ouvert sans aucune limite. 204 tests verts
+  (+27). **SW v43.**
 - **14 juil 2026** — Héro thémé (fin de la carte noire en light) + header sur une
   ligne à toutes les largeurs. **SW v40**, poussé en prod. Création de ce fichier.
   Découvert que le « bug » du double « just reset » n'existait pas : c'était

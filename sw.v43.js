@@ -1,7 +1,7 @@
-/* Service worker v42 — Claude Eats Tokens.
+/* Service worker v43 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
    network-ONLY sur les données (usage.json, Render, Supabase). Purge tout cache
-   != v42 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
+   != v43 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
    servi depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
    v41-v42 : l'app ne passe plus par aucun serveur. Elle lit la base Supabase en
    direct (cet_get_usage, migration 0005) et y crée les comptes (cet_register /
@@ -16,8 +16,13 @@
    suspendu, ce qui était impossible entre le 15 juil et le 1er août. Un
    garde-fou par IP y est ajouté au passage, l'ancienne route /auth/register
    étant ouverte sans aucune limite sur une base gratuite de 500 Mo.
-   Invalide v41. */
-const CACHE = "cet-v42";
+   v43 : l'appairage du PC sort a son tour (migration 0007 : cet_pair_start /
+   _confirm / _poll). Plus AUCUN flux ne passe par Render. `claude-push pair`
+   installe et demarre desormais le service dans la foulee : une commande au
+   lieu de deux, et ca tourne tout de suite au lieu d'attendre la prochaine
+   session Windows.
+   Invalide v42. */
+const CACHE = "cet-v43";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js", "./pwa/aurora.js", "./pwa/tokens-field.js",

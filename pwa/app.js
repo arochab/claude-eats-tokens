@@ -56,6 +56,50 @@
     return t(REGISTER_ERRORS[err] || "app.auth.error.generic");
   }
 
+  /* Confirmation d'appairage : RPC cet_pair_confirm en voie directe, sinon
+     /pair/confirm. Rend {ok:bool, err:string} — une forme unique, pour que
+     l'appelant n'ait pas à savoir par où c'est passé.
+     La voie legacy renvoyait le verdict dans le CODE HTTP (404/410/400), la
+     base le renvoie dans le CORPS (toujours 200). On normalise vers des
+     libellés stables ici, une bonne fois. */
+  function confirmPairing(code) {
+    var key = window.CET_API_KEY;
+    if (directAvailable()) {
+      return sbRpc("cet_pair_confirm", { p_code: code, p_api_key: key })
+        .then(function (d) {
+          if (d && d.ok) return { ok: true };
+          return { ok: false, err: (d && d.error) || "generic" };
+        });
+    }
+    return fetch(PUSH_SERVER.replace(/\/$/, "") + "/pair/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Api-Key": key },
+      body: JSON.stringify({ code: code, api_key: key })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (r.ok && d && d.ok) return { ok: true };
+        // Le serveur parlait en codes HTTP : on les traduit vers les mêmes
+        // libellés que la base, pour un seul chemin d'affichage en aval.
+        var byStatus = { 404: "unknown code", 410: "code expired", 400: "code and api_key required" };
+        return { ok: false, err: byStatus[r.status] || (d && d.error) || "generic" };
+      });
+    });
+  }
+
+  /* Libellé d'erreur d'appairage -> message traduit. Les clés 404/410/400
+     existent déjà et disent la bonne chose ; on les réutilise plutôt que
+     d'inventer des textes en double. */
+  var PAIR_ERRORS = {
+    "unknown code": "app.pair.error.404",
+    "code expired": "app.pair.error.410",
+    "code not pending": "app.pair.error.410",
+    "code and api_key required": "app.pair.error.400",
+    "invalid api key": "app.pair.error.400"
+  };
+  function pairErrorText(res) {
+    return t(PAIR_ERRORS[res && res.err] || "app.pair.error.generic");
+  }
+
   /* Inscription. Rend toujours {ok, data} : les deux écrans qui l'appellent
      (sheet compte + parcours de mise en route) partagent la même forme.
      PIÈGE : la fonction SQL répond TOUJOURS HTTP 200 — le verdict est dans le
@@ -2022,34 +2066,25 @@
       if (!code) { showError(t("app.pair.error.missing")); return; }
       // sécurité : sans compte on ne peut rien lier -> on renvoie vers l'auth
       if (!window.CET_API_KEY) { pending = code; showState("pair-need-auth"); return; }
-      if (!server) { showError(t("app.pair.error.noserver")); return; }
+      if (!directAvailable() && !server) { showError(t("app.pair.error.noserver")); return; }
       var btn = this;
       btn.disabled = true; btn.textContent = t("app.pair.pending"); announce(t("app.pair.pending"));
-      fetch(server + "/pair/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Api-Key": window.CET_API_KEY },
-        body: JSON.stringify({ code: code, api_key: window.CET_API_KEY }),
-      })
-        .then(function (r) {
-          return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
-        })
+      confirmPairing(code)
         .then(function (res) {
           btn.disabled = false; btn.textContent = t("app.pair.confirm.btn");
-          if (res.ok && res.data && res.data.ok) {
+          if (res.ok) {
             pending = null;
             showState("pair-success");
             announce(t("app.pair.success"));
             return;
           }
-          // messages clairs selon le code HTTP
-          if (res.status === 404) showError(t("app.pair.error.404"));
-          else if (res.status === 410) showError(t("app.pair.error.410"));
-          else if (res.status === 400) showError(t("app.pair.error.400"));
-          else showError((res.data && res.data.error) || t("app.pair.error.generic"));
+          showError(pairErrorText(res));
         })
         .catch(function () {
           btn.disabled = false; btn.textContent = t("app.pair.confirm.btn");
-          showError(t("app.pair.error.network"));
+          // En voie directe aucun serveur ne dort : on ne promet pas un réveil.
+          showError(t(directAvailable()
+            ? "app.pair.error.netdirect" : "app.pair.error.network"));
         });
     });
 
@@ -2101,7 +2136,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v42.js";
+  var SW_FILE = "sw.v43.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

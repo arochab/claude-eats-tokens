@@ -284,6 +284,7 @@
     "app.pair.error.400":     "Invalid code. Check that it matches exactly what your terminal shows.",
     "app.pair.error.generic": "Pairing failed. Try again in a moment.",
     "app.pair.error.network": "No response from the server (it may be asleep, ~50 s). Try again in a moment.",
+    "app.pair.error.netdirect":"No response. Check your connection and try again.",
     "app.pair.success":       "Paired. Your data will start appearing.",
 
     /* ---- index.html : topbar ---- */

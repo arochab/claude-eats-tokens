@@ -180,57 +180,91 @@ def cmd_doctor(args):
     return 0
 
 
-def cmd_pair(args):
-    """Appaire cet ordinateur à un compte SANS copier-coller de clé (device-flow).
+def _sb_rpc(fn, body=None, timeout=30):
+    """Appelle une fonction SQL de la base. Retourne le JSON décodé.
 
-    Flux (façon Stripe CLI / RFC 8628) :
-      1. POST /pair/start → le serveur renvoie un code court (XXXX-XXXX) + une URL.
-      2. On affiche le code + on ouvre le navigateur sur l'URL (la PWA, déjà
-         connectée). L'utilisateur VÉRIFIE que le code affiché ici = celui de la
-         PWA (anti-phishing), puis clique « Confirmer ».
-      3. On interroge /pair/poll toutes les 2 s jusqu'à recevoir la clé cet_,
-         qu'on écrit dans config.json. Fini : plus jamais de clé à recopier.
+    Les clés voyagent dans le CORPS, jamais dans l'URL (une URL finit dans
+    l'historique et les logs). Lève sur erreur réseau/HTTP : l'appelant décide.
+    """
+    sb = cfg.supabase_url().rstrip("/")
+    key = cfg.supabase_key()
+    r = engine.requests.post(
+        f"{sb}/rest/v1/rpc/{fn}",
+        json=body or {},
+        headers={"apikey": key, "Authorization": f"Bearer {key}",
+                 "Content-Type": "application/json"},
+        timeout=timeout)
+    r.raise_for_status()
+    return r.json()
+
+
+def _frontend_url():
+    """URL de la PWA où l'utilisateur confirme le code."""
+    v = os.environ.get("CET_FRONTEND_URL", "").strip()
+    return (v or "https://arochab.github.io/claude-eats-tokens").rstrip("/")
+
+
+def cmd_pair(args):
+    """Branche cet ordinateur à un compte SANS copier-coller de clé (device-flow).
+
+    UNE SEULE COMMANDE fait tout : appairage, puis installation du service et
+    démarrage immédiat. Avant, il fallait enchaîner `pair` puis
+    `install-service`, et sur Windows attendre la session suivante pour que ça
+    tourne — deux marches sur lesquelles on perd les gens.
+
+    Flux (device authorization, façon Stripe CLI / RFC 8628), désormais 100 %
+    sur la base, sans serveur :
+      1. cet_pair_start() -> un code court (XXXX-XXXX), affiché ici.
+      2. On ouvre la PWA (déjà connectée) sur ?pair=CODE. L'utilisateur VÉRIFIE
+         que le code de l'app = celui de SON terminal (anti-phishing RFC 8628),
+         puis confirme.
+      3. On poll cet_pair_poll() toutes les 2 s jusqu'à recevoir la clé, écrite
+         dans config.json.
+      4. On installe le service et on le démarre. C'est fini.
     """
     import webbrowser
 
-    url = cfg.push_url().rstrip("/")
     print("claude-push pair — brancher cet ordinateur")
+
+    if cfg.api_key():
+        print("  · Cet ordinateur a déjà une clé. On la remplace par la "
+              "nouvelle si tu vas au bout.")
 
     # 1) démarrer l'appairage
     try:
-        r = engine.requests.post(url + "/pair/start", timeout=60)
+        data = _sb_rpc("cet_pair_start", {})
     except Exception as e:
-        print("  ✗ Impossible de joindre le serveur :", e)
-        print("    (Render s'endort ; réessaie dans ~1 min.)")
+        print("  ✗ Impossible de joindre la base :", e)
+        print("    Vérifie ta connexion et réessaie.")
         return 1
-    if r.status_code == 501:
-        print("  ✗ L'appairage n'est pas disponible sur ce serveur "
-              "(mode multi-tenant requis).")
+    if not isinstance(data, dict) or data.get("error"):
+        err = (data or {}).get("error", "réponse inattendue")
+        if err == "rate limited":
+            print("  ✗ Trop d'essais depuis cet ordinateur. "
+                  "Réessaie dans une heure.")
+        else:
+            print("  ✗ Impossible de démarrer l'appairage :", err)
         return 1
-    if not r.ok:
-        print("  ✗ Le serveur a refusé de démarrer l'appairage :", r.status_code)
-        return 1
-    data = r.json()
+
     code = data.get("code", "")
-    confirm_url = data.get("confirm_url", "")
     expires_in = int(data.get("expires_in", 600))
+    confirm_url = f"{_frontend_url()}/?pair={code}"
 
     # 2) afficher le code + ouvrir la PWA (ET imprimer l'URL en clair : le
-    #    webbrowser peut échouer, notamment en SSH/headless).
+    #    webbrowser échoue en SSH/headless, l'utilisateur doit pouvoir copier).
     print()
     print("  ┌─────────────────────────────────────────────┐")
     print("  │  Ton code d'appairage :   " + code.ljust(18) + "│")
     print("  └─────────────────────────────────────────────┘")
     print()
     print("  1. Ouvre cette page (elle devrait s'ouvrir toute seule) :")
-    print("       " + (confirm_url or (url + "/?pair=" + code)))
+    print("       " + confirm_url)
     print("  2. Vérifie que le code affiché est bien : " + code)
     print("  3. Clique « Confirmer » dans l'app.")
     print()
     print(f"  (Le code expire dans {expires_in // 60} min. En attente…)")
     try:
-        if confirm_url:
-            webbrowser.open(confirm_url)
+        webbrowser.open(confirm_url)
     except Exception:
         pass
 
@@ -239,26 +273,32 @@ def cmd_pair(args):
     while time.time() < deadline:
         time.sleep(2)
         try:
-            pr = engine.requests.get(url + "/pair/poll",
-                                     params={"code": code}, timeout=30)
+            body = _sb_rpc("cet_pair_poll", {"p_code": code})
         except Exception:
-            continue  # réseau capricieux : on retente
-        if pr.status_code in (404, 410):
-            print("  ✗ Code expiré ou déjà utilisé. Relance `claude-push pair`.")
-            return 1
-        if not pr.ok:
+            continue  # réseau capricieux : on retente jusqu'à l'échéance
+        if not isinstance(body, dict):
             continue
-        body = pr.json()
         st = body.get("status")
         if st == "ready" and body.get("api_key"):
             cfg.save_config({"api_key": body["api_key"]})
-            print("  ✓ C'est branché ! Ta clé est enregistrée dans",
+            print("  ✓ C'est branché. Ta clé est enregistrée dans",
                   cfg.config_file())
-            print("    Lance `claude-push install-service` pour que ça tourne "
-                  "tout seul au démarrage.")
+            print()
+            # 4) ...et on va jusqu'au bout : le but n'est pas d'avoir une clé,
+            #    c'est que les chiffres remontent tout seuls. Un échec ici n'est
+            #    PAS un échec d'appairage : la clé est posée, on le dit et on
+            #    laisse la main.
+            if cmd_install_service(args) == 0:
+                print()
+                print("  Tout est en place. Tes chiffres remontent déjà, et ça "
+                      "repartira tout seul à chaque démarrage.")
+            else:
+                print("  ⚠  La clé est bien enregistrée, mais le démarrage "
+                      "automatique n'a pas pu être installé.")
+                print("     Réessaie avec : claude-push install-service")
             return 0
-        if st == "expired":
-            print("  ✗ Code expiré. Relance `claude-push pair`.")
+        if st in ("expired", "consumed"):
+            print("  ✗ Code expiré ou déjà utilisé. Relance `claude-push pair`.")
             return 1
         # sinon : pending, on continue d'attendre
     print("  ✗ Temps écoulé sans confirmation. Relance `claude-push pair`.")
@@ -306,13 +346,22 @@ def cmd_install_service(args):
                  "/TR", f'"{target}"', "/F", "/RL", "LIMITED"],
                 check=True, capture_output=True, text=True)
             print("  ✓ Tâche planifiée créée (au démarrage de session).")
-            print("    Elle démarrera au prochain login. Pour lancer tout de "
-                  "suite : ouvre le Planificateur de tâches ou relance ta session.")
-            print("    Retrait : claude-push uninstall")
-            return 0
         except Exception as e:
             print("  ✗ Échec de création de la tâche :", e)
             return 1
+        # ...et on la démarre TOUT DE SUITE. Sinon rien ne remonte avant la
+        # prochaine ouverture de session : l'utilisateur croit que ça a raté,
+        # et on lui demandait d'aller cliquer dans le Planificateur de tâches.
+        # Un échec ici n'invalide pas l'installation : la tâche existe et
+        # partira au prochain login.
+        try:
+            subprocess.run(["schtasks", "/Run", "/TN", _SERVICE_NAME],
+                           check=True, capture_output=True, text=True)
+            print("  ✓ Démarré. Ça tourne maintenant, et à chaque démarrage.")
+        except Exception:
+            print("  · Démarrera à ta prochaine ouverture de session.")
+        print("    Retrait : claude-push uninstall")
+        return 0
 
     if plat == "darwin":
         from pathlib import Path

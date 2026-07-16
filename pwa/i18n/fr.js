@@ -284,6 +284,7 @@
     "app.pair.error.400":     "Code invalide. Vérifie qu'il correspond exactement à celui de ton terminal.",
     "app.pair.error.generic": "Le branchement a échoué. Réessaie dans un instant.",
     "app.pair.error.network": "Pas de réponse du serveur (il dort peut-être ~50 s). Réessaie dans un instant.",
+    "app.pair.error.netdirect":"Pas de réponse. Vérifie ta connexion et réessaie.",
     "app.pair.success":       "C'est branché. Tes chiffres vont apparaître.",
 
     /* ---- index.html : topbar ---- */

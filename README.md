@@ -185,7 +185,7 @@ Ouvrez l'URL GitHub Pages depuis le téléphone, puis **Ajouter à l'écran d'ac
 ### Le moteur local (PC) — la source des chiffres
 
 Le moteur lit vos logs Claude Code et pousse les totaux vers le serveur. Depuis
-la v1, l'installation tient en **trois commandes** — pas de Python à installer,
+la v1, l'installation tient en **deux commandes** — pas de Python à installer,
 pas de fichier à éditer, **pas de clé à recopier**.
 
 ```bash
@@ -198,17 +198,17 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 2. installer le moteur
 uv tool install "git+https://github.com/arochab/claude-eats-tokens@v1"
 
-# 3. brancher cet ordinateur à votre compte (device-pairing, aucune clé à copier)
+# 3. brancher cet ordinateur (device-pairing, aucune clé à copier)
 claude-push pair
-#    → un code « XXXX-XXXX » s'affiche ; ouvrez l'app, vérifiez qu'il correspond,
-#      cliquez « Confirmer ». Le moteur récupère votre clé tout seul.
-
-# 4. que ça tourne au démarrage, sans terminal ouvert (per-user, sans admin)
-claude-push install-service
+#    → un code « XXXX-XXXX » s'affiche ; l'app s'ouvre, vérifiez qu'il
+#      correspond, cliquez « Confirmer ». Le moteur récupère votre clé,
+#      s'installe au démarrage et se lance. C'est fini.
 ```
 
-`claude-push doctor` diagnostique tout (clé, logs Claude trouvés, serveur, service).
+`claude-push doctor` diagnostique tout (clé, logs Claude trouvés, base, service).
 `claude-push uninstall` retire le service en une commande (kill-switch).
+`claude-push install-service` existe encore si vous voulez (ré)installer le
+démarrage automatique seul — `pair` le fait déjà pour vous.
 
 Le **device-pairing** suit le pattern des CLI modernes (Stripe CLI, `gh auth
 login`) : le code identique côté terminal et côté app, vérifié à l'œil, empêche
