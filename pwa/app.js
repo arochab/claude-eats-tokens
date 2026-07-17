@@ -2163,7 +2163,7 @@
     }
   } catch (e) {}
 
-  var SW_FILE = "sw.v44.js";
+  var SW_FILE = "sw.v45.js";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       var refreshed = false;

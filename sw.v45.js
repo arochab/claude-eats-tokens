@@ -1,7 +1,7 @@
-/* Service worker v44 — Claude Eats Tokens.
+/* Service worker v45 — Claude Eats Tokens.
    Stratégie : network-first sur l'app-shell (toujours la dernière version),
    network-ONLY sur les données (usage.json, Render, Supabase). Purge tout cache
-   != v44 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
+   != v45 à l'activation. Nom de fichier neuf à chaque montée de version = jamais
    servi depuis un ancien cache (corrige le piège de cache A2-4/A2-19).
    v41-v42 : l'app ne passe plus par aucun serveur. Elle lit la base Supabase en
    direct (cet_get_usage, migration 0005) et y crée les comptes (cet_register /
@@ -29,8 +29,13 @@
    Le prestataire est Stripe (tranche le 17/07/2026) : sur des petits tickets,
    Lemon Squeezy prenait le double. Le front, lui, ne sait rien de tout ca --
    il appelle billing/checkout et recoit une URL.
-   Invalide v43. */
-const CACHE = "cet-v44";
+   v45 : la cle de connexion demande desormais un STOCKAGE PERMANENT
+   (navigator.storage.persist) des qu'elle est presente. Sans ca, un
+   navigateur peut vider le localStorage tout seul (iOS Safari ~7j, desktop
+   sous pression) et l'app retombe en demo alors que les donnees sont saines
+   cote base. Best-effort, aucun impact si refuse.
+   Invalide v44. */
+const CACHE = "cet-v45";
 const ASSETS = [
   "./", "./index.html", "./pwa/app.js", "./pwa/styles.css", "./pwa/config.js",
   "./pwa/format.js", "./pwa/radar-hero.js", "./pwa/aurora.js", "./pwa/tokens-field.js",

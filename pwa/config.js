@@ -58,12 +58,32 @@
     }
   } catch (e) {}
 
+  /* STOCKAGE PERMANENT (ceinture-bretelles contre la perte de clé).
+     Par défaut, un navigateur peut vider le localStorage tout seul : iOS Safari
+     purge après ~7 jours sans visite, et un desktop peut le faire sous pression
+     de stockage. Résultat vécu : la clé cet_ disparaît, l'app retombe en démo.
+     navigator.storage.persist() demande au navigateur de NE JAMAIS purger ce
+     site. On ne le demande que si une clé est présente (inutile pour un visiteur
+     démo), et une seule fois (si pas déjà accordé). 100 % best-effort : API
+     absente ou refus → rien ne change, aucun impact. */
+  function requestPersist() {
+    try {
+      if (!window.CET_API_KEY) return;
+      if (!(navigator.storage && navigator.storage.persist)) return;
+      navigator.storage.persisted().then(function (already) {
+        if (!already) navigator.storage.persist().catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  requestPersist();
+
   window.CET_setApiKey = function (key) {
     window.CET_API_KEY = key || null;
     try {
       if (key) localStorage.setItem(API_KEY_STORE, key);
       else localStorage.removeItem(API_KEY_STORE);
     } catch (e) {}
+    requestPersist();  // dès qu'une clé est posée (login / lien / appairage)
   };
 
   window.CET_clearApiKey = function () {
