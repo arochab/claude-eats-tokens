@@ -155,13 +155,14 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Ouvrir Pro à la vente** : code fait, déployé et **prouvé** (Edge Function
-  `billing` en mode **Stripe**, webhook validé avec de vraies signatures, y
-  compris l'anti-rejeu). Adam **a déjà un compte Stripe**. Il ne reste qu'à
-  poser `STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID` + `STRIPE_WEBHOOK_SECRET` : avec
-  la clé secrète, un agent crée le produit, le tarif ET le endpoint webhook via
-  l'API Stripe (`POST /v1/webhook_endpoints` rend le `whsec_`). Vérif :
-  `curl .../functions/v1/billing/health`.
+- **Passer le paiement en live.** Le mode TEST est branché et prouvé de bout en
+  bout (produit, tarif 5 €/mois, webhook, secrets — voir `PAIEMENT.md`). Deux
+  choses restent, et elles sont à Adam : (1) **activer son compte Stripe**, qui
+  affiche `charges_enabled: false` — rien ne peut être encaissé en live tant que
+  identité + IBAN ne sont pas finalisés ; (2) recréer produit/tarif/webhook dans
+  le catalogue **live** (séparé du test) et reposer les 3 secrets. Un agent sait
+  tout refaire via l'API à partir de la clé live — mais une clé live ne doit pas
+  transiter par une conversation.
 - **`server/app.py` porte encore un billing Lemon Squeezy mort** (et
   `tests/test_server.py` le teste). C'est la voie legacy self-host ; son billing
   contredit désormais le vrai produit (Stripe). À nettoyer un jour, sans urgence :
@@ -199,6 +200,13 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 6. Journal des passes (une ligne par session, la plus récente en haut)
 
+- **17 juil 2026 (soir)** — **Paiement Stripe branché et prouvé en test.**
+  Produit + tarif 5 €/mois + webhook créés **via l'API** à partir de la clé de
+  test (posée par Adam dans un `sk.local.txt` gitignoré, lu puis supprimé) : zéro
+  clic pour lui. Bug attrapé en test : `customer_creation` n'existe qu'en mode
+  `payment` — Stripe répondait 400, en live c'eût été un bouton mort. Reproché à
+  juste titre par Adam : j'écrivais des `.md` de consignes AVANT que la chose
+  existe. Retiré, réécrit après coup en `PAIEMENT.md` (décrit ce qui EST).
 - **17 juil 2026** — **Paiement rebasculé sur Stripe** (migration 0008 : colonnes
   `billing_*` neutres). Gain au passage : l'uid est posé côté serveur dans les
   metadata de l'abonnement, donc plus rien à signer ni à falsifier — le jeton

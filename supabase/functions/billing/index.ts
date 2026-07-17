@@ -152,11 +152,15 @@ async function handleCheckout(req: Request): Promise<Response> {
     // dernier, et c'est eux qui portent les changements de statut dans le temps.
     "metadata[uid]": user.id,
     "subscription_data[metadata][uid]": user.id,
-    // Rattache au client existant s'il y en a un, sinon Stripe le crée et
-    // pré-remplit l'email : pas de doublon de client à chaque essai.
+    // Rattache au client existant s'il y en a un, sinon on pré-remplit l'email
+    // et Stripe crée le client lui-même : pas de doublon à chaque essai.
+    // PAS de `customer_creation` ici : ce paramètre n'existe qu'en mode
+    // `payment` (Stripe répond 400 en mode `subscription`, où le client est
+    // créé d'office). Erreur trouvée en test — en live, c'eût été un bouton
+    // « Passer à Pro » mort.
     ...(user.billing_customer_id
       ? { customer: String(user.billing_customer_id) }
-      : { customer_email: String(user.email ?? ""), "customer_creation": "always" }),
+      : { customer_email: String(user.email ?? "") }),
   };
 
   try {
