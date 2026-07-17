@@ -15,3 +15,9 @@ data/usage.json
 # Secrets locaux (NE JAMAIS committer) — un par machine
 secret.local.bat
 claudeeatstoken*.mp4
+
+# Secrets de passage : posés le temps d'une manip, lus, puis supprimés.
+# Le motif est large exprès — il vaut mieux ignorer un fichier de trop qu'en
+# laisser filer un seul.
+*.local.txt
+sk.local.txt
