@@ -155,12 +155,13 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Ouvrir Pro à la vente** : tout le code est fait, déployé et **prouvé** (Edge
-  Function `billing` en mode **Stripe**, webhook validé avec de vraies signatures
-  y compris l'anti-rejeu). Il manque UNIQUEMENT les 4 actions d'Adam décrites
-  dans `PAIEMENT-SETUP.md` — compte Stripe, produit, 2 clés, webhook. Un agent ne
-  peut pas les faire : elles engagent son identité, son IBAN et sa fiscalité.
-  Vérification : `curl .../functions/v1/billing/health`.
+- **Ouvrir Pro à la vente** : code fait, déployé et **prouvé** (Edge Function
+  `billing` en mode **Stripe**, webhook validé avec de vraies signatures, y
+  compris l'anti-rejeu). Adam **a déjà un compte Stripe**. Il ne reste qu'à
+  poser `STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID` + `STRIPE_WEBHOOK_SECRET` : avec
+  la clé secrète, un agent crée le produit, le tarif ET le endpoint webhook via
+  l'API Stripe (`POST /v1/webhook_endpoints` rend le `whsec_`). Vérif :
+  `curl .../functions/v1/billing/health`.
 - **`server/app.py` porte encore un billing Lemon Squeezy mort** (et
   `tests/test_server.py` le teste). C'est la voie legacy self-host ; son billing
   contredit désormais le vrai produit (Stripe). À nettoyer un jour, sans urgence :
