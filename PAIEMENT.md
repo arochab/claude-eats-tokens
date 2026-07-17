@@ -1,7 +1,8 @@
 # Paiement — comment ça marche
 
-**En place et prouvé en mode test le 17 juil 2026.** Stripe, sans serveur à
-héberger : une Edge Function Supabase, gratuite et toujours allumée.
+**EN LIGNE ET EN LIVE depuis le 17 juil 2026.** Stripe, sans serveur à héberger :
+une Edge Function Supabase, gratuite et toujours allumée. Le compte encaisse de
+l'argent réel (`charges_enabled` + `payouts_enabled` = true).
 
 ```
 PWA --POST {api_key}--> billing/checkout --crée la session--> Stripe
@@ -11,20 +12,26 @@ PWA --POST {api_key}--> billing/checkout --crée la session--> Stripe
                          users.id  <---- billing/webhook (signature vérifiée)
 ```
 
-## Ce qui existe
+## Ce qui existe (LIVE)
 
 | | |
 |---|---|
-| Compte Stripe | `acct_1TuAGJQoKodFAbMx` (FR, EUR) |
+| Compte Stripe | `acct_1TndCzQoVk5hxOnP` (Adam CHABBI, FR, EUR) — activé |
 | Produit | `Claude Eats Tokens Pro` |
 | Tarif | **5 €/mois**, récurrent |
 | Webhook | `.../functions/v1/billing/webhook`, 6 événements |
-| Secrets | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` (côté Supabase, jamais dans le dépôt) |
+| Secrets | `STRIPE_SECRET_KEY` (live), `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` (côté Supabase, jamais dans le dépôt) |
+| Clé Stripe | nommée « Claude Eats Tokens » — une clé DÉDIÉE, séparée de celle qui sert à nadelio (utilisée le 13 juil) |
+
+> Un compte Stripe **de test séparé** existe aussi (`acct_1TuAGJQoKodFAbMx`,
+> « Claude Eats Tokens Test »), où toute la mécanique a d'abord été prouvée. C'est
+> un bac à sable, sans lien avec le compte live ci-dessus.
 
 État à tout moment :
 
 ```bash
 curl -s https://yayimgpoopjwmmpzlrpm.supabase.co/functions/v1/billing/health
+# -> liveMode:true quand les clés live sont en place
 ```
 
 ## Les 3 choix qui comptent
@@ -63,38 +70,41 @@ Contre la fonction déployée, avec de vraies signatures :
   `subscription_created` capté sur le réseau serait rejouable des mois plus tard
 - mauvais secret → 401 · événement hors abonnement → acquitté sans agir
 
-## Passer en live
+## Ce qui reste (une seule chose, et c'est à Adam)
 
-Deux choses restent, et elles sont à Adam.
+Le circuit live répond entièrement — checkout, webhook, mise à jour du plan. Ce
+qui n'a **pas** été testé, parce qu'un agent ne saisit jamais de numéro de carte :
+**un vrai paiement de bout en bout**.
 
-**1. Activer le compte Stripe.** Il affiche aujourd'hui `charges_enabled: false` :
-identité et IBAN pas finalisés. En test ça ne gêne pas ; en live, rien ne peut
-être encaissé tant que ce n'est pas fait.
+Pour le faire toi-même, une fois : Compte → Passer à Pro → paie avec **ta propre
+carte**. Ton plan doit basculer sur `pro`. Tu peux ensuite te rembourser et
+résilier depuis le dashboard Stripe (le webhook te remettra en `free`). C'est la
+seule preuve qui manque, et elle ne peut venir que de toi.
 
-**2. Reposer les 3 secrets en version live.** Le catalogue live est **séparé** du
-catalogue test : le produit, le tarif et le webhook sont à recréer là-bas.
+Astuce : si tu veux tester sans dépenser, baisse temporairement le tarif à
+0,50 € (le minimum Stripe pour une carte en EUR), fais le tour complet, puis
+remets 5 €. Les abonnements déjà pris gardent leur ancien prix.
 
-```bash
-# Stripe en mode Live -> Développeurs -> Clés API
-npx supabase secrets set "STRIPE_SECRET_KEY=sk_live_..."
-npx supabase secrets set "STRIPE_PRICE_ID=price_..."       # le tarif live
-npx supabase secrets set "STRIPE_WEBHOOK_SECRET=whsec_..." # le endpoint live
-```
+## Repasser en test (si besoin de déboguer)
 
-`health` passera `liveMode` à `true`. Aucun redéploiement : la fonction relit ses
-secrets.
-
-> Un agent peut refaire produit + tarif + webhook via l'API à partir de la clé
-> live, comme ça a été fait en test. Mais une clé live n'a rien à faire dans une
-> conversation : pose-la toi-même, ou fais-la lire depuis un fichier ignoré par
-> git puis supprimé.
+Les clés de test existent toujours sur le compte bac à sable. Pour y revenir
+temporairement, reposer les 3 secrets version test ; `health` repassera
+`liveMode:false`. Aucun redéploiement : la fonction relit ses secrets.
 
 ## Pièges déjà payés
 
 - **`customer_creation` n'existe qu'en mode `payment`.** En mode `subscription`,
   Stripe répond 400 — le client y est créé d'office. Trouvé en test ; en live
   ç'aurait été un bouton « Passer à Pro » mort.
+- **Une clé secrète standard n'est révélée qu'à sa création.** Après, Stripe ne
+  montre plus que `sk_live_...XXXX`. Impossible de la « recopier » depuis le site.
+  Pour Claude Eats Tokens, une clé DÉDIÉE a été créée (nommée « Claude Eats
+  Tokens ») plutôt que réutiliser celle de nadelio — une clé par projet.
+- **Créer une clé secrète déclenche un 2FA** (lien email + code TOTP). Normal,
+  c'est une action sensible. Passe par un vrai humain.
 - **Le secret d'un webhook n'est rendu qu'à sa création.** Impossible de le
-  relire ensuite : pour le récupérer, il faut supprimer l'endpoint et le recréer.
-- **Test et live sont deux mondes séparés** : produits, tarifs, webhooks, clés.
-  Rien ne traverse.
+  relire ensuite : pour le récupérer, supprimer l'endpoint et le recréer.
+- **Test et live sont deux comptes séparés** ici (pas juste deux modes) :
+  produits, tarifs, webhooks, clés. Rien ne traverse.
+- **Notepad ajoute `.txt` en double** malgré les guillemets → `sk.local.txt.txt`,
+  que `*.local.txt` n'attrapait pas. `.gitignore` couvre maintenant `*.local.txt*`.

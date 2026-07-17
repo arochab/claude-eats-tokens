@@ -155,14 +155,12 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Passer le paiement en live.** Le mode TEST est branché et prouvé de bout en
-  bout (produit, tarif 5 €/mois, webhook, secrets — voir `PAIEMENT.md`). Deux
-  choses restent, et elles sont à Adam : (1) **activer son compte Stripe**, qui
-  affiche `charges_enabled: false` — rien ne peut être encaissé en live tant que
-  identité + IBAN ne sont pas finalisés ; (2) recréer produit/tarif/webhook dans
-  le catalogue **live** (séparé du test) et reposer les 3 secrets. Un agent sait
-  tout refaire via l'API à partir de la clé live — mais une clé live ne doit pas
-  transiter par une conversation.
+- **Paiement Stripe EN LIVE** (17 juil 2026). Compte `acct_1TndCzQoVk5hxOnP`
+  activé (`charges_enabled` + `payouts_enabled` = true), produit + tarif 5 €/mois
+  + webhook créés via l'API, 3 secrets live posés, `health` → `liveMode:true`.
+  Webhook et checkout prouvés en live avec de vraies signatures. **Ne reste qu'UNE
+  chose, qui ne peut venir que d'Adam** : un vrai paiement carte de bout en bout
+  (un agent ne saisit jamais de carte). Détail dans `PAIEMENT.md`.
 - **`server/app.py` porte encore un billing Lemon Squeezy mort** (et
   `tests/test_server.py` le teste). C'est la voie legacy self-host ; son billing
   contredit désormais le vrai produit (Stripe). À nettoyer un jour, sans urgence :
@@ -200,6 +198,15 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 6. Journal des passes (une ligne par session, la plus récente en haut)
 
+- **17 juil 2026 (nuit)** — **Paiement Stripe passé en LIVE.** Compte réel activé
+  (`charges_enabled`+`payouts_enabled`=true), produit+tarif 5 €+webhook créés en
+  live via l'API, secrets live posés, `liveMode:true`. Deux pièges d'OCR repayés :
+  extraire une clé de 107 caractères d'une capture d'écran est ingérable (une
+  confusion 0/O suffit à tout casser) → passer par le bouton copier de Stripe +
+  presse-papier. Une clé secrète standard n'est révélée qu'à sa création : on a
+  créé une clé DÉDIÉE (pas touché à celle de nadelio, utilisée le 13 juil).
+  `.gitignore` corrigé : Notepad crée `sk.local.txt.txt` que `*.local.txt` ne
+  couvrait pas. Reste : le vrai paiement carte, à faire par Adam seul.
 - **17 juil 2026 (soir)** — **Paiement Stripe branché et prouvé en test.**
   Produit + tarif 5 €/mois + webhook créés **via l'API** à partir de la clé de
   test (posée par Adam dans un `sk.local.txt` gitignoré, lu puis supprimé) : zéro
