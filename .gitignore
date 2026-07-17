@@ -18,6 +18,10 @@ claudeeatstoken*.mp4
 
 # Secrets de passage : posés le temps d'une manip, lus, puis supprimés.
 # Le motif est large exprès — il vaut mieux ignorer un fichier de trop qu'en
-# laisser filer un seul.
+# laisser filer un seul. Le second motif couvre le ".txt" que Notepad rajoute
+# en double malgré des guillemets dans "Enregistrer sous" (vécu le 17/07/2026 :
+# sk.local.txt.txt n'était PAS ignoré par *.local.txt seul — faille corrigée
+# avant que le fichier ne soit jamais ajouté à un commit).
 *.local.txt
+*.local.txt*
 sk.local.txt
