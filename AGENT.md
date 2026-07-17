@@ -125,6 +125,14 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 3. Décisions gravées (ne pas re-débattre)
 
+- **Stripe, pas Lemon Squeezy** (tranché 17 juil 2026). Sur des petits tickets,
+  LS prend le double (~14 % sur 5 €/mois contre ~6,5 %). Son Merchant of Record
+  (TVA des 27 collectée et reversée) ne se justifie pas sous le **seuil européen
+  de 10 000 €/an** de ventes B2C numériques transfrontalières. **Ce seuil est le
+  SEUL déclencheur** pour rouvrir le débat — pas une intuition. Le jour venu :
+  Stripe Tax pour le calcul, un comptable pour le dépôt. Un agent peut surveiller
+  le seuil ; il ne peut pas immatriculer Adam ni signer une déclaration, et ce
+  n'est pas négociable (actes juridiques en son nom, sa responsabilité).
 - **Aucun serveur dans le chemin des données.** Le PC et la PWA écrivent/lisent
   Supabase en direct (RPC `cet_push_usage` / `cet_get_usage`, migration 0005).
   Render est sorti du chemin le 16 juil 2026 après sa suspension pour quota.
@@ -147,12 +155,16 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 
 ## 4. Chantiers ouverts (le fil à tirer par la prochaine session)
 
-- **Ouvrir Pro à la vente** : tout le code est fait, déployé et testé
-  (Edge Function `billing`, secrets posés, webhook validé avec de vraies
-  signatures). Il manque UNIQUEMENT les 3 actions d'Adam décrites dans
-  `PAIEMENT-SETUP.md` — compte Lemon Squeezy, produit, webhook. Un agent ne peut
-  pas les faire : elles engagent son identité, son IBAN et sa fiscalité.
-  Vérification : `curl .../functions/v1/billing/health` → 3 × `true`.
+- **Ouvrir Pro à la vente** : tout le code est fait, déployé et **prouvé** (Edge
+  Function `billing` en mode **Stripe**, webhook validé avec de vraies signatures
+  y compris l'anti-rejeu). Il manque UNIQUEMENT les 4 actions d'Adam décrites
+  dans `PAIEMENT-SETUP.md` — compte Stripe, produit, 2 clés, webhook. Un agent ne
+  peut pas les faire : elles engagent son identité, son IBAN et sa fiscalité.
+  Vérification : `curl .../functions/v1/billing/health`.
+- **`server/app.py` porte encore un billing Lemon Squeezy mort** (et
+  `tests/test_server.py` le teste). C'est la voie legacy self-host ; son billing
+  contredit désormais le vrai produit (Stripe). À nettoyer un jour, sans urgence :
+  personne ne self-hoste un paywall.
 - **Le throttle anti-abus est best-effort** (`cet__throttle_ok`, table
   `rpc_throttle`, IP via `x-forwarded-for`). 20/h pour l'inscription, 10/h pour
   `pair_start`. Ça arrête un script opportuniste, pas une attaque distribuée.
@@ -185,6 +197,17 @@ dit *quoi*. Ce fichier dit *pourquoi*, *attention à*, et *ne refais pas ça*.
 ---
 
 ## 6. Journal des passes (une ligne par session, la plus récente en haut)
+
+- **17 juil 2026** — **Paiement rebasculé sur Stripe** (migration 0008 : colonnes
+  `billing_*` neutres). Gain au passage : l'uid est posé côté serveur dans les
+  metadata de l'abonnement, donc plus rien à signer ni à falsifier — le jeton
+  HMAC maison de la version LS a disparu. Piège majeur évité : `plan_status` a
+  une contrainte au vocabulaire de l'app, or Stripe dit `trialing`/`canceled` —
+  écrire brut aurait fait échouer le webhook en boucle, **client débité sans
+  Pro**. Anti-rejeu ajouté (tolérance 5 min). Logique pure extraite dans
+  `logic.ts`, **importée telle quelle par les tests** (plus de miroir). 224 tests
+  verts. Piège de méthode repayé : j'ai écrit « vérifié : 0 abonnement » dans une
+  migration **sans avoir vérifié** (il y en avait un, un test du 7 juil).
 
 - **16 juil 2026** — **Sortie de Render, complète.** L'app était morte depuis le
   15 juil 15h00 (Render suspendu : quota gratuit épuisé par 2 services allumés

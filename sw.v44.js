@@ -25,7 +25,10 @@
    `billing` (Supabase, gratuite et toujours allumee) et non plus par Render.
    La cle voyage desormais dans le CORPS d'un POST : elle n'apparait plus en
    ?key= dans une URL, qui serait partie dans l'historique, les logs et le
-   Referer envoye a Lemon Squeezy. PLUS AUCUN flux ne touche Render.
+   Referer envoye au prestataire de paiement. PLUS AUCUN flux ne touche Render.
+   Le prestataire est Stripe (tranche le 17/07/2026) : sur des petits tickets,
+   Lemon Squeezy prenait le double. Le front, lui, ne sait rien de tout ca --
+   il appelle billing/checkout et recoit une URL.
    Invalide v43. */
 const CACHE = "cet-v44";
 const ASSETS = [

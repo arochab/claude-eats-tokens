@@ -1391,8 +1391,8 @@
   /* ----- Pro : checkout + sheet + cartes ----- */
   /* Hook de paiement.
      La clé part dans le CORPS d'un POST, jamais en ?key= dans l'URL : une URL
-     traîne dans l'historique, les logs du serveur et l'en-tête Referer envoyé
-     à Lemon Squeezy. C'est le seul appel qui partait encore vers Render.
+     traîne dans l'historique, les logs, et l'en-tête Referer envoyé au
+     prestataire de paiement. C'était le dernier appel qui partait vers Render.
 
      POPUP : on ouvre la fenêtre TOUT DE SUITE, dans le geste du clic. Un
      window.open() après un await est bloqué par les navigateurs (il n'est plus
